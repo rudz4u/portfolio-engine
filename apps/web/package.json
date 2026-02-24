@@ -11,6 +11,7 @@
     "@supabase/supabase-js": "latest",
     "@tailwindcss/postcss": "^4.2.1",
     "next": "latest",
+    "quant-engine": "^1.0.0",
     "react": "latest",
     "react-dom": "latest"
   },

@@ -1,0 +1,11 @@
+{
+  "name": "portfolio-engine-workspace",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
