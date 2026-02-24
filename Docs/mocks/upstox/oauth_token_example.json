@@ -1,0 +1,7 @@
+{
+  "access_token": "eyJhbGci...",
+  "refresh_token": "rt_abc123",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "scope": "holdings orders profiles"
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "segment": "NSE_EQ",
+    "name": "RELIANCE INDUSTRIES LIMITED",
+    "exchange": "NSE",
+    "isin": "INE002A01018",
+    "instrument_type": "EQ",
+    "instrument_key": "NSE_EQ|INE002A01018",
+    "lot_size": 1,
+    "exchange_token": "738561",
+    "tick_size": 0.05,
+    "trading_symbol": "RELIANCE",
+    "short_name": "RELIANCE",
+    "security_type": "NORMAL"
+  }
+]

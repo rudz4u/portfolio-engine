@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"/^python3 \"scripts/parse_xlsx_no_deps\\.py\"$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
+	}
+}
