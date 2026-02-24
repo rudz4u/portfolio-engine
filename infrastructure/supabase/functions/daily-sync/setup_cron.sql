@@ -5,7 +5,7 @@ select
     $$
     select
       net.http_post(
-          url:='https://itqbgrmnfsxjbecrymfe.supabase.co/functions/v1/daily-sync',
+          url:='https://YOUR_PROJECT_ID_HERE.supabase.co/functions/v1/daily-sync',
           headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SERVICE_ROLE_KEY_HERE"}'::jsonb
       ) as request_id;
     $$
