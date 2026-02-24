@@ -1,6 +1,6 @@
 [build]
   base = "apps/web"
-  command = "npm install && npm run build"
+  command = "rm -f ../../package-lock.json && npm install --no-package-lock --os=linux --cpu=x64 && npm run build"
   publish = ".next"
 
 [[plugins]]
