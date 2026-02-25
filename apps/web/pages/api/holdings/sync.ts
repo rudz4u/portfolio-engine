@@ -6,29 +6,62 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 )
 
-// Upstox sandbox tokens use a different base URL
-const UPSTOX_BASE = process.env.UPSTOX_SANDBOX === 'false'
-    ? 'https://api.upstox.com'
-    : 'https://api-sandbox.upstox.com'
+const UPSTOX_BASE = 'https://api.upstox.com'   // Holdings only works on live API
+const IS_SANDBOX = process.env.UPSTOX_SANDBOX !== 'false'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' })
     }
 
-    const accessToken = process.env.UPSTOX_ACCESS_TOKEN
+    // In sandbox mode, serve holdings from Supabase (seeded from the real XLSX portfolio)
+    // The Upstox Sandbox does NOT support portfolio/holdings endpoints.
+    if (IS_SANDBOX) {
+        const { data: portfolios } = await supabase
+            .from('portfolios')
+            .select('id')
+            .eq('source', 'upstox')
+            .limit(1)
 
-    // --- Fallback to mock if no token is configured ---
-    if (!accessToken || accessToken === 'PASTE_YOUR_FULL_TOKEN_HERE') {
-        console.warn('[Holdings Sync] No UPSTOX_ACCESS_TOKEN set – returning mock data.')
+        const portfolioId = portfolios?.[0]?.id
+
+        if (!portfolioId) {
+            return res.status(200).json({
+                status: 'sandbox_mode',
+                message: 'No portfolio found in Supabase. Run the seed file to populate holdings.',
+                data: []
+            })
+        }
+
+        const { data: holdings, error } = await supabase
+            .from('holdings')
+            .select('*')
+            .eq('portfolio_id', portfolioId)
+            .order('instrument_key', { ascending: true })
+
+        if (error) {
+            return res.status(500).json({ status: 'error', message: error.message })
+        }
+
         return res.status(200).json({
-            status: 'mock',
-            message: 'Set UPSTOX_ACCESS_TOKEN in your environment to fetch live holdings.',
+            status: 'success',
+            mode: 'sandbox_supabase',
+            count: holdings?.length || 0,
+            data: holdings,
+            message: `Loaded ${holdings?.length || 0} holdings from seeded Supabase data (Sandbox mode — Upstox portfolio API not available in sandbox).`
+        })
+    }
+
+    // Live mode — call actual Upstox API
+    const accessToken = process.env.UPSTOX_ACCESS_TOKEN
+    if (!accessToken || accessToken === 'PASTE_YOUR_FULL_TOKEN_HERE') {
+        return res.status(200).json({
+            status: 'no_token',
+            message: 'Set UPSTOX_ACCESS_TOKEN in environment variables.',
             data: []
         })
     }
 
-    // --- Live Upstox API call ---
     try {
         const upstoxRes = await fetch(`${UPSTOX_BASE}/v2/portfolio/long-term-holdings`, {
             method: 'GET',
@@ -41,7 +74,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const upstoxData = await upstoxRes.json()
 
         if (!upstoxRes.ok) {
-            console.error('[Holdings Sync] Upstox API error:', upstoxData)
             return res.status(upstoxRes.status).json({
                 status: 'error',
                 message: 'Upstox API returned an error',
@@ -51,9 +83,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const holdings: any[] = upstoxData?.data || []
 
-        // --- Upsert into Supabase holdings table ---
+        // Upsert into Supabase
         if (holdings.length > 0) {
-            // Get or create portfolio for the default user (single-user mode)
             const { data: portfolios } = await supabase
                 .from('portfolios')
                 .select('id')
@@ -75,25 +106,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     raw: h
                 }))
 
-                const { error: upsertError } = await supabase
+                await supabase
                     .from('holdings')
                     .upsert(rows, { onConflict: 'portfolio_id,instrument_key' })
-
-                if (upsertError) {
-                    console.error('[Holdings Sync] Supabase upsert error:', upsertError)
-                }
             }
         }
 
         return res.status(200).json({
             status: 'success',
+            mode: 'live',
             count: holdings.length,
             data: holdings,
-            message: `Synced ${holdings.length} holdings from Upstox.`
+            message: `Synced ${holdings.length} holdings from live Upstox account.`
         })
 
     } catch (err: any) {
-        console.error('[Holdings Sync] Unexpected error:', err)
         return res.status(500).json({ status: 'error', message: err.message })
     }
 }
