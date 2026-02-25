@@ -5,7 +5,11 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     const redirectUri = process.env.UPSTOX_REDIRECT_URI || 'https://brokerai.rudz.in/api/oauth/upstox/callback'
     const state = 'secure_random_state'
 
-    const authUrl = `https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}`
+    const authUrl = new URL('https://api.upstox.com/v2/login/authorization/dialog');
+    authUrl.searchParams.append('response_type', 'code');
+    authUrl.searchParams.append('client_id', clientId);
+    authUrl.searchParams.append('redirect_uri', redirectUri);
+    authUrl.searchParams.append('state', state);
 
-    res.redirect(authUrl)
+    res.redirect(authUrl.toString());
 }

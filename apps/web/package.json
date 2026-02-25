@@ -8,13 +8,18 @@
     "start": "next start"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.47",
+    "@ai-sdk/google": "^3.0.31",
+    "@ai-sdk/openai": "^3.0.33",
     "@supabase/supabase-js": "latest",
     "@tailwindcss/postcss": "^4.2.1",
+    "ai": "^6.0.99",
     "lightningcss": "^1.31.1",
     "next": "latest",
     "quant-engine": "^1.0.0",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/react": "19.2.14",
