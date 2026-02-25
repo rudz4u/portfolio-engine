@@ -6,6 +6,11 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 )
 
+// Upstox sandbox tokens use a different base URL
+const UPSTOX_BASE = process.env.UPSTOX_SANDBOX === 'false'
+    ? 'https://api.upstox.com'
+    : 'https://api-sandbox.upstox.com'
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' })
@@ -25,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // --- Live Upstox API call ---
     try {
-        const upstoxRes = await fetch('https://api.upstox.com/v2/portfolio/long-term-holdings', {
+        const upstoxRes = await fetch(`${UPSTOX_BASE}/v2/portfolio/long-term-holdings`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
