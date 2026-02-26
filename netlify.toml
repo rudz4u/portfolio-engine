@@ -7,3 +7,19 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Cache headers to prevent stale JS chunk 404s after deployments
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
