@@ -36,7 +36,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (quantity !== undefined) modifyPayload.quantity = Number(quantity)
         if (price !== undefined) modifyPayload.price = Number(price)
-        if (trigger_price !== undefined) modifyPayload.trigger_price = Number(trigger_price)
+        // Upstox requires trigger_price even for non-SL orders (defaults to 0)
+        modifyPayload.trigger_price = trigger_price !== undefined ? Number(trigger_price) : 0
         if (disclosed_quantity !== undefined) modifyPayload.disclosed_quantity = Number(disclosed_quantity)
 
         const upstoxRes = await fetch(UPSTOX_ENDPOINTS.modifyOrder, {
