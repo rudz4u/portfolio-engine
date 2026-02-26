@@ -213,7 +213,8 @@ export default function SandboxTest() {
                             <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-3 h-3 rounded-full animate-pulse ${connectionStatus?.status === 'sandbox_ready' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]'
-                                            : connectionStatus?.status === 'sandbox_mode' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]'
+                                        : connectionStatus?.status === 'sandbox_mode' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]'
+                                            : connectionStatus?.status === 'token_invalid' ? 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]'
                                                 : 'bg-zinc-600'
                                         }`} />
                                     <div>
@@ -236,13 +237,27 @@ export default function SandboxTest() {
                                     <p className="text-xs text-zinc-600">API Base: <code className="text-zinc-400 font-mono">{connectionStatus.api_base}</code></p>
                                 </div>
                             )}
+                            {connectionStatus?.status === 'token_invalid' && connectionStatus?.fix_steps && (
+                                <div className="mt-4 p-4 bg-red-500/5 border border-red-500/15 rounded-xl">
+                                    <p className="text-sm font-medium text-red-400 mb-3">⚠ Token Fix Required</p>
+                                    <ol className="space-y-1.5">
+                                        {connectionStatus.fix_steps.map((step: string, i: number) => (
+                                            <li key={i} className="text-xs text-zinc-400">{step}</li>
+                                        ))}
+                                    </ol>
+                                    <a href="https://account.upstox.com/developer/apps#sandbox" target="_blank" rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 mt-4 text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-lg transition-colors">
+                                        Open Upstox Sandbox Portal →
+                                    </a>
+                                </div>
+                            )}
                         </section>
 
                         {/* Message Banner */}
                         {message && (
                             <div className={`p-4 rounded-xl border flex items-start gap-3 transition-all ${message.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                                    : message.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-300'
-                                        : 'bg-blue-500/10 border-blue-500/20 text-blue-300'
+                                : message.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-300'
+                                    : 'bg-blue-500/10 border-blue-500/20 text-blue-300'
                                 }`}>
                                 <p className="text-sm">{message.text}</p>
                                 <button onClick={() => setMessage(null)} className="ml-auto text-zinc-500 hover:text-white transition-colors text-sm">×</button>
@@ -309,8 +324,8 @@ export default function SandboxTest() {
                                         type="submit"
                                         disabled={placing || !connectionStatus?.sandbox_order_available}
                                         className={`w-full py-3 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${side === 'BUY'
-                                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_15px_rgba(52,211,153,0.2)]'
-                                                : 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_15px_rgba(52,211,153,0.2)]'
+                                            : 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.2)]'
                                             }`}
                                     >
                                         {placing ? 'Placing...' : `Place ${side} Order`}
@@ -398,8 +413,8 @@ export default function SandboxTest() {
                                                     </td>
                                                     <td className="py-3 px-4">
                                                         <span className={`text-xs font-bold px-2 py-0.5 rounded ${order.side === 'BUY' ? 'bg-emerald-500/15 text-emerald-400'
-                                                                : order.side === 'SELL' ? 'bg-red-500/15 text-red-400'
-                                                                    : 'bg-zinc-500/15 text-zinc-400'
+                                                            : order.side === 'SELL' ? 'bg-red-500/15 text-red-400'
+                                                                : 'bg-zinc-500/15 text-zinc-400'
                                                             }`}>{order.side}</span>
                                                     </td>
                                                     <td className="py-3 px-4 text-sm text-zinc-300 font-mono truncate max-w-[180px]">{order.instrument_key}</td>
@@ -407,10 +422,10 @@ export default function SandboxTest() {
                                                     <td className="py-3 px-4 text-right text-sm text-zinc-300">{order.price ? `₹${order.price}` : 'MKT'}</td>
                                                     <td className="py-3 px-4">
                                                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${order.status === 'SUBMITTED' || order.status === 'COMPLETE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                                                : order.status === 'FAILED' ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                                                    : order.status === 'CANCELLED' ? 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
-                                                                        : order.status === 'MODIFIED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                                                            : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
+                                                            : order.status === 'FAILED' ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                                                : order.status === 'CANCELLED' ? 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
+                                                                    : order.status === 'MODIFIED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                                                        : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
                                                             }`}>{order.status}</span>
                                                     </td>
                                                     <td className="py-3 px-4 text-xs text-zinc-600 font-mono truncate max-w-[120px]">{order.external_order_id || '—'}</td>
