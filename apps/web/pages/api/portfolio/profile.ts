@@ -1,15 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-
-const UPSTOX_BASE = process.env.UPSTOX_SANDBOX === 'false'
-    ? 'https://api.upstox.com'
-    : 'https://api-sandbox.upstox.com'
-
-const IS_SANDBOX = process.env.UPSTOX_SANDBOX !== 'false'
+import { IS_SANDBOX, UPSTOX_ENDPOINTS, getAccessToken, upstoxHeaders, SANDBOX_SUPPORTED, LIVE_ONLY_ENDPOINTS } from '../../../lib/upstoxConfig'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    const accessToken = process.env.UPSTOX_ACCESS_TOKEN
+    const accessToken = getAccessToken()
 
-    if (!accessToken || accessToken === 'PASTE_YOUR_FULL_TOKEN_HERE') {
+    if (!accessToken) {
         return res.status(200).json({
             status: 'no_token',
             message: 'UPSTOX_ACCESS_TOKEN not configured.'
@@ -21,30 +16,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (IS_SANDBOX) {
         return res.status(200).json({
             status: 'sandbox_mode',
-            base_url: UPSTOX_BASE,
             note: 'Upstox Sandbox only supports Order APIs (Place/Modify/Cancel). Profile and Holdings endpoints require a live account token (UPSTOX_SANDBOX=false).',
-            sandbox_supported_endpoints: [
-                'POST /v2/order/place',
-                'PUT /v2/order/modify',
-                'DELETE /v2/order/cancel',
-                'POST /v3/order/place',
-            ],
-            live_only_endpoints: [
-                'GET /v2/user/profile',
-                'GET /v2/portfolio/long-term-holdings',
-                'GET /v2/portfolio/positions',
-                'GET /v2/user/fund-margin'
-            ]
+            sandbox_supported_endpoints: SANDBOX_SUPPORTED.map(ep => `${ep.method} ${ep.path}`),
+            live_only_endpoints: LIVE_ONLY_ENDPOINTS
         })
     }
 
     // Live mode — actually call the API
     try {
-        const profileRes = await fetch(`${UPSTOX_BASE}/v2/user/profile`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Accept': 'application/json'
-            }
+        const profileRes = await fetch(UPSTOX_ENDPOINTS.profile, {
+            headers: upstoxHeaders(accessToken)
         })
         const profileData = await profileRes.json()
 
@@ -58,7 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json({
             status: 'connected',
-            base_url: UPSTOX_BASE,
             profile: profileData?.data
         })
     } catch (err: any) {

@@ -1,12 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
+import { IS_SANDBOX, UPSTOX_ENDPOINTS, getAccessToken, upstoxHeaders } from '../../../lib/upstoxConfig'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-const IS_SANDBOX = process.env.UPSTOX_SANDBOX !== 'false'
-const UPSTOX_ORDER_URL = 'https://api.upstox.com/v2/order/place'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -16,13 +14,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { instrument_key, side, quantity, price, user_id, order_type, product } = req.body
 
     if (!instrument_key || !side || !quantity || !user_id) {
-        return res.status(400).json({ error: 'Missing required order configuration parameters.' })
+        return res.status(400).json({ error: 'Missing required order parameters: instrument_key, side, quantity, user_id' })
     }
 
-    const accessToken = process.env.UPSTOX_ACCESS_TOKEN
+    const accessToken = getAccessToken()
 
-    // If sandbox mode AND we have an access token, try the real Upstox sandbox order API
-    if (IS_SANDBOX && accessToken && accessToken !== 'PASTE_YOUR_FULL_TOKEN_HERE') {
+    // If sandbox mode AND we have an access token, call the real Upstox sandbox order API
+    if (IS_SANDBOX && accessToken) {
         try {
             const orderPayload = {
                 quantity: Number(quantity),
@@ -38,13 +36,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 is_amo: false
             }
 
-            const upstoxRes = await fetch(UPSTOX_ORDER_URL, {
+            const upstoxRes = await fetch(UPSTOX_ENDPOINTS.placeOrder, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                },
+                headers: upstoxHeaders(accessToken),
                 body: JSON.stringify(orderPayload)
             })
 
@@ -64,6 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         external_order_id: upstoxData?.data?.order_id || null,
                         meta: {
                             source: 'upstox_sandbox',
+                            api_url: UPSTOX_ENDPOINTS.placeOrder,
                             request: orderPayload,
                             response: upstoxData,
                             http_status: upstoxRes.status
@@ -72,6 +67,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 ])
                 .select()
                 .single()
+
+            if (insertError) {
+                console.error('Order DB insert error:', insertError)
+            }
 
             if (!upstoxRes.ok) {
                 return res.status(upstoxRes.status).json({
@@ -127,7 +126,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Simulate network latency
-    await new Promise(resolve => setTimeout(resolve, 400))
+    await new Promise(resolve => setTimeout(resolve, 300))
 
     return res.status(200).json({
         status: 'success',

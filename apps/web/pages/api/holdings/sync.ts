@@ -1,13 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
+import { IS_SANDBOX, UPSTOX_ENDPOINTS, getAccessToken, upstoxHeaders } from '../../../lib/upstoxConfig'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 )
-
-const UPSTOX_BASE = 'https://api.upstox.com'   // Holdings only works on live API
-const IS_SANDBOX = process.env.UPSTOX_SANDBOX !== 'false'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET' && req.method !== 'POST') {
@@ -53,8 +51,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Live mode — call actual Upstox API
-    const accessToken = process.env.UPSTOX_ACCESS_TOKEN
-    if (!accessToken || accessToken === 'PASTE_YOUR_FULL_TOKEN_HERE') {
+    const accessToken = getAccessToken()
+    if (!accessToken) {
         return res.status(200).json({
             status: 'no_token',
             message: 'Set UPSTOX_ACCESS_TOKEN in environment variables.',
@@ -63,12 +61,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const upstoxRes = await fetch(`${UPSTOX_BASE}/v2/portfolio/long-term-holdings`, {
+        const upstoxRes = await fetch(UPSTOX_ENDPOINTS.holdings, {
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Accept': 'application/json'
-            }
+            headers: upstoxHeaders(accessToken)
         })
 
         const upstoxData = await upstoxRes.json()
