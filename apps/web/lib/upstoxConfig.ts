@@ -3,22 +3,30 @@
  *
  * Centralizes all Upstox-related constants and helpers.
  * Sandbox tokens are read from env vars OR from Supabase user_settings.
+ *
+ * IMPORTANT:
+ * - Sandbox orders use: https://api-sandbox.upstox.com
+ * - Live orders use:    https://api-hft.upstox.com (high-frequency trading endpoint)
+ * - Live non-order APIs: https://api.upstox.com
  */
 
 export const IS_SANDBOX = process.env.UPSTOX_SANDBOX !== 'false'
 
-// Upstox uses api-hft.upstox.com for order operations (better latency)
-// and api.upstox.com for everything else (profile, holdings, etc.)
+// Base URLs differ between sandbox and live
+export const UPSTOX_SANDBOX_BASE = 'https://api-sandbox.upstox.com'
 export const UPSTOX_ORDER_BASE = 'https://api-hft.upstox.com'
 export const UPSTOX_API_BASE = 'https://api.upstox.com'
 
-// Sandbox-enabled endpoints (all use api-hft base)
+// Order base URL switches based on mode
+const ORDER_BASE = IS_SANDBOX ? UPSTOX_SANDBOX_BASE : UPSTOX_ORDER_BASE
+
 export const UPSTOX_ENDPOINTS = {
-    placeOrder: `${UPSTOX_ORDER_BASE}/v2/order/place`,
-    modifyOrder: `${UPSTOX_ORDER_BASE}/v2/order/modify`,
-    cancelOrder: `${UPSTOX_ORDER_BASE}/v2/order/cancel`,
-    placeOrderV3: `${UPSTOX_ORDER_BASE}/v3/order/place`,
-    // Live-only endpoints (use regular api base)
+    // Order endpoints — sandbox uses api-sandbox, live uses api-hft
+    placeOrder: `${ORDER_BASE}/v2/order/place`,
+    modifyOrder: `${ORDER_BASE}/v2/order/modify`,
+    cancelOrder: `${ORDER_BASE}/v2/order/cancel`,
+    placeOrderV3: `${ORDER_BASE}/v3/order/place`,
+    // Non-order endpoints (live-only, use regular api base)
     profile: `${UPSTOX_API_BASE}/v2/user/profile`,
     holdings: `${UPSTOX_API_BASE}/v2/portfolio/long-term-holdings`,
     positions: `${UPSTOX_API_BASE}/v2/portfolio/positions`,

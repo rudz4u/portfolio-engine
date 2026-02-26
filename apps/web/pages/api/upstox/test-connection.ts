@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { IS_SANDBOX, UPSTOX_ENDPOINTS, getAccessToken, upstoxHeaders, SANDBOX_SUPPORTED } from '../../../lib/upstoxConfig'
+import { IS_SANDBOX, UPSTOX_ENDPOINTS, getAccessToken, upstoxHeaders, SANDBOX_SUPPORTED, UPSTOX_SANDBOX_BASE, UPSTOX_ORDER_BASE } from '../../../lib/upstoxConfig'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const accessToken = getAccessToken()
@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     message: 'Token rejected by Upstox (UDAPI100050). This usually means the token was generated from a regular app instead of a Sandbox App. Go to Upstox Developer Portal → Sandbox section → Generate a new sandbox-specific token.',
                     sandbox_order_available: false,
                     holdings_source: 'supabase',
-                    api_base: 'https://api-hft.upstox.com',
+                    api_base: IS_SANDBOX ? UPSTOX_SANDBOX_BASE : UPSTOX_ORDER_BASE,
                     upstox_error: testData,
                     fix_steps: [
                         '1. Go to https://account.upstox.com/developer/apps#sandbox',
@@ -79,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 message: 'Sandbox mode active with valid access token. Order APIs (Place/Modify/Cancel) are ready for testing. Holdings served from Supabase seeded data.',
                 sandbox_order_available: true,
                 holdings_source: 'supabase',
-                api_base: 'https://api-hft.upstox.com',
+                api_base: IS_SANDBOX ? UPSTOX_SANDBOX_BASE : UPSTOX_ORDER_BASE,
                 supported_endpoints: SANDBOX_SUPPORTED.map(ep => `${ep.method} ${ep.path}`),
                 token_test: testData?.status === 'success' ? 'order_placed' : 'token_valid_order_rejected',
                 test_response: testData
@@ -92,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 message: 'Sandbox mode active with access token configured. Could not validate token against Upstox (network issue). Order APIs should be ready for testing.',
                 sandbox_order_available: true,
                 holdings_source: 'supabase',
-                api_base: 'https://api-hft.upstox.com',
+                api_base: IS_SANDBOX ? UPSTOX_SANDBOX_BASE : UPSTOX_ORDER_BASE,
                 supported_endpoints: SANDBOX_SUPPORTED.map(ep => `${ep.method} ${ep.path}`),
                 validation_error: err.message
             })
