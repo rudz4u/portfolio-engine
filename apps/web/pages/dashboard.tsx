@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabaseClient'
+import Link from 'next/link'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -11,6 +12,13 @@ export default function Dashboard() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [authChecking, setAuthChecking] = useState(true)
+  const [syncStatus, setSyncStatus] = useState<any>(null)
+  const [syncing, setSyncing] = useState(false)
+
+  // Check query params for OAuth/sandbox messages
+  const queryInfo = router.query.info as string | undefined
+  const queryError = router.query.error as string | undefined
+  const querySuccess = router.query.success as string | undefined
 
   useEffect(() => {
     let mounted = true
@@ -35,6 +43,24 @@ export default function Dashboard() {
     load()
     return () => { mounted = false }
   }, [router])
+
+  async function handleSync() {
+    setSyncing(true)
+    setSyncStatus(null)
+    try {
+      const res = await fetch('/api/holdings/sync')
+      const data = await res.json()
+      setSyncStatus(data)
+      if (data.status === 'success' && data.data?.length > 0) {
+        // Reload holdings from Supabase
+        const { data: refreshed } = await supabase.from('holdings').select('*').order('instrument_key', { ascending: true })
+        if (refreshed) setHoldings(refreshed)
+      }
+    } catch (err: any) {
+      setSyncStatus({ status: 'error', message: err.message })
+    }
+    setSyncing(false)
+  }
 
   const filtered = holdings.filter(h => {
     if (!filter) return true
@@ -68,13 +94,24 @@ export default function Dashboard() {
           </div>
           <h1 className="text-xl font-medium tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">Portfolio Engine</h1>
         </div>
-        <button
-          onClick={logout}
-          className="text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-white/5"
-        >
-          Sign out
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-        </button>
+        <div className="flex items-center gap-4">
+          <Link href="/recommendations" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+            Signals
+          </Link>
+          <Link href="/assistant" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+            Assistant
+          </Link>
+          <Link href="/settings" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+            Settings
+          </Link>
+          <button
+            onClick={logout}
+            className="text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-white/5"
+          >
+            Sign out
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          </button>
+        </div>
       </header>
 
       <main className="relative max-w-7xl mx-auto px-6 mt-12">
@@ -85,12 +122,56 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
+            {/* Info/Error banners from redirects */}
+            {queryInfo === 'sandbox_no_oauth' && (
+              <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-3 animate-in fade-in">
+                <svg className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <p className="text-sm text-amber-300">
+                  <strong>Sandbox Mode:</strong> OAuth login isn&apos;t supported in sandbox mode. Go to{' '}
+                  <Link href="/settings" className="text-indigo-400 underline hover:text-indigo-300">Settings</Link>{' '}
+                  and paste your sandbox access token from the Upstox Developer Portal.
+                </p>
+              </div>
+            )}
+            {queryError && (
+              <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                <p className="text-sm text-red-300">
+                  {queryError === 'missing_config'
+                    ? 'Upstox API credentials not configured. Go to Settings to add them.'
+                    : `Broker connection error: ${queryError}`
+                  }
+                </p>
+              </div>
+            )}
+            {querySuccess === 'oauth_completed' && (
+              <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-3">
+                <svg className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <p className="text-sm text-emerald-300">Successfully connected to Upstox!</p>
+              </div>
+            )}
+
             <div className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 <h2 className="text-3xl font-semibold mb-2">Overview</h2>
                 <p className="text-sm text-zinc-500">Track and manage your equity positions.</p>
               </div>
-              <div>
+              <div className="flex items-center gap-3">
+                {/* Sandbox indicator */}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-400 text-xs font-medium rounded-full border border-amber-500/20">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                  Sandbox
+                </span>
+
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors border border-white/10 disabled:opacity-50"
+                >
+                  <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  {syncing ? 'Syncing...' : 'Sync Holdings'}
+                </button>
+
                 <a
                   href="/api/oauth/upstox/authorize"
                   className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-[0_0_15px_rgba(99,102,241,0.3)]"
@@ -100,6 +181,14 @@ export default function Dashboard() {
                 </a>
               </div>
             </div>
+
+            {/* Sync status */}
+            {syncStatus && (
+              <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 ${syncStatus.status === 'success' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-zinc-800/50 border-white/5'
+                }`}>
+                <p className="text-sm text-zinc-300">{syncStatus.message}</p>
+              </div>
+            )}
 
             {/* Top metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
