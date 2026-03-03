@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { scoreHoldings, portfolioSummary, type HoldingInput } from "@/lib/quant/scoring"
 
 const SYSTEM_PROMPT = `You are an expert AI equity portfolio assistant for BrokerAI. 
-You help users analyze their stock portfolio, understand market trends, and make informed investment decisions.
-You have knowledge of Indian equity markets (NSE/BSE), fundamental analysis, technical indicators, and portfolio management.
-Be concise, data-driven, and always remind users that this is not financial advice.`
+You help users analyze their Indian stock portfolio, understand market trends, and make informed investment decisions.
+You have deep knowledge of NSE/BSE markets, fundamental analysis, technical indicators (RSI, MACD, ATR, Bollinger Bands), and portfolio management.
+You speak concisely, citing numbers from the portfolio context when available. Always note that insights are not financial advice.
+When asked for a morning briefing, provide: 1) Portfolio P&L snapshot, 2) Top BUY/SELL signals, 3) Sector concentration flags, 4) One key action item.`
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -22,28 +24,59 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 })
   }
 
-  // Fetch portfolio context for this user
-  const { data: holdings } = await supabase
-    .from("holdings")
-    .select(`
-      quantity, avg_price, invested_amount, ltp, unrealized_pl,
-      instruments(trading_symbol, name, exchange)
-    `)
-    .eq("portfolios.user_id", user.id)
-    .limit(50)
+  // Fetch portfolio context + run quant scoring
+  const { data: portfolios } = await supabase
+    .from("portfolios")
+    .select("id")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
 
-  const portfolioContext =
-    holdings && holdings.length > 0
-      ? `\n\nUser's current holdings: ${JSON.stringify(
-          holdings.map((h) => ({
-            symbol: (h.instruments as unknown as Record<string, unknown>)?.trading_symbol,
-            qty: h.quantity,
-            avg: h.avg_price,
-            ltp: h.ltp,
-            pnl: h.unrealized_pl,
-          }))
-        )}`
-      : ""
+  let portfolioContext = ""
+
+  if (portfolios && portfolios.length > 0) {
+    const portfolioId = portfolios[0].id
+    const { data: holdings } = await supabase
+      .from("holdings")
+      .select("instrument_key, quantity, avg_price, ltp, unrealized_pl, invested_amount, segment, raw")
+      .eq("portfolio_id", portfolioId)
+
+    if (holdings && holdings.length > 0) {
+      const inputs: HoldingInput[] = holdings.map((h) => {
+        const raw = (h.raw as Record<string, number>) || {}
+        return {
+          instrument_key: h.instrument_key,
+          trading_symbol: (h.raw as Record<string, string>)?.trading_symbol || h.instrument_key,
+          name: (h.raw as Record<string, string>)?.company_name || h.instrument_key,
+          quantity: Number(h.quantity) || 0,
+          avg_price: Number(h.avg_price) || 0,
+          ltp: Number(h.ltp) || Number(h.avg_price) || 0,
+          unrealized_pl: Number(h.unrealized_pl) || 0,
+          invested_amount: Number(h.invested_amount) || 0,
+          day_change_percentage: raw.day_change_percentage,
+          segment: (h.segment as string) || "Others",
+        }
+      })
+      const scored = scoreHoldings(inputs)
+      const summary = portfolioSummary(scored)
+      const buySignals = scored.filter((s) => s.signal === "BUY").map((s) => s.trading_symbol).slice(0, 5)
+      const sellSignals = scored.filter((s) => s.signal === "SELL").map((s) => s.trading_symbol).slice(0, 5)
+      const totalInvested = inputs.reduce((s, h) => s + h.invested_amount, 0)
+      const totalPnL = inputs.reduce((s, h) => s + h.unrealized_pl, 0)
+      const pnlPct = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0
+
+      portfolioContext = `
+
+Portfolio Summary (live data):
+- Total Invested: ₹${totalInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+- Total P&L: ₹${totalPnL.toLocaleString("en-IN", { maximumFractionDigits: 0 })} (${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%)
+- Holdings: ${inputs.length} stocks
+- Portfolio Score: ${summary.avgScore}/100
+- BUY signals: ${buySignals.join(", ") || "None"}
+- SELL signals: ${sellSignals.join(", ") || "None"}
+- Top 10 by invested: ${scored.slice(0, 10).map((s) => `${s.trading_symbol}(${s.signal},score:${s.score},pnl:${s.pnl_pct.toFixed(1)}%)`).join(", ")}`
+    }
+  }
 
   const fullSystemPrompt = SYSTEM_PROMPT + portfolioContext
 

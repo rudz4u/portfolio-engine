@@ -72,11 +72,13 @@ export default function SettingsPage() {
   const [openaiKey, setOpenaiKey] = useState("")
   const [anthropicKey, setAnthropicKey] = useState("")
   const [geminiKey, setGeminiKey] = useState("")
+  const [tavilyKey, setTavilyKey] = useState("")
   const [showKeys, setShowKeys] = useState(false)
   const [keyStatus, setKeyStatus] = useState({
     openai_key_set: false,
     anthropic_key_set: false,
     gemini_key_set: false,
+    tavily_key_set: false,
   })
   const [savingKeys, setSavingKeys] = useState(false)
 
@@ -138,6 +140,7 @@ export default function SettingsPage() {
       openai_key_set: !!data.openai_key_set,
       anthropic_key_set: !!data.anthropic_key_set,
       gemini_key_set: !!data.gemini_key_set,
+      tavily_key_set: !!data.tavily_key_set,
     })
     setAiMode(data.ai_mode === "byok" ? "byok" : "platform")
     setPreferredLlm(data.preferred_llm || "brokerai")
@@ -239,6 +242,7 @@ export default function SettingsPage() {
     if (openaiKey)    body.openai_key    = openaiKey
     if (anthropicKey) body.anthropic_key = anthropicKey
     if (geminiKey)    body.gemini_key    = geminiKey
+    if (tavilyKey)    body.tavily_key    = tavilyKey
     const res = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -247,7 +251,7 @@ export default function SettingsPage() {
     setSavingKeys(false)
     if (res.ok) {
       toast({ title: "AI settings saved" })
-      setOpenaiKey(""); setAnthropicKey(""); setGeminiKey("")
+      setOpenaiKey(""); setAnthropicKey(""); setGeminiKey(""); setTavilyKey("")
       loadSettings()
     } else {
       toast({ title: "Failed to save AI settings", variant: "destructive" })
@@ -462,6 +466,7 @@ export default function SettingsPage() {
                   { label: "OpenAI", key: "openai_key_set" as const, clearKey: "openai_key" },
                   { label: "Anthropic", key: "anthropic_key_set" as const, clearKey: "anthropic_key" },
                   { label: "Gemini", key: "gemini_key_set" as const, clearKey: "gemini_key" },
+                  { label: "Tavily", key: "tavily_key_set" as const, clearKey: "tavily_key" },
                 ]).map(({ label, key, clearKey }) => (
                   <div key={key} className="flex items-center gap-1">
                     <Badge variant={keyStatus[key] ? "success" : "secondary"} className="flex items-center gap-1">
@@ -478,6 +483,7 @@ export default function SettingsPage() {
                 { label: "OpenAI API Key", placeholder: "sk-...", value: openaiKey, set: setOpenaiKey, flagKey: "openai_key_set" as const },
                 { label: "Anthropic API Key", placeholder: "sk-ant-...", value: anthropicKey, set: setAnthropicKey, flagKey: "anthropic_key_set" as const },
                 { label: "Google Gemini API Key", placeholder: "AIza...", value: geminiKey, set: setGeminiKey, flagKey: "gemini_key_set" as const },
+                { label: "Tavily API Key (news research)", placeholder: "tvly-...", value: tavilyKey, set: setTavilyKey, flagKey: "tavily_key_set" as const },
               ]).map(({ label, placeholder, value, set, flagKey }) => (
                 <div key={label} className="space-y-1.5">
                   <Label className="text-sm">{label}</Label>

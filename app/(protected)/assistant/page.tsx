@@ -22,10 +22,11 @@ interface Message {
 }
 
 const STARTER_PROMPTS = [
-  "What is my portfolio's overall performance?",
+  "Give me a morning briefing on my portfolio",
   "Which sectors am I most exposed to?",
   "Show me my top performing stocks",
-  "Analyse my highest-risk positions",
+  "Which positions should I review today?",
+  "What is my overall risk profile?",
 ]
 
 export default function AssistantPage() {
@@ -162,36 +163,36 @@ export default function AssistantPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)] max-h-[calc(100vh-4rem)] space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">AI Assistant</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight">AI Assistant</h1>
+        <p className="text-muted-foreground text-sm">
           Powered by AI — portfolio analysis, market insights, trade suggestions
         </p>
       </div>
 
       {/* API key notice */}
       {hasApiKey === false && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-center gap-2">
-          <Key className="h-4 w-4 text-amber-600 shrink-0" />
-          <p className="text-sm text-amber-800">
+        <div className="bg-amber-400/10 border border-amber-400/25 rounded-lg px-4 py-2.5 flex items-center gap-2">
+          <Key className="h-4 w-4 text-amber-400 shrink-0" />
+          <p className="text-sm text-amber-300">
             No AI provider configured.{" "}
-            <Link href="/settings" className="underline font-medium">Add an API key in Settings</Link>{" "}
+            <Link href="/settings" className="underline font-medium text-amber-200">Add an API key in Settings</Link>{" "}
             to enable AI responses.
           </p>
         </div>
       )}
 
       {/* Chat area */}
-      <Card className="flex-1 flex flex-col min-h-0">
-        <CardHeader className="pb-3 border-b">
+      <Card className="card-elevated flex-1 flex flex-col min-h-0">
+        <CardHeader className="pb-3 border-b border-border/60">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Bot className="h-4 w-4" />
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Bot className="h-4 w-4 text-primary" />
               Portfolio Assistant
-              <Badge variant="secondary" className="text-xs">Beta</Badge>
+              <Badge variant="secondary" className="text-[10px]">Beta</Badge>
             </CardTitle>
             <button
               onClick={clearChat}
-              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1"
+              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
               title="Clear visible chat"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -214,8 +215,8 @@ export default function AssistantPage() {
               <div
                 className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
                   msg.role === "assistant"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                    ? "bg-gradient-to-br from-violet-500 to-blue-500 text-white"
+                    : "bg-secondary"
                 }`}
               >
                 {msg.role === "assistant" ? (
@@ -225,10 +226,10 @@ export default function AssistantPage() {
                 )}
               </div>
               <div
-                className={`max-w-[75%] rounded-lg px-4 py-2.5 text-sm ${
+                className={`max-w-[75%] rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
                   msg.role === "user"
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                    : "bg-secondary/80 text-foreground"
                 }`}
               >
                 {msg.content}
@@ -237,10 +238,10 @@ export default function AssistantPage() {
           ))}
           {loading && (
             <div className="flex gap-3">
-              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 text-white flex items-center justify-center shrink-0">
                 <Bot className="h-4 w-4" />
               </div>
-              <div className="bg-muted rounded-lg px-4 py-2.5 flex items-center gap-2 text-sm">
+              <div className="bg-secondary/80 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Thinking…
               </div>
@@ -250,14 +251,14 @@ export default function AssistantPage() {
         </CardContent>
 
         {/* Starter prompts + input */}
-        <div className="p-4 border-t space-y-3">
+        <div className="p-4 border-t border-border/60 space-y-3">
           {historyLoaded && messages.filter((m) => m.role === "user").length === 0 && (
             <div className="flex flex-wrap gap-2">
               {STARTER_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => sendMessage(prompt)}
-                  className="text-xs bg-muted hover:bg-muted/80 rounded-full px-3 py-1.5 transition-colors"
+                  className="text-xs bg-secondary/60 hover:bg-secondary border border-border/50 rounded-full px-3 py-1.5 transition-colors text-foreground/70 hover:text-foreground"
                 >
                   {prompt}
                 </button>
@@ -276,9 +277,9 @@ export default function AssistantPage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about your portfolio…"
               disabled={loading}
-              className="flex-1"
+              className="flex-1 bg-secondary/40 border-border/60"
             />
-            <Button type="submit" size="icon" disabled={loading || !input.trim()}>
+            <Button type="submit" size="icon" disabled={loading || !input.trim()} className="btn-gradient border-0 shrink-0">
               <Send className="h-4 w-4" />
             </Button>
           </form>

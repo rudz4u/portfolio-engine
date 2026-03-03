@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { TrendingUp, TrendingDown, RefreshCw, Info, BarChart2 } from "lucide-react"
+import { TrendingUp, TrendingDown, RefreshCw, BarChart2, ExternalLink, Newspaper, ChevronDown, ChevronUp } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -34,10 +34,10 @@ interface Summary {
 }
 
 const SIGNAL_STYLES: Record<string, string> = {
-  BUY: "bg-green-100 text-green-800 border-green-200",
-  HOLD: "bg-blue-100 text-blue-800 border-blue-200",
-  SELL: "bg-red-100 text-red-800 border-red-200",
-  WATCH: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  BUY:  "bg-emerald-400/15 text-emerald-400 border-emerald-400/30",
+  HOLD: "bg-blue-400/15 text-blue-400 border-blue-400/30",
+  SELL: "bg-red-400/15 text-red-400 border-red-400/30",
+  WATCH:"bg-amber-400/15 text-amber-400 border-amber-400/30",
 }
 
 const SIGNAL_FILTER_BUTTONS = ["All", "BUY", "HOLD", "SELL", "WATCH"] as const
@@ -61,6 +61,9 @@ export default function RecommendationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterType>("All")
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [expandedResearch, setExpandedResearch] = useState<string | null>(null)
+  const [researchData, setResearchData] = useState<Record<string, { answer: string | null; results: {title: string; url: string; snippet?: string}[] } | null>>({})
+  const [researchLoading, setResearchLoading] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,6 +80,22 @@ export default function RecommendationsPage() {
       setLoading(false)
     }
   }, [])
+
+  const loadResearch = useCallback(async (symbol: string) => {
+    if (expandedResearch === symbol) { setExpandedResearch(null); return }
+    setExpandedResearch(symbol)
+    if (researchData[symbol]) return // already cached
+    setResearchLoading(symbol)
+    try {
+      const res = await fetch(`/api/research/news?symbol=${encodeURIComponent(symbol)}`)
+      const json = await res.json()
+      setResearchData((prev) => ({ ...prev, [symbol]: json }))
+    } catch {
+      setResearchData((prev) => ({ ...prev, [symbol]: null }))
+    } finally {
+      setResearchLoading(null)
+    }
+  }, [expandedResearch, researchData])
 
   useEffect(() => {
     load()
@@ -109,20 +128,20 @@ export default function RecommendationsPage() {
         </div>
       ) : data ? (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Card className="col-span-1">
+          <Card className="card-elevated kpi-card">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="text-xs text-muted-foreground">Portfolio Score</div>
-              <div className="text-2xl font-bold mt-1">{data.summary.avgScore}<span className="text-sm font-normal text-muted-foreground">/100</span></div>
+              <div className="text-2xl font-bold mt-1 gradient-text">{data.summary.avgScore}<span className="text-sm font-normal text-muted-foreground">/100</span></div>
             </CardContent>
           </Card>
           {(["BUY", "HOLD", "SELL", "WATCH"] as const).map((sig) => (
             <Card
               key={sig}
-              className={`cursor-pointer transition-all ${filter === sig ? "ring-2 ring-primary" : ""}`}
+              className={`card-elevated cursor-pointer transition-all ${filter === sig ? "ring-1 ring-primary glow-sm" : "hover:border-primary/30"}`}
               onClick={() => setFilter(filter === sig ? "All" : sig)}
             >
               <CardContent className="pt-4 pb-3 px-4">
-                <div className="text-xs text-muted-foreground">{sig}</div>
+                <div className={`text-xs font-medium ${SIGNAL_STYLES[sig].split(" ")[1]}`}>{sig}</div>
                 <div className="text-2xl font-bold mt-1">{data.summary.bySignal[sig]}</div>
               </CardContent>
             </Card>
@@ -179,7 +198,7 @@ export default function RecommendationsPage() {
             return (
               <div
                 key={h.instrument_key}
-                className="rounded-xl border bg-card p-4 hover:shadow-sm transition-all"
+                className="card-elevated rounded-xl p-4 hover:border-primary/25 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -205,12 +224,12 @@ export default function RecommendationsPage() {
                   <div className="text-right shrink-0">
                     <div className="flex items-center justify-end gap-1">
                       {pnlPositive ? (
-                        <TrendingUp className="w-3.5 h-3.5 text-green-600" />
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
                       ) : (
-                        <TrendingDown className="w-3.5 h-3.5 text-red-500" />
+                        <TrendingDown className="w-3.5 h-3.5 text-red-400" />
                       )}
                       <span
-                        className={`text-sm font-semibold ${pnlPositive ? "text-green-600" : "text-red-500"}`}
+                        className={`text-sm font-semibold ${pnlPositive ? "text-emerald-400" : "text-red-400"}`}
                       >
                         {pnlPositive ? "+" : ""}
                         {h.pnl_pct.toFixed(1)}%
@@ -248,7 +267,53 @@ export default function RecommendationsPage() {
                   <span>Avg ₹{h.avg_price?.toFixed(2)}</span>
                   <span>Weight {h.weight_pct?.toFixed(1)}%</span>
                   <span>Invested ₹{(h.invested_amount / 1000).toFixed(1)}k</span>
+                  <button
+                    onClick={() => loadResearch(h.trading_symbol)}
+                    className="ml-auto flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+                  >
+                    <Newspaper className="h-3.5 w-3.5" />
+                    News
+                    {expandedResearch === h.trading_symbol
+                      ? <ChevronUp className="h-3 w-3" />
+                      : <ChevronDown className="h-3 w-3" />}
+                  </button>
                 </div>
+
+                {/* Research panel */}
+                {expandedResearch === h.trading_symbol && (
+                  <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                    {researchLoading === h.trading_symbol ? (
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-3 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    ) : researchData[h.trading_symbol] ? (
+                      <>
+                        {researchData[h.trading_symbol]!.answer && (
+                          <p className="text-xs text-muted-foreground leading-relaxed italic">
+                            {researchData[h.trading_symbol]!.answer}
+                          </p>
+                        )}
+                        <div className="space-y-1">
+                          {researchData[h.trading_symbol]!.results.map((r, i) => (
+                            <a
+                              key={i}
+                              href={r.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-start gap-2 text-xs text-primary/80 hover:text-primary group"
+                            >
+                              <ExternalLink className="h-3 w-3 mt-0.5 shrink-0" />
+                              <span className="group-hover:underline line-clamp-1">{r.title}</span>
+                            </a>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-destructive/70">Failed to load research.</p>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}
