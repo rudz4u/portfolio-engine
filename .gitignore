@@ -1,9 +1,27 @@
-.env.local
+# dependencies
 node_modules/
-dist/
-.next/
-.DS_Store
 
-# Playwright test artifacts
+# next.js
+.next/
+out/
+
+# env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# build
+dist/
+
+# misc
+*.tsbuildinfo
+next-env.d.ts
+
+# playwright
 .playwright-mcp/
-signin-fresh.png
+
+# IDE
+.vscode/
+!.vscode/extensions.json

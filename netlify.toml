@@ -1,11 +1,9 @@
 [build]
-  base = "apps/web"
-  command = "npm install && npm run build:netlify"
+  command = "npm run build"
   publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "22"
-  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_PROJECT_ID"
+  NODE_VERSION = "20"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
