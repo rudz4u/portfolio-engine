@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2, Save, TestTube2, CheckCircle2, XCircle, Eye, EyeOff, Key } from "lucide-react"
+import { Loader2, Save, TestTube2, CheckCircle2, XCircle, Eye, EyeOff, Key, Mail, Bell } from "lucide-react"
 import { useToast } from "@/lib/hooks/use-toast"
 
 export default function SettingsPage() {
@@ -36,7 +36,15 @@ export default function SettingsPage() {
     openai_key_set: false,
     anthropic_key_set: false,
     gemini_key_set: false,
+    brevo_key_set: false,
   })
+
+  // Email notification state
+  const [emailDigest, setEmailDigest] = useState(false)
+  const [notificationEmail, setNotificationEmail] = useState("")
+  const [brevoKey, setBrevoKey] = useState("")
+  const [savingNotif, setSavingNotif] = useState(false)
+  const [sendingDigest, setSendingDigest] = useState(false)
 
   useEffect(() => {
     loadSettings()
@@ -50,9 +58,12 @@ export default function SettingsPage() {
         openai_key_set: !!data.openai_key_set,
         anthropic_key_set: !!data.anthropic_key_set,
         gemini_key_set: !!data.gemini_key_set,
+        brevo_key_set: !!data.brevo_key_set,
       })
       setPreferredLlm(data.preferred_llm || "auto")
       setUpstoxSandbox(data.sandbox_mode !== false)
+      setEmailDigest(!!data.email_digest)
+      setNotificationEmail(data.notification_email || "")
     }
   }
 
@@ -147,6 +158,40 @@ export default function SettingsPage() {
       toast({ title: "Sync error", variant: "destructive" })
     }
     setSaving(false)
+  }
+
+  async function handleSaveNotifications() {
+    setSavingNotif(true)
+    const body: Record<string, string> = {
+      email_digest: String(emailDigest),
+      notification_email: notificationEmail,
+    }
+    if (brevoKey) body.brevo_key = brevoKey
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    setSavingNotif(false)
+    if (res.ok) {
+      setBrevoKey("")
+      loadSettings()
+      toast({ title: "Notification settings saved" })
+    } else {
+      toast({ title: "Failed to save", variant: "destructive" })
+    }
+  }
+
+  async function handleSendDigest() {
+    setSendingDigest(true)
+    const res = await fetch("/api/notifications/digest", { method: "POST" })
+    const data = await res.json()
+    setSendingDigest(false)
+    if (res.ok) {
+      toast({ title: "Digest sent!", description: data.message })
+    } else {
+      toast({ title: "Send failed", description: data.error, variant: "destructive" })
+    }
   }
 
   return (
@@ -312,6 +357,101 @@ export default function SettingsPage() {
             <Button onClick={handleSaveKeys} disabled={savingKeys}>
               {savingKeys ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Save Keys
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Notifications
+          </CardTitle>
+          <CardDescription>
+            Daily portfolio digest email via Brevo. Sent at 10:00 AM IST on trading days.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Daily Digest Email</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Morning summary: P&amp;L, top movers, recent orders
+              </p>
+            </div>
+            <button
+              onClick={() => setEmailDigest((v) => !v)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                emailDigest ? "bg-primary" : "bg-muted"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  emailDigest ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-sm">Notification Email</Label>
+            <Input
+              type="email"
+              placeholder="your@email.com (leave blank to use account email)"
+              value={notificationEmail}
+              onChange={(e) => setNotificationEmail(e.target.value)}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-1">
+            <Label className="text-sm flex items-center gap-2">
+              <Key className="h-3.5 w-3.5" />
+              Brevo API Key
+              {keyStatus.brevo_key_set && (
+                <Badge variant="success" className="text-xs">Set</Badge>
+              )}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Get a free key at{" "}
+              <a href="https://app.brevo.com" target="_blank" rel="noreferrer" className="underline">app.brevo.com</a>.
+              Falls back to system key if not set.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                placeholder={keyStatus.brevo_key_set ? "xkeysib-... (set — enter new to update)" : "xkeysib-..."}
+                value={brevoKey}
+                onChange={(e) => setBrevoKey(e.target.value)}
+              />
+              {keyStatus.brevo_key_set && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleClearKey("brevo_key")}
+                  className="text-muted-foreground hover:text-destructive shrink-0"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={handleSaveNotifications} disabled={savingNotif}>
+              {savingNotif ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save
+            </Button>
+            <Button variant="outline" onClick={handleSendDigest} disabled={sendingDigest}>
+              {sendingDigest ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="mr-2 h-4 w-4" />
+              )}
+              Send Test Digest
             </Button>
           </div>
         </CardContent>

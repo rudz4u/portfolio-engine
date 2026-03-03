@@ -29,8 +29,11 @@ export async function GET() {
     openai_key_set: Boolean(prefs.openai_key),
     anthropic_key_set: Boolean(prefs.anthropic_key),
     gemini_key_set: Boolean(prefs.gemini_key),
+    brevo_key_set: Boolean(prefs.brevo_key),
     preferred_llm: prefs.preferred_llm || "auto",
     sandbox_mode: prefs.sandbox_mode !== "false",
+    email_digest: prefs.email_digest === "true",
+    notification_email: prefs.notification_email || "",
   })
 }
 
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const allowed = ["openai_key", "anthropic_key", "gemini_key", "preferred_llm", "sandbox_mode"]
+  const allowed = ["openai_key", "anthropic_key", "gemini_key", "brevo_key", "preferred_llm", "sandbox_mode", "email_digest", "notification_email"]
 
   // Get existing preferences
   const { data: existing } = await supabase
