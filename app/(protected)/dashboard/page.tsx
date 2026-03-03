@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { Suspense } from "react"
 import {
   Card,
   CardContent,
@@ -262,12 +263,21 @@ export default async function DashboardPage() {
           </div>
 
           {/* Portfolio Charts */}
-          <PortfolioCharts
-            segments={summary.segments}
-            totalInvested={summary.totalInvested}
-            topGainers={summary.topGainers}
-            topLosers={summary.topLosers}
-          />
+          <Suspense
+            fallback={
+              <div className="grid lg:grid-cols-2 gap-6">
+                <div className="h-[300px] rounded-xl bg-muted animate-pulse" />
+                <div className="h-[300px] rounded-xl bg-muted animate-pulse" />
+              </div>
+            }
+          >
+            <PortfolioCharts
+              segments={summary.segments}
+              totalInvested={summary.totalInvested}
+              topGainers={summary.topGainers}
+              topLosers={summary.topLosers}
+            />
+          </Suspense>
         </>
       )}
 

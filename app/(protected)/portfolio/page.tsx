@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import {
   Card,
   CardContent,
@@ -135,7 +136,12 @@ export default async function PortfolioPage() {
                         className="border-b last:border-0 hover:bg-muted/30 transition-colors"
                       >
                         <td className="py-2.5 pr-4 font-medium">
-                          <div>{h.instrument_key as string}</div>
+                          <Link
+                            href={`/portfolio/${encodeURIComponent(h.instrument_key as string)}`}
+                            className="hover:text-primary hover:underline underline-offset-2 transition-colors"
+                          >
+                            {h.instrument_key as string}
+                          </Link>
                           {Boolean(h.moving) && (
                             <span className="text-xs text-green-600">Moving</span>
                           )}
