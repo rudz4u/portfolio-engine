@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -14,12 +15,13 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2, Save, TestTube2, CheckCircle2, XCircle, Eye, EyeOff, Key, Mail, Bell } from "lucide-react"
+import { Loader2, Save, TestTube2, CheckCircle2, XCircle, Eye, EyeOff, Key, Mail, Bell, ExternalLink, RefreshCw } from "lucide-react"
 import { useToast } from "@/lib/hooks/use-toast"
 
 export default function SettingsPage() {
   const { toast } = useToast()
   const supabase = createClient()
+  const searchParams = useSearchParams()
 
   const [saving, setSaving] = useState(false)
   const [savingKeys, setSavingKeys] = useState(false)
@@ -54,6 +56,29 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadSettings()
+
+    // Handle messages from Upstox OAuth callback redirect
+    const success = searchParams.get("success")
+    const error = searchParams.get("error")
+    const message = searchParams.get("message")
+
+    if (success === "upstox_connected") {
+      setConnectionStatus("connected")
+      toast({
+        title: "Upstox connected!",
+        description: "Your account is linked and your portfolio has been synced.",
+      })
+      // Clean up the URL without reloading
+      window.history.replaceState({}, "", "/settings")
+    } else if (error) {
+      toast({
+        title: "Upstox connection failed",
+        description: message ? decodeURIComponent(message) : error,
+        variant: "destructive",
+      })
+      window.history.replaceState({}, "", "/settings")
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function loadSettings() {
@@ -275,98 +300,81 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <Label>Access Token</Label>
-            <div className="text-xs text-muted-foreground space-y-1">
-              {upstoxTokenSet ? (
-                <div className="flex items-center gap-2">
-                  <Badge variant="success" className="flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" /> Token set
-                  </Badge>
+          {/* OAuth connection status + connect button */}
+          {upstoxTokenSet ? (
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                      Upstox account connected
+                    </span>
+                  </div>
                   {upstoxTokenExpiresAt && (
-                    <span className={`text-xs ${
+                    <p className={`text-xs pl-6 ${
                       new Date(upstoxTokenExpiresAt) < new Date()
                         ? "text-destructive font-medium"
                         : "text-muted-foreground"
                     }`}>
                       {new Date(upstoxTokenExpiresAt) < new Date()
-                        ? "⚠ Expired"
-                        : `Expires ${new Date(upstoxTokenExpiresAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`
+                        ? "⚠ Token expired — reconnect below"
+                        : `Session valid until ${new Date(upstoxTokenExpiresAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`
                       }
-                    </span>
+                    </p>
                   )}
                 </div>
-              ) : (
-                <p className="text-amber-600 text-xs">No token saved. Upstox tokens expire daily — paste a fresh one below.</p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                placeholder="eyJ0eXAiOiJKV1Qi... (paste today's access token)"
-                value={upstoxToken}
-                onChange={(e) => setUpstoxToken(e.target.value)}
-                className="font-mono text-xs"
-              />
-              <Button
-                onClick={handleSaveToken}
-                disabled={savingToken || !upstoxToken.trim()}
-                className="shrink-0"
-              >
-                {savingToken ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save
-              </Button>
-              {upstoxTokenSet && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleClearKey("upstox_access_token")}
-                  className="text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={() => {
+                    handleClearKey("upstox_access_token")
+                    setConnectionStatus("disconnected")
+                    setUpstoxTokenSet(false)
+                    setUpstoxTokenExpiresAt(null)
+                  }}
+                  className="text-muted-foreground hover:text-destructive text-xs shrink-0"
                 >
-                  Clear
+                  Disconnect
                 </Button>
-              )}
+              </div>
+
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={handleTestUpstox} disabled={testing}>
+                  {testing ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <TestTube2 className="mr-2 h-3 w-3" />}
+                  Test Connection
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleSync} disabled={saving}>
+                  {saving ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-2 h-3 w-3" />}
+                  Sync Holdings
+                </Button>
+                {/* Re-auth if token expired */}
+                {upstoxTokenExpiresAt && new Date(upstoxTokenExpiresAt) < new Date() && (
+                  <Button size="sm" asChild>
+                    <a href="/api/oauth/upstox/authorize">
+                      <ExternalLink className="mr-2 h-3 w-3" /> Re-connect
+                    </a>
+                  </Button>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Get your token from{" "}
-              <a href="https://developer.upstox.com" target="_blank" rel="noreferrer" className="underline">developer.upstox.com</a>{" "}
-              → My Apps → Access Token. Valid until midnight.
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleTestUpstox} disabled={testing}>
-              {testing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <TestTube2 className="mr-2 h-4 w-4" />
-              )}
-              Test Connection
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleSync}
-              disabled={saving}
-            >
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Sync Holdings
-            </Button>
-          </div>
-
-          <Separator />
-
-          <div>
-            <p className="text-sm font-medium mb-2">OAuth Flow (optional)</p>
-            <p className="text-xs text-muted-foreground mb-3">
-              Use OAuth if you want multi-user support or token auto-refresh. For personal
-              use, a direct access token is simpler.
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <a href="/api/upstox/authorize">Connect via OAuth</a>
-            </Button>
-          </div>
+          ) : (
+            <div className="rounded-lg border border-dashed p-6 flex flex-col items-center gap-3 text-center">
+              <div className="text-muted-foreground text-sm">
+                Connect your Upstox account to automatically sync your holdings.
+                You&apos;ll be redirected to Upstox to authorise access — no copy-pasting required.
+              </div>
+              <Button asChild size="lg" className="mt-1">
+                <a href="/api/oauth/upstox/authorize">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Connect with Upstox
+                </a>
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Your credentials are never stored outside your own account.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

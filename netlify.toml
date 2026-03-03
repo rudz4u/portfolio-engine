@@ -13,6 +13,8 @@
   # Upstox app credentials (OAuth flow)
   # UPSTOX_CLIENT_SECRET must be set in Netlify dashboard (not committed to git)
   UPSTOX_CLIENT_ID = "d462ce65-de8f-4daa-b543-f8e8ae8dc722"
+  # This MUST match the redirect URI registered in the Upstox developer portal exactly.
+  UPSTOX_REDIRECT_URI = "https://brokerai.rudz.in/api/oauth/upstox/callback"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
