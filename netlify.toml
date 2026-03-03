@@ -2,6 +2,7 @@
   # base must be set to the Next.js app dir so @netlify/plugin-nextjs v5
   # correctly maps .next/static/ → /_next/static/ for static asset serving.
   # Without base, chunks are generated but served at the wrong path → 404s.
+  # Each new deploy triggers a full Netlify CDN purge across all edge nodes.
   base = "apps/web"
   # cd ../.. goes from apps/web → repo root to set up workspace symlinks
   # (apps/web depends on packages/quant-engine via npm workspaces).
