@@ -19,6 +19,10 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Extend function timeout for data-heavy routes (default is 10s, Upstox sync needs ~15s)
+[functions]
+  timeout = 30
+
 # Rule 1: All routes default — no CDN edge caching for HTML pages
 # (This must come FIRST so more specific rules below can override it)
 [[headers]]
