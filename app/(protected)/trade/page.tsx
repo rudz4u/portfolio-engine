@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Fragment } from "react"
 import {
   Card,
   CardContent,
@@ -178,12 +178,11 @@ export default function TradePage() {
 
   /* ── Auto-load live data when Today tab is first shown ── */
   useEffect(() => {
-    if (historyTab === "today" && liveOrders.length === 0 && !liveOrdersLoading) {
+    if (historyTab === "today") {
       loadLiveOrderBook()
       loadLiveTradeBook()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historyTab])
+  }, [historyTab, loadLiveOrderBook, loadLiveTradeBook])
 
   /* ── Load / toggle lifecycle for one live order ── */
   async function loadOrderLifecycle(orderId: string) {
@@ -583,9 +582,9 @@ export default function TradePage() {
                   )}
                 </h3>
 
-                {!liveOrdersLoading && liveOrders.length === 0 && !liveError && (
+                {!liveOrdersLoading && liveOrders.length === 0 && (
                   <p className="text-sm text-muted-foreground py-4 text-center">
-                    No orders placed in today&apos;s session.{" "}
+                    {liveError ? "Could not load orders." : "No orders placed in today\u2019s session."}{" "}
                     <button className="underline underline-offset-2 hover:text-foreground"
                       onClick={loadLiveOrderBook}>
                       Refresh
@@ -610,9 +609,8 @@ export default function TradePage() {
                       </thead>
                       <tbody>
                         {liveOrders.map((o) => (
-                          <>
+                          <Fragment key={o.order_id}>
                             <tr
-                              key={o.order_id}
                               className="border-b hover:bg-muted/30 transition-colors cursor-pointer"
                               onClick={() => loadOrderLifecycle(o.order_id)}
                             >
@@ -646,7 +644,7 @@ export default function TradePage() {
 
                             {/* Lifecycle timeline (expandable) */}
                             {expandedOrderId === o.order_id && orderLifecycle[o.order_id] && (
-                              <tr key={`${o.order_id}-timeline`} className="bg-muted/20">
+                              <tr className="bg-muted/20">
                                 <td colSpan={8} className="px-4 py-3">
                                   <p className="text-xs font-medium text-muted-foreground mb-2">
                                     Order Timeline
@@ -675,7 +673,7 @@ export default function TradePage() {
                                 </td>
                               </tr>
                             )}
-                          </>
+                          </Fragment>
                         ))}
                       </tbody>
                     </table>
