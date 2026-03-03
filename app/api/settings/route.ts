@@ -47,6 +47,7 @@ export async function GET() {
     gemini_key_set: Boolean(prefs.gemini_key),
     deepseek_key_set: Boolean(prefs.deepseek_key),
     tavily_key_set: Boolean(prefs.tavily_key),
+    brevo_key_set: Boolean(prefs.brevo_key),
     upstox_token_set: Boolean(prefs.upstox_access_token),
     upstox_token_expires_at: upstoxTokenExpiresAt,
     preferred_llm: prefs.preferred_llm || "brokerai",
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
   const allowed = [
-    "openai_key", "anthropic_key", "gemini_key", "deepseek_key", "tavily_key",
+    "openai_key", "anthropic_key", "gemini_key", "deepseek_key", "tavily_key", "brevo_key",
     "upstox_access_token", "preferred_llm", "ai_mode", "sandbox_mode",
     // notification fields
     "notification_emails",

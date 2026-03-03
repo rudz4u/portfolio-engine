@@ -74,6 +74,7 @@ export default function SettingsPage() {
   const [geminiKey, setGeminiKey] = useState("")
   const [deepseekKey, setDeepseekKey] = useState("")
   const [tavilyKey, setTavilyKey] = useState("")
+  const [brevoKey,  setBrevoKey]  = useState("")
   const [showKeys, setShowKeys] = useState(false)
   const [keyStatus, setKeyStatus] = useState({
     openai_key_set: false,
@@ -81,6 +82,7 @@ export default function SettingsPage() {
     gemini_key_set: false,
     deepseek_key_set: false,
     tavily_key_set: false,
+    brevo_key_set: false,
   })
   const [savingKeys, setSavingKeys] = useState(false)
 
@@ -173,6 +175,7 @@ export default function SettingsPage() {
       gemini_key_set: !!data.gemini_key_set,
       deepseek_key_set: !!data.deepseek_key_set,
       tavily_key_set: !!data.tavily_key_set,
+      brevo_key_set: !!data.brevo_key_set,
     })
     setAiMode(data.ai_mode === "byok" ? "byok" : "platform")
     setPreferredLlm(data.preferred_llm || "brokerai")
@@ -276,6 +279,7 @@ export default function SettingsPage() {
     if (geminiKey)    body.gemini_key    = geminiKey
     if (deepseekKey)  body.deepseek_key  = deepseekKey
     if (tavilyKey)    body.tavily_key    = tavilyKey
+    if (brevoKey)     body.brevo_key     = brevoKey
     const res = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -284,7 +288,7 @@ export default function SettingsPage() {
     setSavingKeys(false)
     if (res.ok) {
       toast({ title: "AI settings saved" })
-      setOpenaiKey(""); setAnthropicKey(""); setGeminiKey(""); setDeepseekKey(""); setTavilyKey("")
+      setOpenaiKey(""); setAnthropicKey(""); setGeminiKey(""); setDeepseekKey(""); setTavilyKey(""); setBrevoKey("")
       loadSettings()
     } else {
       toast({ title: "Failed to save AI settings", variant: "destructive" })
@@ -529,6 +533,7 @@ export default function SettingsPage() {
                   { label: "Gemini", key: "gemini_key_set" as const, clearKey: "gemini_key" },
                   { label: "DeepSeek", key: "deepseek_key_set" as const, clearKey: "deepseek_key" },
                   { label: "Tavily", key: "tavily_key_set" as const, clearKey: "tavily_key" },
+                  { label: "Brevo", key: "brevo_key_set" as const, clearKey: "brevo_key" },
                 ]).map(({ label, key, clearKey }) => (
                   <div key={key} className="flex items-center gap-1">
                     <Badge variant={keyStatus[key] ? "success" : "secondary"} className="flex items-center gap-1">
@@ -547,6 +552,7 @@ export default function SettingsPage() {
                 { label: "Google Gemini API Key", placeholder: "AIza...", value: geminiKey, set: setGeminiKey, flagKey: "gemini_key_set" as const },
                 { label: "DeepSeek API Key", placeholder: "sk-...", value: deepseekKey, set: setDeepseekKey, flagKey: "deepseek_key_set" as const },
                 { label: "Tavily API Key (news research)", placeholder: "tvly-...", value: tavilyKey, set: setTavilyKey, flagKey: "tavily_key_set" as const },
+                { label: "Brevo API Key (email digest)", placeholder: "xkeysib-...", value: brevoKey, set: setBrevoKey, flagKey: "brevo_key_set" as const },
               ]).map(({ label, placeholder, value, set, flagKey }) => (
                 <div key={label} className="space-y-1.5">
                   <Label className="text-sm">{label}</Label>

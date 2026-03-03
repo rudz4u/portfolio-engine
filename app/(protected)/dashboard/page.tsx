@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, Briefcase, Activity } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { PortfolioCharts } from "./portfolio-charts"
+import { SyncBar } from "./sync-bar"
 
 async function getPortfolioSummary(userId: string) {
   const supabase = await createClient()
@@ -91,14 +92,26 @@ export default async function DashboardPage() {
   const summary = await getPortfolioSummary(user.id)
   const recentOrders = await getRecentOrders(user.id)
 
+  // Last sync time: most recent updated_at across holdings
+  const { data: lastSyncRow } = await supabase
+    .from("holdings")
+    .select("updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .single()
+  const lastSynced = lastSyncRow?.updated_at ?? null
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground text-sm">
-          Welcome back,{" "}
-          <span className="text-foreground font-medium">{user.email?.split("@")[0]}</span>
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground text-sm">
+            Welcome back,{" "}
+            <span className="text-foreground font-medium">{user.email?.split("@")[0]}</span>
+          </p>
+        </div>
+        <SyncBar lastSynced={lastSynced} />
       </div>
 
       {!summary ? (

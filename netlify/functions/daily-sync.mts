@@ -15,14 +15,16 @@ import type { Config } from "@netlify/functions"
 export default async function handler() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
+  // The live Next.js app URL — used to call /api/cron/digest after sync
+  const appUrl      = process.env.NEXT_PUBLIC_APP_URL || "https://brokerai.rudz.in"
 
   if (!supabaseUrl || !serviceKey) {
     console.error("[daily-sync] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
     return
   }
 
+  // ── 1. Sync holdings via Supabase Edge Function ──────────────────────────
   const edgeFunctionUrl = `${supabaseUrl}/functions/v1/daily-sync`
-
   console.log(`[daily-sync] Triggering edge function at ${edgeFunctionUrl}`)
 
   try {
@@ -37,13 +39,36 @@ export default async function handler() {
     if (!res.ok) {
       const body = await res.text()
       console.error(`[daily-sync] Edge function returned ${res.status}: ${body}`)
-      return
+      // Still attempt digest even if sync had issues (use cached DB values)
+    } else {
+      const data = await res.json()
+      console.log("[daily-sync] Holdings sync success:", JSON.stringify(data))
     }
-
-    const data = await res.json()
-    console.log("[daily-sync] Success:", JSON.stringify(data))
   } catch (err) {
-    console.error("[daily-sync] Fetch error:", err)
+    console.error("[daily-sync] Holdings sync fetch error:", err)
+  }
+
+  // ── 2. Send morning digest emails to opted-in users ──────────────────────
+  const digestUrl = `${appUrl}/api/cron/digest`
+  console.log(`[daily-sync] Triggering digest at ${digestUrl}`)
+
+  try {
+    const digestRes = await fetch(digestUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${serviceKey}`,
+      },
+    })
+
+    const digestData = await digestRes.json().catch(() => ({}))
+    if (digestRes.ok) {
+      console.log("[daily-sync] Digest sent:", JSON.stringify(digestData))
+    } else {
+      console.error(`[daily-sync] Digest returned ${digestRes.status}:`, JSON.stringify(digestData))
+    }
+  } catch (err) {
+    console.error("[daily-sync] Digest fetch error:", err)
   }
 }
 

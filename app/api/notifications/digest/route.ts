@@ -161,12 +161,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  // Brevo key comes exclusively from server env — never from user-supplied settings
-  const brevoKey = process.env.BREVO_API_KEY || ""
+  const { data: settingsRowPre } = await supabase
+    .from("user_settings")
+    .select("preferences")
+    .eq("user_id", user.id)
+    .single()
+
+  const prefsPre = (settingsRowPre?.preferences as Record<string, string> | null) || {}
+
+  // Allow user-supplied Brevo key first, fall back to server env
+  const brevoKey = prefsPre.brevo_key || process.env.BREVO_API_KEY || ""
 
   if (!brevoKey) {
     return NextResponse.json(
-      { error: "BREVO_API_KEY is not configured on the server. Set it in Netlify environment variables." },
+      { error: "No Brevo API key configured. Add BREVO_API_KEY in Netlify env vars or save your own key in Settings → API Keys." },
       { status: 400 }
     )
   }
@@ -188,14 +196,14 @@ export async function POST(request: Request) {
     )
   }
 
-  const { data: settingsRow } = await supabase
-    .from("user_settings")
-    .select("preferences")
-    .eq("user_id", user.id)
-    .single()
-
-  const prefs = (settingsRow?.preferences as Record<string, string> | null) || {}
-  const toEmail = prefs.notification_email || user.email || ""
+  // reuse prefsPre (already fetched above)
+  const prefs = prefsPre
+  // Use first address from notification_emails list, fall back to account email
+  const emailList = (prefs.notification_emails || "")
+    .split(",")
+    .map((e: string) => e.trim())
+    .filter(Boolean)
+  const toEmail = emailList[0] || user.email || ""
   const toName = user.email?.split("@")[0] ?? "User"
 
   if (!toEmail) {
