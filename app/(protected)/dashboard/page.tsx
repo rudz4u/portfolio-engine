@@ -226,7 +226,7 @@ export default async function DashboardPage() {
                         key={h.instrument_key}
                         className="flex justify-between items-center text-sm"
                       >
-                        <span className="font-medium">{h.instrument_key}</span>
+                        <span className="font-medium">{((h.raw as Record<string, unknown>)?.trading_symbol as string) || h.instrument_key}</span>
                         <Badge variant="success">
                           +{formatCurrency(h.unrealized_pl || 0)}
                         </Badge>
@@ -250,7 +250,7 @@ export default async function DashboardPage() {
                         key={h.instrument_key}
                         className="flex justify-between items-center text-sm"
                       >
-                        <span className="font-medium">{h.instrument_key}</span>
+                        <span className="font-medium">{((h.raw as Record<string, unknown>)?.trading_symbol as string) || h.instrument_key}</span>
                         <Badge variant="destructive">
                           {formatCurrency(h.unrealized_pl || 0)}
                         </Badge>
