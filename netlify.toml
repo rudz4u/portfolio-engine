@@ -5,6 +5,11 @@
 [build.environment]
   NODE_VERSION = "20"
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,SUPABASE_PROJECT_ID"
+  # Disable Next.js plugin durable cache — prevents stale HTML with 404 chunk refs
+  # on direct URL navigation after a deploy. Per Netlify docs, the plugin v5.5+
+  # automatically stores Next.js pages in a 1-year durable cache; atomic-deploy
+  # invalidation can miss cookie/header vary buckets, breaking direct-URL loads.
+  NETLIFY_NEXT_NO_DURABLE_CACHE = "true"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
