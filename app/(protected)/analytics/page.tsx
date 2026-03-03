@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, PieChart as PieIcon, BarChart2, Activity, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { SectorCorrelationHeatmap } from "./sector-correlation"
 
 /* ─── palette ──────────────────────────────────────────────── */
 const COLORS = [
@@ -790,6 +791,11 @@ export default function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* ── Sector Correlation Matrix ──────────────────── */}
+      {segmentAlloc.length >= 2 && (
+        <SectorCorrelationHeatmap segments={segmentAlloc.map((s) => s.name)} />
       )}
     </div>
   )

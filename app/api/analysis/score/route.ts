@@ -89,8 +89,21 @@ export async function GET(request: NextRequest) {
     },
   }))
 
-  // Insert all (no upsert — just append; page queries latest per instrument)
-  await supabase.from("analysis_reports").insert(reports)
+  // Rate-limit write-back: only persist if no report was written in the last hour.
+  // This prevents the table from growing by |holdings| rows on every page load
+  // while still keeping analysis_reports current within a 1-hour window.
+  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const { data: recentReport } = await supabase
+    .from("analysis_reports")
+    .select("created_at")
+    .eq("user_id", user.id)
+    .gt("created_at", cutoff)
+    .limit(1)
+    .maybeSingle()
+
+  if (!recentReport) {
+    await supabase.from("analysis_reports").insert(reports)
+  }
 
   return NextResponse.json({ scored, summary })
 }
