@@ -136,6 +136,44 @@ export async function POST(
   return NextResponse.json({ list, item: newItem })
 }
 
+// ─── PATCH /api/watchlists/[id]/items?instrument_key=... ────────────────────
+// Updates mutable fields (target_price, notes) on an existing watchlist item.
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const instrument_key = request.nextUrl.searchParams.get("instrument_key")
+  if (!instrument_key) return NextResponse.json({ error: "instrument_key required" }, { status: 400 })
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const body = await request.json()
+  const { rowExists, prefs } = await loadPrefs(supabase, user.id)
+  let store = ensureDefaultList(readWatchlists(prefs))
+
+  const list = store.find((l) => l.id === id)
+  if (!list) return NextResponse.json({ error: "Watchlist not found" }, { status: 404 })
+
+  const itemIdx = list.items.findIndex((i) => i.instrument_key === instrument_key)
+  if (itemIdx === -1) return NextResponse.json({ error: "Item not found" }, { status: 404 })
+
+  // Only allow updating safe fields
+  const item = list.items[itemIdx]
+  if ("target_price" in body) item.target_price = body.target_price === "" || body.target_price === null ? null : Number(body.target_price) || null
+  if ("notes" in body)        item.notes        = typeof body.notes === "string" ? body.notes.slice(0, 500) : undefined
+
+  list.items[itemIdx] = item
+  store = store.map((l) => (l.id === id ? list : l))
+  prefs.watchlists = store
+  delete (prefs as Record<string, unknown>).watchlist_symbols
+  await savePrefs(supabase, user.id, rowExists, prefs)
+
+  return NextResponse.json({ item, list })
+}
+
 // ─── DELETE /api/watchlists/[id]/items?instrument_key=... ────────────────────
 // Removes an item from the watchlist.
 export async function DELETE(

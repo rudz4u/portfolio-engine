@@ -11,16 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatCurrency } from "@/lib/utils"
 import { scoreHoldings, type ScoredHolding, type HoldingInput } from "@/lib/quant/scoring"
-import {
-  TrendingUp,
-  TrendingDown,
-  ChevronLeft,
-  ExternalLink,
-  Target,
-  Zap,
-  Scale,
-  BarChart2,
-} from "lucide-react"
+import { TrendingUp, TrendingDown, ChevronLeft, Target, Zap, Scale, BarChart2, Activity } from "lucide-react"
 import Link from "next/link"
 
 const SIGNAL_STYLES: Record<string, { badge: string; bg: string; text: string }> = {
@@ -132,18 +123,19 @@ export default async function StockDetailPage({
   if (!allHoldings || allHoldings.length === 0) redirect("/portfolio")
 
   const inputs: HoldingInput[] = allHoldings.map((h) => {
-    const raw = (h.raw as Record<string, number>) || {}
+    const raw = (h.raw as Record<string, unknown>) || {}
+    const tradingSymbol = (h.raw as Record<string, string>)?.trading_symbol || h.instrument_key
     return {
       instrument_key: h.instrument_key,
-      trading_symbol: h.instrument_key,
-      name: (h.company_name as string) || h.instrument_key,
+      trading_symbol: tradingSymbol,
+      name: (h.company_name as string) || (raw.company_name as string) || tradingSymbol,
       quantity: Number(h.quantity) || 0,
       avg_price: Number(h.avg_price) || 0,
       ltp: Number(h.ltp) || Number(h.avg_price) || 0,
       unrealized_pl: Number(h.unrealized_pl) || 0,
       invested_amount: Number(h.invested_amount) || 0,
-      day_change: raw.day_change,
-      day_change_percentage: raw.day_change_percentage,
+      day_change: raw.day_change as number,
+      day_change_percentage: raw.day_change_percentage as number,
       segment: (h.segment as string) || "Others",
     }
   })
@@ -175,7 +167,7 @@ export default async function StockDetailPage({
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold">{holding.instrument_key}</h1>
+            <h1 className="text-2xl font-bold">{holding.trading_symbol || holding.instrument_key}</h1>
             <span
               className={`text-xs font-medium px-2 py-0.5 rounded-full ${styles.badge}`}
             >
@@ -191,10 +183,10 @@ export default async function StockDetailPage({
             <p className="text-muted-foreground mt-1">{holding.name}</p>
           )}
         </div>
-        <Link href="/sandbox">
+        <Link href="/trade">
           <Button variant="outline" size="sm">
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Trade on Sandbox
+            <Activity className="h-4 w-4 mr-2" />
+            Trade
           </Button>
         </Link>
       </div>
@@ -294,6 +286,79 @@ export default async function StockDetailPage({
                 icon={<Target className="h-3.5 w-3.5 text-purple-500" />}
                 color="bg-purple-400"
               />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Technical Analysis */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Activity className="h-4 w-4 text-violet-400" />
+            Technical Indicators
+          </CardTitle>
+          <CardDescription>
+            Approximated from position P&amp;L and intraday momentum (updated on sync)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* RSI */}
+            <div className="rounded-lg border bg-muted/30 px-4 py-3">
+              <p className="text-xs text-muted-foreground mb-1">RSI (approx.)</p>
+              <p className={`text-2xl font-bold tabular-nums ${
+                holding.technical_signal === "oversold"   ? "text-emerald-400" :
+                holding.technical_signal === "overbought" ? "text-red-400" :
+                "text-foreground"
+              }`}>{holding.rsi_approx}</p>
+              <span className={`inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                holding.technical_signal === "oversold"   ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" :
+                holding.technical_signal === "overbought" ? "bg-red-400/10 text-red-400 border-red-400/30" :
+                "bg-muted text-muted-foreground border-border/50"
+              }`}>
+                {holding.technical_signal === "oversold" ? "Oversold — potential bounce" :
+                 holding.technical_signal === "overbought" ? "Overbought — watch for pullback" :
+                 "Neutral zone"}
+              </span>
+            </div>
+
+            {/* MACD Trend */}
+            <div className="rounded-lg border bg-muted/30 px-4 py-3">
+              <p className="text-xs text-muted-foreground mb-1">MACD Trend</p>
+              <p className={`text-2xl font-bold capitalize ${
+                holding.macd_trend === "bullish" ? "text-emerald-400" :
+                holding.macd_trend === "bearish" ? "text-red-400" :
+                "text-foreground"
+              }`}>{holding.macd_trend}</p>
+              <span className={`inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                holding.macd_trend === "bullish" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" :
+                holding.macd_trend === "bearish" ? "bg-red-400/10 text-red-400 border-red-400/30" :
+                "bg-muted text-muted-foreground border-border/50"
+              }`}>
+                {holding.macd_trend === "bullish" ? "Short > medium momentum" :
+                 holding.macd_trend === "bearish" ? "Short < medium momentum" :
+                 "No clear trend"}
+              </span>
+            </div>
+
+            {/* Position vs Portfolio */}
+            <div className="rounded-lg border bg-muted/30 px-4 py-3">
+              <p className="text-xs text-muted-foreground mb-1">Position Quality</p>
+              <p className={`text-2xl font-bold ${
+                holding.position_score >= 24 ? "text-emerald-400" :
+                holding.position_score >= 16 ? "text-foreground" :
+                "text-amber-400"
+              }`}>{holding.position_score}/30</p>
+              <span className={`inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                holding.position_score >= 24 ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" :
+                holding.position_score >= 16 ? "bg-muted text-muted-foreground border-border/50" :
+                "bg-amber-400/10 text-amber-400 border-amber-400/30"
+              }`}>
+                {holding.position_score >= 24 ? "Well-sized position" :
+                 holding.position_score >= 16 ? "Acceptable sizing" :
+                 holding.weight_pct > 12 ? "Over-concentrated" : "Under-represented"}
+              </span>
             </div>
           </div>
         </CardContent>

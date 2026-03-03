@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import Link from "next/link"
 import {
   Bookmark, BookmarkX, RefreshCw, TrendingUp, TrendingDown, ExternalLink,
-  Plus, Search, Pencil, Trash2, ChevronDown, X, Check, ListPlus,
+  Plus, Search, Pencil, Trash2, ChevronDown, X, Check, ListPlus, Target,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +27,8 @@ interface WatchlistItem {
   company_name:   string
   exchange:       string
   added_at:       string
+  target_price?:  number | null
+  notes?:         string
 }
 
 interface WatchlistDef {
@@ -175,10 +177,15 @@ function StockSearch({ listId, existingKeys, onAdded }: {
 
 /* ─── Watchlist Card ─────────────────────────────────────────────────────── */
 
-function WatchlistCard({ item, holding, instrument, listId, onRemoved }: {
-  item: WatchlistItem; holding?: HoldingData; instrument?: InstrumentLookup; listId: string; onRemoved: () => void
+function WatchlistCard({ item, holding, instrument, listId, onRemoved, onUpdated }: {
+  item: WatchlistItem; holding?: HoldingData; instrument?: InstrumentLookup
+  listId: string; onRemoved: () => void; onUpdated: (updated: WatchlistItem) => void
 }) {
-  const [removing, setRemoving] = useState(false)
+  const [removing,    setRemoving]    = useState(false)
+  const [editOpen,    setEditOpen]    = useState(false)
+  const [targetInput, setTargetInput] = useState(item.target_price != null ? String(item.target_price) : "")
+  const [notesInput,  setNotesInput]  = useState(item.notes ?? "")
+  const [saving,      setSaving]      = useState(false)
   const { sym, name } = resolveDisplay(item, holding, instrument)
 
   async function remove() {
@@ -189,13 +196,31 @@ function WatchlistCard({ item, holding, instrument, listId, onRemoved }: {
     } finally { setRemoving(false) }
   }
 
-  const ltp     = holding?.ltp            ?? 0
-  const pnl     = holding?.unrealized_pl  ?? 0
+  async function saveTarget() {
+    setSaving(true)
+    try {
+      const res  = await fetch(`/api/watchlists/${listId}/items?instrument_key=${encodeURIComponent(item.instrument_key)}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ target_price: targetInput, notes: notesInput }),
+      })
+      const data = await res.json()
+      if (res.ok && data.item) { onUpdated(data.item); setEditOpen(false) }
+    } finally { setSaving(false) }
+  }
+
+  const ltp      = holding?.ltp            ?? 0
+  const pnl      = holding?.unrealized_pl  ?? 0
   const invested = holding?.invested_amount ?? 0
-  const pnlPct  = invested > 0 ? (pnl / invested) * 100 : 0
-  const pnlPos  = pnl >= 0
-  const raw     = (holding?.raw as Record<string, unknown>) || {}
-  const dayChg  = (raw.day_change_percentage as number) || 0
+  const pnlPct   = invested > 0 ? (pnl / invested) * 100 : 0
+  const pnlPos   = pnl >= 0
+  const raw      = (holding?.raw as Record<string, unknown>) || {}
+  const dayChg   = (raw.day_change_percentage as number) || 0
+
+  // Target price distance
+  const tp = item.target_price
+  const tpDist = tp && ltp > 0 ? ((tp - ltp) / ltp) * 100 : null
+  const tpAbove = tpDist !== null && tpDist >= 0
 
   return (
     <Card className="hover:shadow-sm transition-shadow">
@@ -210,6 +235,10 @@ function WatchlistCard({ item, holding, instrument, listId, onRemoved }: {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => { setEditOpen(true); setTargetInput(item.target_price != null ? String(item.target_price) : ""); setNotesInput(item.notes ?? "") }}
+              className="text-muted-foreground hover:text-primary transition-colors" title="Set target price / notes">
+              <Target className="h-3.5 w-3.5" />
+            </button>
             <Link href={`/portfolio/${encodeURIComponent(item.instrument_key)}`} title="View detail"
               className="text-muted-foreground hover:text-primary transition-colors">
               <ExternalLink className="h-3.5 w-3.5" />
@@ -246,7 +275,67 @@ function WatchlistCard({ item, holding, instrument, listId, onRemoved }: {
             </div>
           </>
         )}
+
+        {/* Target price */}
+        {tp ? (
+          <div className="flex items-center justify-between pt-1 border-t border-border/30">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Target className="h-3 w-3" />
+              Target: <span className="font-medium text-foreground ml-0.5">₹{tp.toLocaleString("en-IN")}</span>
+            </div>
+            {tpDist !== null && (
+              <span className={`text-xs font-medium ${tpAbove ? "text-emerald-400" : "text-red-400"}`}>
+                {tpAbove ? "+" : ""}{tpDist.toFixed(1)}% {tpAbove ? "upside" : "below target"}
+              </span>
+            )}
+          </div>
+        ) : null}
+
+        {/* Notes */}
+        {item.notes && (
+          <p className="text-xs text-muted-foreground/80 italic truncate pt-1 border-t border-border/20">
+            {item.notes}
+          </p>
+        )}
       </CardContent>
+
+      {/* Edit target price dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Target &amp; Notes — {sym}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Target Price (₹)</label>
+              <Input
+                type="number" min="0" step="0.01" placeholder="e.g. 1250.00"
+                value={targetInput} onChange={(e) => setTargetInput(e.target.value)}
+                className="h-8 text-sm"
+              />
+              {tp && ltp > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Current LTP: ₹{ltp.toFixed(2)} · {tpAbove ? "+" : ""}{tpDist?.toFixed(2)}% to target
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Notes (optional)</label>
+              <Input
+                placeholder="e.g. Buy on dip, Stop loss ₹XXX"
+                value={notesInput} onChange={(e) => setNotesInput(e.target.value)}
+                className="h-8 text-sm" maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button size="sm" disabled={saving} onClick={saveTarget} className="btn-gradient border-0">
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
@@ -427,7 +516,17 @@ export default function WatchlistPage() {
                   holding={holdingMap.get(item.instrument_key)}
                   instrument={instrumentMap.get(item.instrument_key)}
                   listId={activeId}
-                  onRemoved={() => loadItems(activeId)} />
+                  onRemoved={() => loadItems(activeId)}
+                  onUpdated={(updated) => {
+                    setWatchlists((prev) => prev.map((l) =>
+                      l.id !== activeId ? l : {
+                        ...l,
+                        items: l.items.map((i) =>
+                          i.instrument_key === updated.instrument_key ? updated : i
+                        ),
+                      }
+                    ))
+                  }} />
               ))}
             </div>
           )}

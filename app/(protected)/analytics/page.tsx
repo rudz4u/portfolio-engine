@@ -180,6 +180,29 @@ export default function AnalyticsPage() {
     [holdingPnL]
   )
 
+  const riskMetrics = useMemo(() => {
+    if (holdingPnL.length === 0) return null
+    const pcts = holdingPnL.map((h) => h.pl_pct)
+    const n = pcts.length
+    const mean = pcts.reduce((s, v) => s + v, 0) / n
+    const variance = pcts.reduce((s, v) => s + (v - mean) ** 2, 0) / n
+    const stdDev = Math.sqrt(variance)
+    const sharpeProxy = stdDev > 0 ? mean / stdDev : 0
+
+    const totalInv = holdingPnL.reduce((s, h) => s + h.invested, 0)
+    const hhi = totalInv > 0
+      ? holdingPnL.reduce((s, h) => s + (h.invested / totalInv) ** 2, 0)
+      : 0
+
+    const winners = holdingPnL.filter((h) => h.pl_value > 0)
+    const winRate = n > 0 ? (winners.length / n) * 100 : 0
+
+    const best = holdingPnL.reduce((a, b) => b.pl_pct > a.pl_pct ? b : a, holdingPnL[0])
+    const worst = holdingPnL.reduce((a, b) => b.pl_pct < a.pl_pct ? b : a, holdingPnL[0])
+
+    return { sharpeProxy, hhi, winRate, winners: winners.length, total: n, best, worst, mean, stdDev }
+  }, [holdingPnL])
+
   const totalInvested = rows.reduce((s, r) => s + (Number(r.invested_amount) || 0), 0)
   const totalPnL = rows.reduce((s, r) => s + (Number(r.unrealized_pl) || 0), 0)
   const currentValue = totalInvested + totalPnL
@@ -562,6 +585,81 @@ export default function AnalyticsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Risk & Concentration Metrics */}
+      {!loading && riskMetrics && (
+        <Card className="card-elevated">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" /> Risk &amp; Concentration Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+
+              {/* Cross-sectional Sharpe proxy */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Cross-sect. Sharpe</p>
+                <p className={`text-xl font-bold tabular-nums ${riskMetrics.sharpeProxy >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  {riskMetrics.sharpeProxy.toFixed(2)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  μ={riskMetrics.mean.toFixed(1)}% σ={riskMetrics.stdDev.toFixed(1)}%
+                </p>
+              </div>
+
+              {/* HHI Concentration */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">HHI Concentration</p>
+                <p className={`text-xl font-bold tabular-nums ${
+                  riskMetrics.hhi < 0.1 ? "text-emerald-400"
+                  : riskMetrics.hhi < 0.18 ? "text-amber-400"
+                  : "text-red-400"
+                }`}>
+                  {riskMetrics.hhi.toFixed(3)}
+                </p>
+                <Badge variant="secondary" className={`text-xs px-1.5 py-0 ${
+                  riskMetrics.hhi < 0.1 ? "bg-emerald-500/10 text-emerald-400"
+                  : riskMetrics.hhi < 0.18 ? "bg-amber-500/10 text-amber-400"
+                  : "bg-red-500/10 text-red-400"
+                }`}>
+                  {riskMetrics.hhi < 0.1 ? "Well Diversified" : riskMetrics.hhi < 0.18 ? "Moderate" : "Concentrated"}
+                </Badge>
+              </div>
+
+              {/* Win Rate */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Win Rate</p>
+                <p className={`text-xl font-bold tabular-nums ${riskMetrics.winRate >= 50 ? "text-emerald-400" : "text-amber-400"}`}>
+                  {riskMetrics.winRate.toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {riskMetrics.winners}/{riskMetrics.total} positive
+                </p>
+              </div>
+
+              {/* Best performer */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Best Return</p>
+                <p className="text-xl font-bold tabular-nums text-emerald-400">
+                  +{riskMetrics.best.pl_pct.toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground truncate">{riskMetrics.best.symbol}</p>
+              </div>
+
+              {/* Worst performer */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Worst Return</p>
+                <p className="text-xl font-bold tabular-nums text-red-400">
+                  {riskMetrics.worst.pl_pct.toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground truncate">{riskMetrics.worst.symbol}</p>
+              </div>
+
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -15,6 +15,8 @@ export interface WatchlistItem {
   company_name:   string
   exchange:       string
   added_at:       string
+  target_price?:  number | null   // user-set price target
+  notes?:         string          // free-text notes
 }
 
 export interface WatchlistDef {
