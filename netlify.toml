@@ -1,5 +1,5 @@
 [build]
-  command = "npm install && cd apps/web && npm run build"
+  command = "npm install && cd apps/web && npm install --os=linux --cpu=x64 --ignore-scripts=false lightningcss @tailwindcss/oxide && npm run build"
   publish = "apps/web/.next"
 
 [build.environment]
