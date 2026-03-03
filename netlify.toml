@@ -1,6 +1,13 @@
 [build]
-  command = "npm install && cd apps/web && npm install --os=linux --cpu=x64 --ignore-scripts=false lightningcss @tailwindcss/oxide && npm run build"
-  publish = "apps/web/.next"
+  # base must be set to the Next.js app dir so @netlify/plugin-nextjs v5
+  # correctly maps .next/static/ → /_next/static/ for static asset serving.
+  # Without base, chunks are generated but served at the wrong path → 404s.
+  base = "apps/web"
+  # cd ../.. goes from apps/web → repo root to set up workspace symlinks
+  # (apps/web depends on packages/quant-engine via npm workspaces).
+  # Then we come back to apps/web for the actual Next.js build.
+  command = "cd ../.. && npm install && cd apps/web && npm install --os=linux --cpu=x64 --ignore-scripts=false lightningcss @tailwindcss/oxide && npm run build"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"
