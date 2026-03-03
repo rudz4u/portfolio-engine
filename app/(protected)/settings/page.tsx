@@ -61,15 +61,44 @@ export default function SettingsPage() {
     const success = searchParams.get("success")
     const error = searchParams.get("error")
     const message = searchParams.get("message")
+    const doSync = searchParams.get("sync") === "1"
 
     if (success === "upstox_connected") {
       setConnectionStatus("connected")
       toast({
         title: "Upstox connected!",
-        description: "Your account is linked and your portfolio has been synced.",
+        description: doSync
+          ? "Syncing your portfolio now…"
+          : "Your Upstox account is linked.",
       })
-      // Clean up the URL without reloading
       window.history.replaceState({}, "", "/settings")
+
+      // Auto-trigger portfolio sync if the callback requested it
+      if (doSync) {
+        fetch("/api/upstox/sync", { method: "POST" })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.status === "success") {
+              toast({
+                title: `Portfolio synced!`,
+                description: `${data.count ?? 0} holdings imported from Upstox.`,
+              })
+            } else {
+              toast({
+                title: "Sync failed",
+                description: data.message || "Could not sync holdings.",
+                variant: "destructive",
+              })
+            }
+          })
+          .catch(() => {
+            toast({
+              title: "Sync error",
+              description: "Could not reach sync API.",
+              variant: "destructive",
+            })
+          })
+      }
     } else if (error) {
       toast({
         title: "Upstox connection failed",
