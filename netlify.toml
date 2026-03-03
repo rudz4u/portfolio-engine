@@ -1,15 +1,17 @@
 [build]
   command = "npm install && cd apps/web && npm install --os=linux --cpu=x64 --ignore-scripts=false lightningcss @tailwindcss/oxide && npm run build"
   publish = "apps/web/.next"
+  base = "."
 
 [build.environment]
   NODE_VERSION = "22"
+  NEXT_JS_SITE = "apps/web"
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_PROJECT_ID"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# Let Netlify auto-detect and use the latest OpenNext adapter
+# Do NOT manually specify [[plugins]] @netlify/plugin-nextjs
 
-# Cache headers to prevent stale JS chunk 404s after deployments
+# Cache headers
 [[headers]]
   for = "/_next/static/*"
   [headers.values]
