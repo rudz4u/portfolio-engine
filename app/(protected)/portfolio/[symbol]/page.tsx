@@ -13,6 +13,7 @@ import { formatCurrency } from "@/lib/utils"
 import { scoreHoldings, type ScoredHolding, type HoldingInput } from "@/lib/quant/scoring"
 import { TrendingUp, TrendingDown, ChevronLeft, Target, Zap, Scale, BarChart2, Activity } from "lucide-react"
 import Link from "next/link"
+import { StockChart } from "./stock-chart"
 
 const SIGNAL_STYLES: Record<string, { badge: string; bg: string; text: string }> = {
   BUY:   { badge: "bg-emerald-400/15 text-emerald-400 border border-emerald-400/30",  bg: "bg-emerald-400/10 border border-emerald-400/25", text: "text-emerald-400" },
@@ -363,6 +364,9 @@ export default async function StockDetailPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* Historical price chart + Beta */}
+      <StockChart instrumentKey={holding.instrument_key} />
 
       {/* Signal insight */}
       <div className={`rounded-lg border px-4 py-3 ${styles.bg}`}>

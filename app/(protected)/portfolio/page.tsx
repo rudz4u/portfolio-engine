@@ -9,8 +9,15 @@ import {
 } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
 import PortfolioTable from "./portfolio-table"
+import { PortfolioSwitcher } from "@/components/portfolio-switcher"
 
-export default async function PortfolioPage() {
+export default async function PortfolioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pid?: string }>
+}) {
+  const { pid } = await searchParams
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -18,11 +25,18 @@ export default async function PortfolioPage() {
 
   if (!user) redirect("/signin")
 
-  const { data: portfolio } = await supabase
+  // Fetch all user portfolios (most recent first)
+  const { data: allPortfolios } = await supabase
     .from("portfolios")
-    .select("id")
+    .select("id, source, fetched_at, created_at")
     .eq("user_id", user.id)
-    .single()
+    .order("created_at", { ascending: false })
+
+  const portfolios = allPortfolios ?? []
+
+  // Resolve which portfolio to display
+  const portfolio =
+    (pid ? portfolios.find((p) => p.id === pid) : null) ?? portfolios[0] ?? null
 
   let holdings: Record<string, unknown>[] = []
   if (portfolio) {
@@ -46,14 +60,40 @@ export default async function PortfolioPage() {
   )
   const currentValue = totalInvested + totalPnL
 
+  // Derive a readable label for the current portfolio
+  const portfolioLabel =
+    portfolio?.source
+      ? portfolio.source.charAt(0).toUpperCase() + portfolio.source.slice(1) + " Portfolio"
+      : "Portfolio"
+
+  // Build switcher options (name column may not exist yet — pass null)
+  const switcherPortfolios = portfolios.map((p) => ({
+    id: p.id,
+    source: p.source as string | null,
+    name: null as null,
+    fetched_at: p.fetched_at as string | null,
+  }))
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Portfolio</h1>
-        <p className="text-muted-foreground">
-          All your holdings synced from Upstox. Click a segment badge to edit
-          it.
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">{portfolioLabel}</h1>
+          <p className="text-muted-foreground">
+            {holdings.length} holdings · Click a segment badge to edit it
+            {portfolios.length > 1 && (
+              <span className="text-muted-foreground/60">
+                {" "}· {portfolios.length} portfolios
+              </span>
+            )}
+          </p>
+        </div>
+        {portfolio && (
+          <PortfolioSwitcher
+            portfolios={switcherPortfolios}
+            currentId={portfolio.id}
+          />
+        )}
       </div>
 
       {/* Summary cards */}

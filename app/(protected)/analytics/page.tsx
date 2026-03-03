@@ -203,6 +203,56 @@ export default function AnalyticsPage() {
     return { sharpeProxy, hhi, winRate, winners: winners.length, total: n, best, worst, mean, stdDev }
   }, [holdingPnL])
 
+  /* ── sector concentration (within-segment HHI) ────────── */
+  const segmentConcentration = useMemo(() => {
+    const map = new Map<string, { stocks: Array<{ symbol: string; invested: number }>; total: number }>()
+    for (const r of rows) {
+      const seg = r.segment ?? "Others"
+      const raw = (r.raw as Record<string, string>) ?? {}
+      const symbol =
+        raw.trading_symbol ??
+        r.instrument_key?.split("|").pop() ??
+        r.instrument_key
+      const invested = Number(r.invested_amount) || 0
+      if (!map.has(seg)) map.set(seg, { stocks: [], total: 0 })
+      const entry = map.get(seg)!
+      entry.stocks.push({ symbol, invested })
+      entry.total += invested
+    }
+
+    const portfolioTotal = rows.reduce(
+      (s, r) => s + (Number(r.invested_amount) || 0),
+      0,
+    )
+
+    return Array.from(map.entries())
+      .map(([segment, data]) => {
+        // HHI = 1 if one stock dominates; approaches 1/N for equal weights
+        const withinHHI =
+          data.total > 0
+            ? data.stocks.reduce(
+                (s, st) => s + (st.invested / data.total) ** 2,
+                0,
+              )
+            : 0
+        const topStock = [...data.stocks].sort((a, b) => b.invested - a.invested)[0]
+        return {
+          segment,
+          count: data.stocks.length,
+          invested: data.total,
+          portfolioWeight:
+            portfolioTotal > 0 ? (data.total / portfolioTotal) * 100 : 0,
+          withinHHI,
+          topStock: topStock?.symbol ?? "",
+          topStockPct:
+            data.total > 0 && topStock
+              ? (topStock.invested / data.total) * 100
+              : 0,
+        }
+      })
+      .sort((a, b) => b.invested - a.invested)
+  }, [rows])
+
   const totalInvested = rows.reduce((s, r) => s + (Number(r.invested_amount) || 0), 0)
   const totalPnL = rows.reduce((s, r) => s + (Number(r.unrealized_pl) || 0), 0)
   const currentValue = totalInvested + totalPnL
@@ -587,6 +637,87 @@ export default function AnalyticsPage() {
       </Card>
 
       {/* Risk & Concentration Metrics */}
+      {/* Sector Concentration Card */}
+      {!loading && segmentConcentration.length > 0 && (
+        <Card className="card-elevated">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <PieIcon className="h-4 w-4 text-primary" /> Sector Concentration
+              <span className="text-xs font-normal text-muted-foreground ml-1">
+                (within-segment HHI — lower is more distributed)
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50">
+                    <th className="text-left py-2 text-xs text-muted-foreground font-medium">Segment</th>
+                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">Stocks</th>
+                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">Weight</th>
+                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">HHI</th>
+                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">Concentration</th>
+                    <th className="text-left py-2 text-xs text-muted-foreground font-medium pl-4">Top Holding</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {segmentConcentration.map((s) => (
+                    <tr
+                      key={s.segment}
+                      className="border-b border-border/20 hover:bg-muted/20 transition-colors"
+                    >
+                      <td className="py-2.5 font-medium">{s.segment}</td>
+                      <td className="text-right py-2.5 tabular-nums">{s.count}</td>
+                      <td className="text-right py-2.5 tabular-nums">
+                        {s.portfolioWeight.toFixed(1)}%
+                      </td>
+                      <td className="text-right py-2.5 tabular-nums">
+                        <span
+                          className={`font-semibold ${
+                            s.withinHHI > 0.5
+                              ? "text-red-400"
+                              : s.withinHHI > 0.25
+                              ? "text-amber-400"
+                              : "text-emerald-400"
+                          }`}
+                        >
+                          {s.withinHHI.toFixed(3)}
+                        </span>
+                      </td>
+                      <td className="text-right py-2.5">
+                        <Badge
+                          variant="secondary"
+                          className={`text-xs px-1.5 py-0 ${
+                            s.withinHHI > 0.5
+                              ? "bg-red-500/10 text-red-400"
+                              : s.withinHHI > 0.25
+                              ? "bg-amber-500/10 text-amber-400"
+                              : "bg-emerald-500/10 text-emerald-400"
+                          }`}
+                        >
+                          {s.withinHHI > 0.5
+                            ? "Concentrated"
+                            : s.withinHHI > 0.25
+                            ? "Moderate"
+                            : "Distributed"}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 pl-4 text-muted-foreground text-xs">
+                        {s.topStock}
+                        <span className="ml-1 text-foreground font-medium">
+                          ({s.topStockPct.toFixed(0)}%)
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {!loading && riskMetrics && (
         <Card className="card-elevated">
           <CardHeader className="pb-2">
