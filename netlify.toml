@@ -10,6 +10,9 @@
   # automatically stores Next.js pages in a 1-year durable cache; atomic-deploy
   # invalidation can miss cookie/header vary buckets, breaking direct-URL loads.
   NETLIFY_NEXT_NO_DURABLE_CACHE = "true"
+  # Upstox app credentials (OAuth flow)
+  # UPSTOX_CLIENT_SECRET must be set in Netlify dashboard (not committed to git)
+  UPSTOX_CLIENT_ID = "d462ce65-de8f-4daa-b543-f8e8ae8dc722"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

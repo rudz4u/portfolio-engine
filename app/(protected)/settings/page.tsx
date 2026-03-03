@@ -46,6 +46,12 @@ export default function SettingsPage() {
   const [savingNotif, setSavingNotif] = useState(false)
   const [sendingDigest, setSendingDigest] = useState(false)
 
+  // Upstox token state
+  const [upstoxToken, setUpstoxToken] = useState("")
+  const [savingToken, setSavingToken] = useState(false)
+  const [upstoxTokenSet, setUpstoxTokenSet] = useState(false)
+  const [upstoxTokenExpiresAt, setUpstoxTokenExpiresAt] = useState<string | null>(null)
+
   useEffect(() => {
     loadSettings()
   }, [])
@@ -64,23 +70,11 @@ export default function SettingsPage() {
       setUpstoxSandbox(data.sandbox_mode !== false)
       setEmailDigest(!!data.email_digest)
       setNotificationEmail(data.notification_email || "")
+      setUpstoxTokenSet(!!data.upstox_token_set)
+      setUpstoxTokenExpiresAt(data.upstox_token_expires_at || null)
     }
   }
 
-  async function handleSave() {
-    setSaving(true)
-    const res = await fetch("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sandbox_mode: String(upstoxSandbox) }),
-    })
-    setSaving(false)
-    if (res.ok) {
-      toast({ title: "Settings saved" })
-    } else {
-      toast({ title: "Failed to save", variant: "destructive" })
-    }
-  }
 
   async function handleSaveKeys() {
     setSavingKeys(true)
@@ -158,6 +152,40 @@ export default function SettingsPage() {
       toast({ title: "Sync error", variant: "destructive" })
     }
     setSaving(false)
+  }
+
+  async function handleSaveToken() {
+    if (!upstoxToken.trim()) return
+    setSavingToken(true)
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ upstox_access_token: upstoxToken.trim() }),
+    })
+    setSavingToken(false)
+    if (res.ok) {
+      setUpstoxToken("")
+      await loadSettings()
+      setConnectionStatus("unknown")
+      toast({ title: "Access token saved" })
+    } else {
+      toast({ title: "Failed to save token", variant: "destructive" })
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sandbox_mode: String(upstoxSandbox) }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      toast({ title: "Settings saved" })
+    } else {
+      toast({ title: "Failed to save", variant: "destructive" })
+    }
   }
 
   async function handleSaveNotifications() {
@@ -247,11 +275,62 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Access Token</Label>
+            <div className="text-xs text-muted-foreground space-y-1">
+              {upstoxTokenSet ? (
+                <div className="flex items-center gap-2">
+                  <Badge variant="success" className="flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Token set
+                  </Badge>
+                  {upstoxTokenExpiresAt && (
+                    <span className={`text-xs ${
+                      new Date(upstoxTokenExpiresAt) < new Date()
+                        ? "text-destructive font-medium"
+                        : "text-muted-foreground"
+                    }`}>
+                      {new Date(upstoxTokenExpiresAt) < new Date()
+                        ? "⚠ Expired"
+                        : `Expires ${new Date(upstoxTokenExpiresAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`
+                      }
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-amber-600 text-xs">No token saved. Upstox tokens expire daily — paste a fresh one below.</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                placeholder="eyJ0eXAiOiJKV1Qi... (paste today's access token)"
+                value={upstoxToken}
+                onChange={(e) => setUpstoxToken(e.target.value)}
+                className="font-mono text-xs"
+              />
+              <Button
+                onClick={handleSaveToken}
+                disabled={savingToken || !upstoxToken.trim()}
+                className="shrink-0"
+              >
+                {savingToken ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save
+              </Button>
+              {upstoxTokenSet && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleClearKey("upstox_access_token")}
+                  className="text-muted-foreground hover:text-destructive shrink-0"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Set via <code className="bg-muted px-1 rounded">UPSTOX_ACCESS_TOKEN</code> environment
-              variable in Netlify. Tokens are valid for ~30 days. Generate from Upstox Developer Portal.
+              Get your token from{" "}
+              <a href="https://developer.upstox.com" target="_blank" rel="noreferrer" className="underline">developer.upstox.com</a>{" "}
+              → My Apps → Access Token. Valid until midnight.
             </p>
           </div>
 
@@ -267,7 +346,7 @@ export default function SettingsPage() {
             <Button
               variant="outline"
               onClick={handleSync}
-              disabled={saving || connectionStatus !== "connected"}
+              disabled={saving}
             >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

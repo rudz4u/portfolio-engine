@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import { UPSTOX_CONFIG, getUpstoxHeaders } from "@/lib/upstox"
+import { resolveUpstoxToken } from "@/lib/upstox-token"
 
 export async function GET() {
-  const token = UPSTOX_CONFIG.accessToken
+  const token = await resolveUpstoxToken()
   if (!token) {
     return NextResponse.json(
-      { status: "error", message: "UPSTOX_ACCESS_TOKEN not configured" },
+      { status: "error", message: "No Upstox access token. Paste your token in Settings > Upstox Connection." },
       { status: 400 }
     )
   }

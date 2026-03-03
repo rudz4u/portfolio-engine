@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server"
 import { UPSTOX_CONFIG, getUpstoxHeaders } from "@/lib/upstox"
 import { createClient } from "@/lib/supabase/server"
+import { resolveUpstoxToken } from "@/lib/upstox-token"
 
 export async function POST() {
-  const token = UPSTOX_CONFIG.accessToken
-  if (!token) {
-    return NextResponse.json(
-      { status: "error", message: "UPSTOX_ACCESS_TOKEN not configured" },
-      { status: 400 }
-    )
-  }
-
   const supabase = await createClient()
   const {
     data: { user },
@@ -18,6 +11,14 @@ export async function POST() {
 
   if (!user) {
     return NextResponse.json({ status: "error", message: "Unauthorized" }, { status: 401 })
+  }
+
+  const token = await resolveUpstoxToken()
+  if (!token) {
+    return NextResponse.json(
+      { status: "error", message: "No Upstox access token. Paste your token in Settings > Upstox Connection." },
+      { status: 400 }
+    )
   }
 
   // Fetch holdings from Upstox
