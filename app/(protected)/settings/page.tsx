@@ -74,7 +74,6 @@ export default function SettingsPage() {
   const [geminiKey, setGeminiKey] = useState("")
   const [deepseekKey, setDeepseekKey] = useState("")
   const [tavilyKey, setTavilyKey] = useState("")
-  const [brevoKey, setBrevoKey] = useState("")
   const [showKeys, setShowKeys] = useState(false)
   const [keyStatus, setKeyStatus] = useState({
     openai_key_set: false,
@@ -82,7 +81,6 @@ export default function SettingsPage() {
     gemini_key_set: false,
     deepseek_key_set: false,
     tavily_key_set: false,
-    brevo_key_set: false,
   })
   const [savingKeys, setSavingKeys] = useState(false)
 
@@ -146,7 +144,6 @@ export default function SettingsPage() {
       gemini_key_set: !!data.gemini_key_set,
       deepseek_key_set: !!data.deepseek_key_set,
       tavily_key_set: !!data.tavily_key_set,
-      brevo_key_set: !!data.brevo_key_set,
     })
     setAiMode(data.ai_mode === "byok" ? "byok" : "platform")
     setPreferredLlm(data.preferred_llm || "brokerai")
@@ -278,23 +275,20 @@ export default function SettingsPage() {
   async function handleSaveNotifications() {
     setSavingNotif(true)
     const validEmails = emails.filter((e) => e.trim())
-    const body: Record<string, string> = {
-      notification_emails: validEmails.join(","),
-      notif_daily_digest: String(notifDailyDigest),
-      notif_order_placed: String(notifOrderPlaced),
-      notif_portfolio_alert: String(notifPortfolioAlert),
-      notif_price_alert: String(notifPriceAlert),
-    }
-    if (brevoKey) body.brevo_key = brevoKey
     const res = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        notification_emails: validEmails.join(","),
+        notif_daily_digest: String(notifDailyDigest),
+        notif_order_placed: String(notifOrderPlaced),
+        notif_portfolio_alert: String(notifPortfolioAlert),
+        notif_price_alert: String(notifPriceAlert),
+      }),
     })
     setSavingNotif(false)
     if (res.ok) {
       toast({ title: "Notification settings saved" })
-      setBrevoKey("")
       loadSettings()
     } else {
       toast({ title: "Failed to save", variant: "destructive" })
@@ -578,18 +572,7 @@ export default function SettingsPage() {
             <Bell className="h-4 w-4" />
             Notifications
           </CardTitle>
-          <CardDescription>
-              Email alerts delivered via Brevo. Sent on trading days at 10 AM IST.
-              {keyStatus.brevo_key_set ? (
-                <span className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="h-3 w-3" /> Brevo key set
-                </span>
-              ) : (
-                <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  No Brevo key — using platform key
-                </span>
-              )}
-            </CardDescription>
+          <CardDescription>Email alerts delivered via Brevo. Sent on trading days at 10 AM IST.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-3">
@@ -643,28 +626,6 @@ export default function SettingsPage() {
                   )}
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-sm">Brevo API Key <span className="text-muted-foreground font-normal">(optional — if using your own Brevo account)</span></Label>
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                placeholder={keyStatus.brevo_key_set ? "xkeysib-... (set — enter new to update)" : "xkeysib-..."}
-                value={brevoKey}
-                onChange={(e) => setBrevoKey(e.target.value)}
-                className="flex-1"
-              />
-              {keyStatus.brevo_key_set && (
-                <Button
-                  variant="ghost" size="sm"
-                  onClick={() => { handleClearKey("brevo_key"); setBrevoKey("") }}
-                  className="text-muted-foreground hover:text-destructive shrink-0"
-                >
-                  Clear
-                </Button>
-              )}
             </div>
           </div>
 

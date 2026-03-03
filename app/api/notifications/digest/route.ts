@@ -161,7 +161,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  // Resolve Brevo key: user preference > system env
+  // Brevo key comes exclusively from server env — never from user-supplied settings
+  const brevoKey = process.env.BREVO_API_KEY || ""
+
+  if (!brevoKey) {
+    return NextResponse.json(
+      { error: "BREVO_API_KEY is not configured on the server. Set it in Netlify environment variables." },
+      { status: 400 }
+    )
+  }
+
+  // --- Rate limit: max 3 test digests per user per calendar day (UTC) ---
+  const todayStart = new Date()
+  todayStart.setUTCHours(0, 0, 0, 0)
+  const { count: sentToday } = await supabase
+    .from("analysis_reports")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("report_type", "test_digest")
+    .gte("created_at", todayStart.toISOString())
+
+  if ((sentToday ?? 0) >= 3) {
+    return NextResponse.json(
+      { error: "Daily limit reached. You can send at most 3 test digests per day." },
+      { status: 429 }
+    )
+  }
+
   const { data: settingsRow } = await supabase
     .from("user_settings")
     .select("preferences")
@@ -169,16 +195,8 @@ export async function POST(request: Request) {
     .single()
 
   const prefs = (settingsRow?.preferences as Record<string, string> | null) || {}
-  const brevoKey = prefs.brevo_key || process.env.BREVO_API_KEY || ""
   const toEmail = prefs.notification_email || user.email || ""
   const toName = user.email?.split("@")[0] ?? "User"
-
-  if (!brevoKey) {
-    return NextResponse.json(
-      { error: "No Brevo API key configured. Add BREVO_API_KEY to Netlify env vars or in Settings > Notifications." },
-      { status: 400 }
-    )
-  }
 
   if (!toEmail) {
     return NextResponse.json({ error: "No recipient email configured" }, { status: 400 })
@@ -259,9 +277,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.error }, { status: 502 })
   }
 
+  // Log test send for rate-limiting (best-effort, non-critical)
+  try {
+    await supabase.from("analysis_reports").insert({
+      user_id: user.id,
+      report_type: "test_digest",
+      data: { sent_to: toEmail, message_id: result.messageId, sent_at: new Date().toISOString() },
+    })
+  } catch { /* ignore */ }
+
+  const remaining = 2 - (sentToday ?? 0)
   return NextResponse.json({
     status: "success",
-    message: `Digest sent to ${toEmail}`,
+    message: `Digest sent to ${toEmail}. ${remaining > 0 ? `${remaining} test${remaining === 1 ? "" : "s"} remaining today.` : "Daily limit reached."}`,
     messageId: result.messageId,
   })
 }
