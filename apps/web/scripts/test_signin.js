@@ -32,9 +32,9 @@ async function main() {
 
   const env = loadEnv(envPath)
   const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL
-  const SUPABASE_ANON = env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const SUPABASE_ANON = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!SUPABASE_URL || !SUPABASE_ANON) {
-    console.error('Supabase URL or anon key missing in .env.local')
+    console.error('Supabase URL or publishable key missing in .env.local')
     process.exit(1)
   }
 

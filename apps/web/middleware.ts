@@ -1,38 +1,38 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
+import { updateSession } from './lib/supabase/middleware'
 
-const PUBLIC_PATHS = ['/', '/signin', '/api', '/favicon.ico', '/_next']
+const PROTECTED_PATHS = ['/dashboard', '/profile', '/settings', '/sandbox', '/assistant', '/recommendations']
 
-function isPublic(pathname: string) {
-  if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p))) return true
-  return false
+function isProtected(pathname: string) {
+  return PROTECTED_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  if (isPublic(pathname)) return NextResponse.next()
+  // Refresh the session for every request (updates cookies)
+  const { user, supabaseResponse } = await updateSession(req)
 
-  // Check common Supabase auth cookies. If none present, redirect to /signin
-  const cookies = req.cookies
-  const tokenCandidates = [
-    cookies.get('sb-access-token')?.value,
-    cookies.get('sb-refresh-token')?.value,
-    cookies.get('supabase-auth-token')?.value,
-    cookies.get('sb:token')?.value,
-  ]
-
-  const hasAuth = tokenCandidates.some(Boolean)
-  if (!hasAuth) {
+  // If the path is protected and there's no user, redirect to /signin
+  if (isProtected(pathname) && !user) {
     const url = req.nextUrl.clone()
     url.pathname = '/signin'
-    url.search = `?next=${encodeURIComponent(req.nextUrl.pathname)}`
+    url.search = `?next=${encodeURIComponent(pathname)}`
     return NextResponse.redirect(url)
   }
 
-  return NextResponse.next()
+  return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/profile/:path*', '/settings/:path*', '/sandbox/:path*', '/dashboard'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - api/ (API routes handle their own auth)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|api/).*)',
+  ],
 }
