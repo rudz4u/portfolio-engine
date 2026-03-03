@@ -18,7 +18,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { message } = await request.json()
+  const body = await request.json()
+  const message: string = body.message
+  // history = prior turns the client sends for multi-turn context (max 20 kept)
+  const rawHistory: { role: string; content: string }[] = Array.isArray(body.history)
+    ? body.history.filter((m: { role: string; content: string }) => m.content?.trim())
+    : []
+  // Keep at most 10 pairs (20 messages) so we don't blow token budgets
+  const history = rawHistory.slice(-20)
 
   if (!message || typeof message !== "string") {
     return NextResponse.json({ error: "Message is required" }, { status: 400 })
@@ -61,6 +68,8 @@ export async function POST(request: NextRequest) {
       const summary = portfolioSummary(scored)
       const buySignals = scored.filter((s) => s.signal === "BUY").map((s) => s.trading_symbol).slice(0, 5)
       const sellSignals = scored.filter((s) => s.signal === "SELL").map((s) => s.trading_symbol).slice(0, 5)
+      const oversoldStocks  = scored.filter((s) => s.technical_signal === "oversold").map((s) => s.trading_symbol).slice(0, 5)
+      const overboughtStocks = scored.filter((s) => s.technical_signal === "overbought").map((s) => s.trading_symbol).slice(0, 5)
       const totalInvested = inputs.reduce((s, h) => s + h.invested_amount, 0)
       const totalPnL = inputs.reduce((s, h) => s + h.unrealized_pl, 0)
       const pnlPct = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0
@@ -74,7 +83,9 @@ Portfolio Summary (live data):
 - Portfolio Score: ${summary.avgScore}/100
 - BUY signals: ${buySignals.join(", ") || "None"}
 - SELL signals: ${sellSignals.join(", ") || "None"}
-- Top 10 by invested: ${scored.slice(0, 10).map((s) => `${s.trading_symbol}(${s.signal},score:${s.score},pnl:${s.pnl_pct.toFixed(1)}%)`).join(", ")}`
+- RSI oversold (potential bounce): ${oversoldStocks.join(", ") || "None"}
+- RSI overbought (caution): ${overboughtStocks.join(", ") || "None"}
+- Top 10 by invested: ${scored.slice(0, 10).map((s) => `${s.trading_symbol}(${s.signal},score:${s.score},pnl:${s.pnl_pct.toFixed(1)}%,RSI≈${s.rsi_approx},MACD:${s.macd_trend})`).join(", ")}`
     }
   }
 
@@ -121,6 +132,7 @@ Portfolio Summary (live data):
             model: preferredProvider === "openai" ? preferredLlm : "gpt-4o",
             messages: [
               { role: "system", content: fullSystemPrompt },
+              ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
               { role: "user", content: message },
             ],
             max_tokens: 800,
@@ -146,7 +158,10 @@ Portfolio Summary (live data):
             model: preferredProvider === "anthropic" ? preferredLlm : "claude-sonnet-4-6",
             max_tokens: 800,
             system: fullSystemPrompt,
-            messages: [{ role: "user", content: message }],
+            messages: [
+              ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+              { role: "user", content: message },
+            ],
           }),
         })
         if (res.ok) {
@@ -167,7 +182,15 @@ Portfolio Summary (live data):
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `${fullSystemPrompt}\n\nUser: ${message}` }] }],
+            // Gemini: system prompt prepended to first user turn; "assistant" → "model"
+            system_instruction: { parts: [{ text: fullSystemPrompt }] },
+            contents: [
+              ...history.map((m) => ({
+                role: m.role === "assistant" ? "model" : "user",
+                parts: [{ text: m.content }],
+              })),
+              { role: "user", parts: [{ text: message }] },
+            ],
           }),
         }
       )
@@ -190,6 +213,7 @@ Portfolio Summary (live data):
           model: preferredProvider === "deepseek" ? preferredLlm : "deepseek-chat",
           messages: [
             { role: "system", content: fullSystemPrompt },
+            ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
             { role: "user", content: message },
           ],
           max_tokens: 800,

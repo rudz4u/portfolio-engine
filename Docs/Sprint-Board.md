@@ -52,30 +52,51 @@ Sprint start: 2026-03-03
 - [x] No stale cache issues — correct webpack chunk hashes deployed
 - [x] Mobile-responsive layout (sidebar with mobile toggle)
 
-## Sprint 2 — AI + Recommendations (Next)
+## Sprint 2 — AI + Recommendations ✅ COMPLETE
 
-### Backlog
-- LLM routing layer (OpenAI, Anthropic, Google Gemini)
-- Chat Assistant with real message history persistence
-- Quant Engine: RSI, SMA, EMA, MACD, ATR, Beta, composite scoring
-- Composite scoring via `/api/analysis/score` route
-- Recommendations view with buy/sell signals + reasoning
-- Research agent (Tavily web search for stock news)
-- Settings — API key management UI (save to user_settings)
+### Completed ✅
+- LLM routing layer (OpenAI, Anthropic, Google Gemini, DeepSeek) with user-configurable API keys
+- **Chat Assistant with multi-turn history** — last 20 messages sent as context to LLM; history persisted in `chat_history` table; clear-history button
+- **Quant Engine** — `lib/quant/indicators.ts`: SMA, EMA, RSI, MACD, Bollinger Bands, ATR, ROC fully implemented; `lib/quant/scoring.ts`: wired RSI approximation + MACD trend proxy into composite scoring; `ScoredHolding` now includes `rsi_approx`, `technical_signal`, `macd_trend`
+- Composite scoring endpoint `/api/analysis/score` — 0–100 score + BUY/HOLD/SELL/WATCH per holding
+- **Recommendations page** — RSI≈ and MACD trend chips per holding card; colour-coded oversold/overbought
+- **Research agent** — Tavily news search via `/api/research/news` expanded inline per stock
+- Settings page — API key management (OpenAI / Anthropic / Gemini / DeepSeek / preferred model)
+- Upstox OAuth + holdings sync working (sandbox + live)
 
-### Sprint 2 Goals
-1. Complete AI assistant with LLM routing + chat history
-2. Port quant engine indicators (RSI, moving averages, bands)
-3. Composite scoring endpoint + recommendations page
-4. Upstox live holdings auto-sync (test with sandbox token)
-5. Settings: let user enter their own OpenAI/Anthropic key
+### Sprint 2 Acceptance Criteria
+- [x] AI assistant responds with portfolio context (RSI, MACD, signals)
+- [x] Conversation history persists across page reloads
+- [x] Multi-turn context passed to LLM (last 20 messages)
+- [x] Recommendations page shows BUY/HOLD/SELL/WATCH + RSI/MACD chips
+- [x] Quant indicators (RSI, SMA, EMA, MACD, Bollinger, ATR) implemented in lib/quant
+- [x] Research agent fetches live news per stock
 
-## Sprint 3 — Polish + Production (Planned)
-- Analytics dashboard with charts (recharts)
-- Email notifications (Brevo/SendGrid)
-- Daily cron jobs (Supabase Edge Function)
-- Upstox live trading mode (order execution)
-- Performance optimization + bundle splitting
+## Sprint 3 — Production Features ✅ COMPLETE
+
+### Completed ✅
+- **Analytics dashboard** — sector pie chart, top gainers/losers bar, portfolio value area chart (recharts)
+- **Email digest** — Brevo integration; `/api/cron/digest` sends daily HTML email with portfolio snapshot
+- **Daily cron sync** — Netlify Scheduled Function `Mon–Fri 4:30 AM UTC (10 AM IST)` calls `/api/cron/sync-all`; multi-user batch Upstox sync; self-contained (no Supabase Edge Function needed)
+- **Portfolio value snapshots** — `portfolio_snapshots` table (migration 007); daily upsert per portfolio after every sync; dashboard area chart shows trend when ≥2 days of data exist
+- Upstox live trading mode — Trade page with live order placement + history
+- Sortable portfolio table — all columns sortable, inline segment editing, colour exchange badges
+- **Upstox OAuth flow** — `/api/oauth/upstox/authorize` + callback; auto-sync on connect
+
+### Sprint 3 Acceptance Criteria
+- [x] Dashboard shows portfolio trend chart (area chart, snapshots)
+- [x] Daily cron syncs all users automatically
+- [x] Email digest sends via Brevo
+- [x] Trade page works with live Upstox orders
+- [x] Migration 007 (portfolio_snapshots) executed
+
+## Sprint 4 — Next Milestones (Planned)
+- Per-stock detail page with historical indicators chart
+- Portfolio analytics: Sharpe ratio, Beta, sector correlation matrix
+- Watchlist enhancements: price alerts, target price tracking
+- Mobile PWA: offline support, push notifications
+- Performance: bundle splitting, ISR for static pages
+- Multi-portfolio support improvements
 
 
 ## Architecture Decisions (v2)

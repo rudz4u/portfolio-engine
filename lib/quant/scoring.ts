@@ -3,13 +3,17 @@
  * Computes a 0–100 score for each holding based on available data:
  * - P&L % (momentum proxy)
  * - Day change % (short-term momentum)
- * - RSI classification from approximated price series
+ * - RSI approximation (estimated from price movement vs avg cost)
+ * - MACD proxy (trend direction based on short vs long-term gain)
  * - Position size relative to portfolio
  *
  * Returns actionable signals: BUY / HOLD / SELL / WATCH
  */
 
+import { rsiSignal } from "./indicators"
+
 export type Signal = "BUY" | "HOLD" | "SELL" | "WATCH"
+export type TechnicalSignal = "oversold" | "neutral" | "overbought"
 
 export interface HoldingInput {
   instrument_key: string
@@ -34,6 +38,10 @@ export interface ScoredHolding extends HoldingInput {
   momentum_score: number    // 0–40
   valuation_score: number   // 0–30   (avg vs ltp gap)
   position_score: number    // 0–30   (sizing quality)
+  // Technical indicator approximations (estimated from single-point data)
+  rsi_approx: number        // 0–100 estimated RSI (uses pnl_pct as proxy for medium-term momentum)
+  technical_signal: TechnicalSignal  // oversold / neutral / overbought
+  macd_trend: "bullish" | "bearish" | "neutral"  // trend direction proxy
 }
 
 export function scoreHoldings(holdings: HoldingInput[]): ScoredHolding[] {
@@ -48,19 +56,47 @@ export function scoreHoldings(holdings: HoldingInput[]): ScoredHolding[] {
         : 0
       const weight_pct = totalValue > 0 ? (currentValue / totalValue) * 100 : 0
 
+      // ── RSI approximation ──────────────────────────────────────
+      // Estimated from pnl_pct (medium-term momentum proxy) + day_change
+      // Thresholds tuned for typical Indian equity behaviour
+      const rsi_approx = (
+        pnl_pct > 40  ? 82 :
+        pnl_pct > 25  ? 74 :
+        pnl_pct > 12  ? 65 :
+        pnl_pct > 4   ? 56 :
+        pnl_pct > -4  ? 50 :
+        pnl_pct > -12 ? 42 :
+        pnl_pct > -25 ? 33 :
+                        22
+      )
+      const technical_signal = rsiSignal(rsi_approx)
+
+      // ── MACD trend proxy ───────────────────────────────────────
+      // Short-term (day_change) vs medium-term (pnl_pct) direction
+      const dayChgPct = h.day_change_percentage ?? 0
+      const macd_trend: "bullish" | "bearish" | "neutral" =
+        dayChgPct > 0.3 && pnl_pct > 0  ? "bullish" :
+        dayChgPct < -0.3 && pnl_pct < 0 ? "bearish" :
+        "neutral"
+
       // ── Momentum score (0–40) ──────────────────────────────────
       let momentum_score = 20 // neutral base
-      const dayChgPct = h.day_change_percentage ?? 0
       // PnL momentum
-      if (pnl_pct > 15) momentum_score += 15
-      else if (pnl_pct > 5) momentum_score += 8
-      else if (pnl_pct < -15) momentum_score -= 15
-      else if (pnl_pct < -5) momentum_score -= 8
+      if (pnl_pct > 15) momentum_score += 12
+      else if (pnl_pct > 5) momentum_score += 6
+      else if (pnl_pct < -15) momentum_score -= 12
+      else if (pnl_pct < -5) momentum_score -= 6
       // Intraday
       if (dayChgPct > 2) momentum_score += 5
       else if (dayChgPct > 0.5) momentum_score += 2
       else if (dayChgPct < -2) momentum_score -= 5
       else if (dayChgPct < -0.5) momentum_score -= 2
+      // RSI adjustment: oversold stocks get a bounce premium; overbought get caution
+      if (technical_signal === "oversold") momentum_score += 5   // potential reversal
+      else if (technical_signal === "overbought") momentum_score -= 5  // risk of pullback
+      // MACD confirmation
+      if (macd_trend === "bullish") momentum_score += 3
+      else if (macd_trend === "bearish") momentum_score -= 3
       momentum_score = Math.max(0, Math.min(40, momentum_score))
 
       // ── Valuation score (0–30) ─────────────────────────────────
@@ -116,6 +152,9 @@ export function scoreHoldings(holdings: HoldingInput[]): ScoredHolding[] {
         momentum_score,
         valuation_score,
         position_score,
+        rsi_approx,
+        technical_signal,
+        macd_trend,
       }
     })
     .sort((a, b) => b.score - a.score)

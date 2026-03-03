@@ -137,12 +137,24 @@ export default function AssistantPage() {
         data: { user },
       } = await supabase.auth.getUser()
 
+      // Build conversation history for multi-turn context.
+      // Exclude the welcome placeholder, keep only real persisted messages, cap at 20.
+      const historyForApi = messages
+        .filter(
+          (m) =>
+            !m.id.startsWith("welcome") &&
+            m.content.trim().length > 0
+        )
+        .slice(-20)
+        .map((m) => ({ role: m.role, content: m.content }))
+
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
           userId: user?.id,
+          history: historyForApi,
         }),
       })
 

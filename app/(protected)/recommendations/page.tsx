@@ -24,6 +24,9 @@ interface ScoredHolding {
   momentum_score: number
   valuation_score: number
   position_score: number
+  rsi_approx: number
+  technical_signal: "oversold" | "neutral" | "overbought"
+  macd_trend: "bullish" | "bearish" | "neutral"
   segment: string
 }
 
@@ -259,6 +262,24 @@ export default function RecommendationsPage() {
                     <div className="text-xs text-muted-foreground mb-1">Sizing</div>
                     <ScoreBar value={h.position_score} max={30} color="bg-green-500" />
                   </div>
+                </div>
+
+                {/* Technical indicator chips */}
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                    h.technical_signal === "oversold"   ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" :
+                    h.technical_signal === "overbought" ? "bg-red-400/10 text-red-400 border-red-400/30" :
+                    "bg-muted text-muted-foreground border-border/50"
+                  }`}>
+                    RSI≈{h.rsi_approx}&nbsp;·&nbsp;{h.technical_signal}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                    h.macd_trend === "bullish" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" :
+                    h.macd_trend === "bearish" ? "bg-red-400/10 text-red-400 border-red-400/30" :
+                    "bg-muted text-muted-foreground border-border/50"
+                  }`}>
+                    MACD {h.macd_trend}
+                  </span>
                 </div>
 
                 {/* Weight + qty */}
