@@ -4,6 +4,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    // Tree-shake large packages at build time — reduces bundle sizes
+    optimizePackageImports: ["recharts", "lucide-react", "@radix-ui/react-icons"],
+  },
   async headers() {
     // Prevent Netlify durable cache from storing stale HTML for authenticated pages.
     // Per https://docs.netlify.com/build/caching/caching-overview/ the Next.js plugin
@@ -18,6 +22,8 @@ const nextConfig = {
       "/assistant",
       "/recommendations",
       "/sandbox",
+      "/analytics",
+      "/trade",
     ]
     return protectedRoutes.map((path) => ({
       source: path,

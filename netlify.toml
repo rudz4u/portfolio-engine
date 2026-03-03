@@ -4,7 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,SUPABASE_PROJECT_ID"
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,SUPABASE_PROJECT_ID,SUPABASE_SERVICE_ROLE_KEY"
   # Disable Next.js plugin durable cache — prevents stale HTML with 404 chunk refs
   # on direct URL navigation after a deploy. Per Netlify docs, the plugin v5.5+
   # automatically stores Next.js pages in a 1-year durable cache; atomic-deploy
@@ -22,6 +22,11 @@
 # Extend timeout for data-heavy API routes (default 10s; Upstox sync needs ~15s)
 [functions."*"]
   timeout = 30
+
+# Scheduled function — daily portfolio sync Mon–Fri 4:30 AM UTC (10 AM IST)
+# Requires SUPABASE_SERVICE_ROLE_KEY env var set in Netlify dashboard
+[functions."daily-sync"]
+  timeout = 60
 
 # Rule 1: All routes default — no CDN edge caching for HTML pages
 # (This must come FIRST so more specific rules below can override it)
