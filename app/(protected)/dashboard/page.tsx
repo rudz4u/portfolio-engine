@@ -94,9 +94,10 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back, {user.email?.split("@")[0]}
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground text-sm">
+          Welcome back,{" "}
+          <span className="text-foreground font-medium">{user.email?.split("@")[0]}</span>
         </p>
       </div>
 
@@ -113,48 +114,63 @@ export default async function DashboardPage() {
         <>
           {/* KPI Row */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Total Invested</CardDescription>
+            {/* Total Invested */}
+            <Card className="kpi-card card-elevated">
+              <CardHeader className="pb-1 pt-4 px-4">
+                <CardDescription className="text-xs flex items-center gap-1.5">
+                  <Briefcase className="h-3 w-3" />
+                  Total Invested
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-4 pb-4">
+                <div className="text-xl font-bold tabular-nums">
                   {formatCurrency(summary.totalInvested)}
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Current Value</CardDescription>
+            {/* Current Value */}
+            <Card className="kpi-card card-elevated">
+              <CardHeader className="pb-1 pt-4 px-4">
+                <CardDescription className="text-xs flex items-center gap-1.5">
+                  <Activity className="h-3 w-3" />
+                  Current Value
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-4 pb-4">
+                <div className="text-xl font-bold tabular-nums gradient-text">
                   {formatCurrency(summary.currentValue)}
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Total P&amp;L</CardDescription>
+            {/* P&L */}
+            <Card
+              className={`kpi-card card-elevated ${
+                summary.totalPnL >= 0 ? "kpi-card-green" : "kpi-card-red"
+              }`}
+            >
+              <CardHeader className="pb-1 pt-4 px-4">
+                <CardDescription className="text-xs flex items-center gap-1.5">
+                  {summary.totalPnL >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-400" />
+                  )}
+                  Total P&amp;L
+                </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 pb-4">
                 <div
-                  className={`text-2xl font-bold flex items-center gap-1 ${
-                    summary.totalPnL >= 0 ? "text-green-600" : "text-red-500"
+                  className={`text-xl font-bold tabular-nums flex items-center gap-1 ${
+                    summary.totalPnL >= 0 ? "text-emerald-400" : "text-red-400"
                   }`}
                 >
-                  {summary.totalPnL >= 0 ? (
-                    <TrendingUp className="h-5 w-5" />
-                  ) : (
-                    <TrendingDown className="h-5 w-5" />
-                  )}
                   {formatCurrency(Math.abs(summary.totalPnL))}
                 </div>
                 <p
-                  className={`text-xs mt-1 ${
-                    summary.pnlPercent >= 0 ? "text-green-600" : "text-red-500"
+                  className={`text-xs mt-0.5 font-medium ${
+                    summary.pnlPercent >= 0 ? "text-emerald-400/80" : "text-red-400/80"
                   }`}
                 >
                   {summary.pnlPercent >= 0 ? "+" : ""}
@@ -163,25 +179,29 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Holdings</CardDescription>
+            {/* Holdings */}
+            <Card className="kpi-card card-elevated">
+              <CardHeader className="pb-1 pt-4 px-4">
+                <CardDescription className="text-xs flex items-center gap-1.5">
+                  <Briefcase className="h-3 w-3" />
+                  Holdings
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold flex items-center gap-1">
-                  <Briefcase className="h-5 w-5 text-muted-foreground" />
-                  {summary.count}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">active stocks</p>
+              <CardContent className="px-4 pb-4">
+                <div className="text-xl font-bold tabular-nums">{summary.count}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">active stocks</p>
               </CardContent>
             </Card>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Segment allocation */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Segment Allocation</CardTitle>
+            <Card className="card-elevated">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Activity className="h-3.5 w-3.5 text-primary" />
+                  Segment Allocation
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -191,15 +211,16 @@ export default async function DashboardPage() {
                       const pct = (amount / summary.totalInvested) * 100
                       return (
                         <div key={seg}>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="font-medium">{seg}</span>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="font-medium text-foreground">{seg}</span>
                             <span className="text-muted-foreground">
-                              {formatCurrency(amount)} ({pct.toFixed(1)}%)
+                              {formatCurrency(amount)}{" "}
+                              <span className="text-foreground/60">({pct.toFixed(1)}%)</span>
                             </span>
                           </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-primary rounded-full"
+                              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-blue-500 transition-all duration-500"
                               style={{ width: `${Math.min(pct, 100)}%` }}
                             />
                           </div>
@@ -212,10 +233,10 @@ export default async function DashboardPage() {
 
             {/* Top movers */}
             <div className="space-y-4">
-              <Card>
+              <Card className="card-elevated">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-green-600" />
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
                     Top Gainers
                   </CardTitle>
                 </CardHeader>
@@ -224,10 +245,12 @@ export default async function DashboardPage() {
                     {summary.topGainers.map((h) => (
                       <div
                         key={h.instrument_key}
-                        className="flex justify-between items-center text-sm"
+                        className="flex justify-between items-center text-xs py-1"
                       >
-                        <span className="font-medium">{((h.raw as Record<string, unknown>)?.trading_symbol as string) || h.instrument_key}</span>
-                        <Badge variant="success">
+                        <span className="font-medium text-foreground">
+                          {((h.raw as Record<string, unknown>)?.trading_symbol as string) || h.instrument_key}
+                        </span>
+                        <Badge variant="success" className="text-[10px]">
                           +{formatCurrency(h.unrealized_pl || 0)}
                         </Badge>
                       </div>
@@ -236,10 +259,10 @@ export default async function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="card-elevated">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <TrendingDown className="h-4 w-4 text-red-500" />
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <TrendingDown className="h-3.5 w-3.5 text-red-400" />
                     Top Losers
                   </CardTitle>
                 </CardHeader>
@@ -248,10 +271,12 @@ export default async function DashboardPage() {
                     {summary.topLosers.map((h) => (
                       <div
                         key={h.instrument_key}
-                        className="flex justify-between items-center text-sm"
+                        className="flex justify-between items-center text-xs py-1"
                       >
-                        <span className="font-medium">{((h.raw as Record<string, unknown>)?.trading_symbol as string) || h.instrument_key}</span>
-                        <Badge variant="destructive">
+                        <span className="font-medium text-foreground">
+                          {((h.raw as Record<string, unknown>)?.trading_symbol as string) || h.instrument_key}
+                        </span>
+                        <Badge variant="destructive" className="text-[10px]">
                           {formatCurrency(h.unrealized_pl || 0)}
                         </Badge>
                       </div>
@@ -282,13 +307,13 @@ export default async function DashboardPage() {
       )}
 
       {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-4 w-4" />
+      <Card className="card-elevated">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="h-3.5 w-3.5 text-primary" />
             Recent Activity
           </CardTitle>
-          <CardDescription>Last 5 orders from sandbox &amp; live trading</CardDescription>
+          <CardDescription className="text-xs">Last 5 orders from sandbox &amp; live trading</CardDescription>
         </CardHeader>
         <CardContent>
           {recentOrders.length === 0 ? (
@@ -296,46 +321,46 @@ export default async function DashboardPage() {
               No orders yet. Go to the Trade page to place orders.
             </p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {recentOrders.map((order) => {
                 const tradingSymbol =
                   (order.meta as Record<string, string>)?.trading_symbol ||
                   order.instrument_key
-                const isGain = order.side === "BUY"
+                const isBuy = order.side === "BUY"
                 const statusColor =
                   order.status === "PLACED"
-                    ? "bg-green-100 text-green-700"
+                    ? "bg-emerald-400/10 text-emerald-400"
                     : order.status === "FAILED"
-                    ? "bg-red-100 text-red-600"
+                    ? "bg-red-400/10 text-red-400"
                     : "bg-muted text-muted-foreground"
                 return (
                   <div
                     key={order.id}
-                    className="flex items-center justify-between py-2 border-b last:border-0"
+                    className="flex items-center justify-between py-2 border-b border-border/40 last:border-0"
                   >
                     <div className="flex items-center gap-3">
                       <span
-                        className={`text-xs font-bold px-1.5 py-0.5 rounded ${
-                          isGain
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          isBuy
+                            ? "bg-emerald-400/10 text-emerald-400"
+                            : "bg-red-400/10 text-red-400"
                         }`}
                       >
                         {order.side}
                       </span>
                       <div>
-                        <p className="text-sm font-medium">{tradingSymbol}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs font-medium">{tradingSymbol}</p>
+                        <p className="text-[11px] text-muted-foreground">
                           {order.quantity} shares
                           {order.price ? ` @ ₹${Number(order.price).toFixed(2)}` : ""}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor}`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${statusColor}`}>
                         {order.status}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground">
                         {new Date(order.created_at).toLocaleDateString("en-IN", {
                           day: "numeric",
                           month: "short",

@@ -11,8 +11,8 @@ export default function ProtectedLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-4 lg:p-8 pt-4">{children}</div>
+      <main className="flex-1 overflow-y-auto mesh-bg">
+        <div className="p-4 lg:p-8 pt-4 min-h-full">{children}</div>
       </main>
       <Toaster />
     </div>

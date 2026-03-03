@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { TrendingUp, Loader2 } from "lucide-react"
+import { TrendingUp, Loader2, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -75,25 +75,25 @@ export default function SignInForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background mesh-bg px-4">
       <div className="w-full max-w-md space-y-6">
         {/* Logo */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-lg glow">
+            <Zap className="h-6 w-6 text-white" strokeWidth={2.5} />
           </div>
-          <h1 className="text-2xl font-bold">BrokerAI</h1>
+          <h1 className="text-2xl font-bold gradient-text">BrokerAI</h1>
           <p className="text-sm text-muted-foreground">
             AI-Powered Equity Management
           </p>
         </div>
 
-        <Card>
+        <Card className="card-elevated">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl">
               {mode === "signin" ? "Welcome back" : "Create an account"}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               {mode === "signin"
                 ? "Sign in to your portfolio"
                 : "Start managing your equity portfolio"}
@@ -110,7 +110,7 @@ export default function SignInForm() {
                   <Label htmlFor="fullName">Full Name</Label>
                   <Input
                     id="fullName"
-                    placeholder="Rudranil Das"
+                    placeholder="Your name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required

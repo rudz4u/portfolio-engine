@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Star,
+  Zap,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -20,17 +21,17 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portfolio", label: "Portfolio", icon: Briefcase },
-  { href: "/recommendations", label: "Recommendations", icon: Star },
-  { href: "/trade", label: "Trade", icon: TrendingUp },
-  { href: "/assistant", label: "AI Assistant", icon: Bot },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard",        label: "Dashboard",        icon: LayoutDashboard },
+  { href: "/portfolio",        label: "Portfolio",        icon: Briefcase },
+  { href: "/recommendations",  label: "Recommendations",  icon: Star },
+  { href: "/trade",            label: "Trade",            icon: TrendingUp },
+  { href: "/assistant",        label: "AI Assistant",     icon: Bot },
+  { href: "/settings",         label: "Settings",         icon: Settings },
 ]
 
 export function Sidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
+  const pathname  = usePathname()
+  const router    = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   async function handleSignOut() {
@@ -40,11 +41,74 @@ export function Sidebar() {
     router.refresh()
   }
 
+  const SidebarContent = () => (
+    <aside className="flex flex-col h-full w-64 bg-sidebar border-r border-sidebar-border">
+      {/* ── Logo ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
+        <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-lg glow-sm shrink-0">
+          <Zap className="h-4.5 w-4.5 text-white" strokeWidth={2.5} />
+        </div>
+        <div>
+          <span className="font-bold text-base tracking-tight gradient-text">BrokerAI</span>
+          <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Quant · AI · Markets</p>
+        </div>
+      </div>
+
+      {/* ── Nav ───────────────────────────────────────────────────────── */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {navItems.map((item) => {
+          const Icon   = item.icon
+          const active = pathname === item.href || pathname.startsWith(item.href + "/")
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+                active
+                  ? "nav-active text-primary"
+                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+              )}
+            >
+              <Icon
+                className={cn(
+                  "h-4 w-4 shrink-0 transition-colors",
+                  active ? "text-primary" : "group-hover:text-foreground"
+                )}
+              />
+              {item.label}
+              {active && (
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+              )}
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* ── Sign out ──────────────────────────────────────────────────── */}
+      <div className="px-3 py-4 border-t border-sidebar-border">
+        <button
+          onClick={handleSignOut}
+          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors duration-150"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          Sign Out
+        </button>
+      </div>
+    </aside>
+  )
+
   return (
     <>
-      {/* Mobile header */}
-      <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b bg-background">
-        <span className="font-bold text-lg">BrokerAI</span>
+      {/* ── Mobile header bar ─────────────────────────────────────────── */}
+      <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-sidebar-border bg-sidebar">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
+            <Zap className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
+          </div>
+          <span className="font-bold text-sm gradient-text">BrokerAI</span>
+        </div>
         <Button
           variant="ghost"
           size="icon"
@@ -54,65 +118,29 @@ export function Sidebar() {
         </Button>
       </div>
 
-      {/* Sidebar */}
-      <aside
+      {/* ── Desktop sidebar ───────────────────────────────────────────── */}
+      <div className="hidden lg:flex">
+        <SidebarContent />
+      </div>
+
+      {/* ── Mobile sidebar ────────────────────────────────────────────── */}
+      <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r flex flex-col transition-transform duration-200",
-          "lg:translate-x-0 lg:static lg:block",
+          "fixed inset-y-0 left-0 z-50 lg:hidden transition-transform duration-200",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Logo */}
-        <div className="hidden lg:flex items-center gap-2 px-6 py-5 border-b">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <TrendingUp className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-lg">BrokerAI</span>
-        </div>
+        <SidebarContent />
+      </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const active = pathname === item.href || pathname.startsWith(item.href + "/")
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* Sign out */}
-        <div className="px-3 py-4 border-t">
-          <button
-            onClick={handleSignOut}
-            className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            Sign Out
-          </button>
-        </div>
-      </aside>
-
-      {/* Mobile overlay */}
+      {/* ── Mobile overlay ────────────────────────────────────────────── */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
     </>
   )
 }
+
