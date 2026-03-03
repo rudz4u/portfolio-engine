@@ -300,15 +300,33 @@ export default function SettingsPage() {
     else toast({ title: "Send failed", description: data.error, variant: "destructive" })
   }
 
-  /* ── LLM options per mode ── */
-  const llmOptions =
+  /* ── LLM options per mode (grouped by provider) ── */
+  const llmOptions: Record<string, { value: string; label: string }[]> =
     aiMode === "platform"
-      ? [{ value: "brokerai", label: "BrokerAI (recommended)" }]
-      : [
-          { value: "gpt-4o-mini",      label: "OpenAI — GPT-4o mini" },
-          { value: "claude-3-haiku",   label: "Anthropic — Claude Haiku" },
-          { value: "gemini-1.5-flash", label: "Google — Gemini Flash" },
-        ]
+      ? { "": [{ value: "brokerai", label: "BrokerAI (recommended)" }] }
+      : {
+          "OpenAI": [
+            { value: "gpt-4.1",      label: "GPT-4.1 — latest, 1M context" },
+            { value: "gpt-4.1-mini", label: "GPT-4.1 mini — fast & affordable" },
+            { value: "o3",           label: "o3 — advanced reasoning" },
+            { value: "o4-mini",      label: "o4-mini — fast reasoning" },
+            { value: "gpt-4o",       label: "GPT-4o" },
+            { value: "gpt-4o-mini",  label: "GPT-4o mini" },
+          ],
+          "Anthropic": [
+            { value: "claude-opus-4-5",            label: "Claude Opus 4.5 — most capable" },
+            { value: "claude-sonnet-4-5",          label: "Claude Sonnet 4.5 — balanced" },
+            { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet — fast + smart" },
+            { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+            { value: "claude-3-5-haiku-20241022",  label: "Claude 3.5 Haiku — cheapest" },
+          ],
+          "Google": [
+            { value: "gemini-2.5-pro",   label: "Gemini 2.5 Pro — best quality" },
+            { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash — fast" },
+            { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+            { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash — legacy" },
+          ],
+        }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -434,7 +452,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => {
                   setAiMode(mode)
-                  setPreferredLlm(mode === "platform" ? "brokerai" : "gpt-4o-mini")
+                  setPreferredLlm(mode === "platform" ? "brokerai" : "gpt-4.1")
                 }}
                 className={`rounded-lg border-2 p-3 text-left transition-colors ${
                   aiMode === mode ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/40"
@@ -505,9 +523,17 @@ export default function SettingsPage() {
               onChange={(e) => setPreferredLlm(e.target.value)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              {llmOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
+              {Object.entries(llmOptions).map(([group, opts]) =>
+                group ? (
+                  <optgroup key={group} label={group}>
+                    {opts.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </optgroup>
+                ) : (
+                  opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)
+                )
+              )}
             </select>
             {aiMode === "platform" && (
               <p className="text-xs text-muted-foreground">BrokerAI manages model routing automatically.</p>

@@ -13,6 +13,7 @@ import {
   X,
   Star,
   Zap,
+  BarChart2,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -23,6 +24,7 @@ import { useRouter } from "next/navigation"
 const navItems = [
   { href: "/dashboard",        label: "Dashboard",        icon: LayoutDashboard },
   { href: "/portfolio",        label: "Portfolio",        icon: Briefcase },
+  { href: "/analytics",        label: "Analytics",        icon: BarChart2 },
   { href: "/recommendations",  label: "Recommendations",  icon: Star },
   { href: "/trade",            label: "Trade",            icon: TrendingUp },
   { href: "/assistant",        label: "AI Assistant",     icon: Bot },

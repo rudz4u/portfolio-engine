@@ -92,13 +92,19 @@ Portfolio Summary (live data):
   const resolvedAnthropic = prefs.anthropic_key || process.env.ANTHROPIC_API_KEY || ""
   const resolvedGemini = prefs.gemini_key || process.env.GOOGLE_GEMINI_API_KEY || ""
 
-  // Build ordered attempt list based on preferred_llm
+  // Build ordered attempt list based on preferred_llm (model ID → provider)
   type LLMProvider = "openai" | "anthropic" | "gemini"
   const allProviders: LLMProvider[] = ["openai", "anthropic", "gemini"]
-  const orderedProviders: LLMProvider[] =
-    preferredLlm !== "auto" && allProviders.includes(preferredLlm as LLMProvider)
-      ? [preferredLlm as LLMProvider, ...allProviders.filter((p) => p !== preferredLlm)]
-      : allProviders
+  function getProvider(modelId: string): LLMProvider | null {
+    if (modelId.startsWith("gpt-") || modelId === "o3" || modelId.startsWith("o4-")) return "openai"
+    if (modelId.startsWith("claude-")) return "anthropic"
+    if (modelId.startsWith("gemini-")) return "gemini"
+    return null
+  }
+  const preferredProvider = getProvider(preferredLlm)
+  const orderedProviders: LLMProvider[] = preferredProvider
+    ? [preferredProvider, ...allProviders.filter((p) => p !== preferredProvider)]
+    : allProviders
 
   let reply = ""
 
@@ -110,7 +116,7 @@ Portfolio Summary (live data):
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedOpenai}` },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: preferredProvider === "openai" ? preferredLlm : "gpt-4o",
             messages: [
               { role: "system", content: fullSystemPrompt },
               { role: "user", content: message },
@@ -135,7 +141,7 @@ Portfolio Summary (live data):
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
-            model: "claude-3-haiku-20240307",
+            model: preferredProvider === "anthropic" ? preferredLlm : "claude-3-5-sonnet-20241022",
             max_tokens: 800,
             system: fullSystemPrompt,
             messages: [{ role: "user", content: message }],
@@ -155,7 +161,7 @@ Portfolio Summary (live data):
     if (geminiKey) {
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${preferredProvider === "gemini" ? preferredLlm : "gemini-2.0-flash"}:generateContent?key=${geminiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

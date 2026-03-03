@@ -240,8 +240,8 @@ export default function TradePage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             Trade
-            <span className="flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-400/15 text-emerald-400 border border-emerald-400/30">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Live
             </span>
           </h1>
@@ -266,8 +266,8 @@ export default function TradePage() {
       {/* Connection status */}
       {profile && (
         <div className="flex items-center gap-2 text-sm px-3 py-2 rounded-md border bg-muted/30">
-          <Wifi className="h-4 w-4 text-green-600" />
-          <span className="font-medium text-green-700">Connected:</span>
+          <Wifi className="h-4 w-4 text-emerald-400" />
+          <span className="font-medium text-emerald-400">Connected:</span>
           <span className="text-muted-foreground">{profile.user_name} ({profile.email})</span>
         </div>
       )}
@@ -326,25 +326,25 @@ export default function TradePage() {
                           ₹{h.last_price?.toFixed(2)}
                         </td>
                         <td className={`text-right py-2.5 px-2 text-xs tabular-nums hidden sm:table-cell ${
-                          dayChg >= 0 ? "text-green-600" : "text-red-500"
+                          dayChg >= 0 ? "text-emerald-400" : "text-red-400"
                         }`}>
                           {dayChg !== 0 ? `${dayChg >= 0 ? "+" : ""}${dayChg.toFixed(2)}%` : "—"}
                         </td>
-                        <td className={`text-right py-2.5 px-2 ${(h.pnl || 0) >= 0 ? "text-green-600" : "text-red-500"}`}>
+                        <td className={`text-right py-2.5 px-2 ${(h.pnl || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                           <span className="tabular-nums">{(h.pnl || 0) >= 0 ? "+" : ""}{formatCurrency(h.pnl || 0)}</span>
                         </td>
                         <td className="text-right py-2.5 pl-2">
                           <div className="flex items-center justify-end gap-1">
                             <Button
                               size="sm" variant="outline"
-                              className="h-7 px-2 text-green-700 border-green-300 hover:bg-green-50 hover:border-green-400"
+                              className="h-7 px-2 text-emerald-400 border-emerald-400/40 hover:bg-emerald-400/10 hover:border-emerald-400"
                               onClick={() => openOrderForm(h, "BUY")}
                             >
                               <TrendingUp className="h-3 w-3 mr-1" /> Buy
                             </Button>
                             <Button
                               size="sm" variant="outline"
-                              className="h-7 px-2 text-red-700 border-red-300 hover:bg-red-50 hover:border-red-400"
+                              className="h-7 px-2 text-red-400 border-red-400/40 hover:bg-red-400/10 hover:border-red-400"
                               onClick={() => openOrderForm(h, "SELL")}
                             >
                               <TrendingDown className="h-3 w-3 mr-1" /> Sell
@@ -478,7 +478,7 @@ export default function TradePage() {
                         <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                           <td className="py-2.5 pr-4 font-medium">{sym}</td>
                           <td className="text-right py-2.5 px-2">
-                            <span className={`text-xs font-bold ${o.side === "BUY" ? "text-green-700" : "text-red-600"}`}>
+                            <span className={`text-xs font-bold ${o.side === "BUY" ? "text-emerald-400" : "text-red-400"}`}>
                               {o.side}
                             </span>
                           </td>
@@ -516,7 +516,7 @@ export default function TradePage() {
                 <CardTitle className="flex items-center gap-2 text-base">
                   <span
                     className={`px-2 py-0.5 rounded text-xs font-bold ${
-                      orderForm.side === "BUY" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                      orderForm.side === "BUY" ? "bg-emerald-400/15 text-emerald-400" : "bg-red-400/15 text-red-400"
                     }`}
                   >
                     {orderForm.side}
@@ -535,7 +535,7 @@ export default function TradePage() {
               {orderResult ? (
                 <>
                   <div className={`rounded-md px-4 py-3 flex items-start gap-3 ${
-                    orderResult.success ? "bg-green-50 text-green-800" : "bg-destructive/10 text-destructive"
+                    orderResult.success ? "bg-emerald-400/10 text-emerald-300" : "bg-destructive/10 text-destructive"
                   }`}>
                     {orderResult.success
                       ? <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
