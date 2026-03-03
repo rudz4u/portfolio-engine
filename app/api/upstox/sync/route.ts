@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { UPSTOX_CONFIG, getUpstoxHeaders } from "@/lib/upstox"
 import { createClient, createAdminClient } from "@/lib/supabase/server"
+import { recordPortfolioSnapshot } from "@/lib/portfolio-snapshot"
 
 export async function POST() {
   // ── 0. Auth — use cookie-based client just for identity check ─────────────
@@ -177,6 +178,13 @@ export async function POST() {
   }
 
   console.log(`[sync] Synced ${holdingsPayload.length} holdings for user ${user.id}`)
+
+  // ── 7. Record daily portfolio value snapshot ──────────────────────────────
+  await recordPortfolioSnapshot(admin, {
+    portfolioId: portfolio.id,
+    userId:      user.id,
+    holdings:    holdingsPayload,
+  })
 
   return NextResponse.json({
     status: "success",

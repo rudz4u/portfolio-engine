@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, Briefcase, Activity } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { PortfolioCharts } from "./portfolio-charts"
+import type { SnapshotEntry } from "./portfolio-charts"
 import { SyncBar } from "./sync-bar"
 
 async function getPortfolioSummary(userId: string) {
@@ -81,6 +82,29 @@ async function getRecentOrders(userId: string) {
   return data ?? []
 }
 
+async function getPortfolioSnapshots(userId: string) {
+  const supabase = await createClient()
+  const { data: portfolio } = await supabase
+    .from("portfolios")
+    .select("id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+  if (!portfolio) return []
+
+  // Last 90 days — gracefully handles table-not-existing yet (returns empty)
+  const since = new Date()
+  since.setDate(since.getDate() - 90)
+  const { data } = await supabase
+    .from("portfolio_snapshots")
+    .select("snapshot_date, total_invested, total_value, total_pnl, pnl_pct")
+    .eq("portfolio_id", portfolio.id)
+    .gte("snapshot_date", since.toISOString().slice(0, 10))
+    .order("snapshot_date", { ascending: true })
+  return data ?? []
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const {
@@ -91,6 +115,7 @@ export default async function DashboardPage() {
 
   const summary = await getPortfolioSummary(user.id)
   const recentOrders = await getRecentOrders(user.id)
+  const snapshots = await getPortfolioSnapshots(user.id).catch(() => [])
 
   // Last sync time: most recent updated_at across holdings
   const { data: lastSyncRow } = await supabase
@@ -314,6 +339,7 @@ export default async function DashboardPage() {
               totalInvested={summary.totalInvested}
               topGainers={summary.topGainers}
               topLosers={summary.topLosers}
+              snapshots={snapshots as SnapshotEntry[]}
             />
           </Suspense>
         </>

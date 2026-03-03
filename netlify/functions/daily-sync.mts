@@ -23,12 +23,12 @@ export default async function handler() {
     return
   }
 
-  // ── 1. Sync holdings via Supabase Edge Function ──────────────────────────
-  const edgeFunctionUrl = `${supabaseUrl}/functions/v1/daily-sync`
-  console.log(`[daily-sync] Triggering edge function at ${edgeFunctionUrl}`)
+  // ── 1. Sync holdings for all users via Next.js cron endpoint ───────────────
+  const syncAllUrl = `${appUrl}/api/cron/sync-all`
+  console.log(`[daily-sync] Triggering sync-all at ${syncAllUrl}`)
 
   try {
-    const res = await fetch(edgeFunctionUrl, {
+    const res = await fetch(syncAllUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -38,14 +38,14 @@ export default async function handler() {
 
     if (!res.ok) {
       const body = await res.text()
-      console.error(`[daily-sync] Edge function returned ${res.status}: ${body}`)
+      console.error(`[daily-sync] sync-all returned ${res.status}: ${body}`)
       // Still attempt digest even if sync had issues (use cached DB values)
     } else {
       const data = await res.json()
-      console.log("[daily-sync] Holdings sync success:", JSON.stringify(data))
+      console.log("[daily-sync] sync-all success:", JSON.stringify(data))
     }
   } catch (err) {
-    console.error("[daily-sync] Holdings sync fetch error:", err)
+    console.error("[daily-sync] sync-all fetch error:", err)
   }
 
   // ── 2. Send morning digest emails to opted-in users ──────────────────────

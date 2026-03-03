@@ -12,6 +12,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  AreaChart,
+  Area,
+  ReferenceLine,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -43,11 +46,20 @@ interface HoldingForChart {
   raw?: Record<string, unknown> | null
 }
 
+export interface SnapshotEntry {
+  snapshot_date:  string
+  total_invested: number
+  total_value:    number
+  total_pnl:      number
+  pnl_pct:        number
+}
+
 interface PortfolioChartsProps {
-  segments: Record<string, number>
+  segments:      Record<string, number>
   totalInvested: number
-  topGainers: HoldingForChart[]
-  topLosers: HoldingForChart[]
+  topGainers:    HoldingForChart[]
+  topLosers:     HoldingForChart[]
+  snapshots?:    SnapshotEntry[]
 }
 
 function shortSymbol(h: HoldingForChart): string {
@@ -73,7 +85,7 @@ const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, pct }: any
   )
 }
 
-export function PortfolioCharts({ segments, totalInvested, topGainers, topLosers }: PortfolioChartsProps) {
+export function PortfolioCharts({ segments, totalInvested, topGainers, topLosers, snapshots = [] }: PortfolioChartsProps) {
   const segData: SegmentEntry[] = Object.entries(segments)
     .map(([name, value]) => ({ name, value, pct: totalInvested > 0 ? (value / totalInvested) * 100 : 0 }))
     .sort((a, b) => b.value - a.value)
@@ -83,80 +95,140 @@ export function PortfolioCharts({ segments, totalInvested, topGainers, topLosers
     ...topLosers.map((h) => ({ symbol: shortSymbol(h), pnl: Number((h.unrealized_pl ?? 0).toFixed(0)) })),
   ].sort((a, b) => b.pnl - a.pnl).slice(0, 10)
 
-  return (
-    <div className="grid lg:grid-cols-2 gap-6">
-      {/* Sector pie */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Sector Allocation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={segData}
-                cx="50%"
-                cy="50%"
-                outerRadius={95}
-                dataKey="value"
-                labelLine={false}
-                label={CustomPieLabel}
-              >
-                {segData.map((_, i) => (
-                  <Cell key={i} fill={SEGMENT_COLORS[i % SEGMENT_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number | undefined, name: string | undefined) => [
-                  value != null ? `₹${value.toLocaleString("en-IN")}` : "—",
-                  name ?? "",
-                ]}
-              />
-              <Legend
-                formatter={(value) => <span className="text-xs">{value}</span>}
-                wrapperStyle={{ fontSize: 12 }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+  // Format snapshot data for chart display
+  const snapData = snapshots.map((s) => ({
+    date:     new Date(s.snapshot_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+    value:    Math.round(s.total_value),
+    invested: Math.round(s.total_invested),
+    pnl:      Math.round(s.total_pnl),
+    pnlPct:   Number(s.pnl_pct.toFixed(2)),
+  }))
+  const latestInvested = snapData.length > 0 ? snapData[snapData.length - 1].invested : 0
 
-      {/* Top movers bar */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Top Movers (P&amp;L ₹)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={moversData} margin={{ top: 4, right: 8, left: 0, bottom: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis
-                dataKey="symbol"
-                tick={{ fontSize: 10 }}
-                angle={-35}
-                textAnchor="end"
-                interval={0}
-              />
-              <YAxis
-                tick={{ fontSize: 10 }}
-                tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
-                width={48}
-              />
-              <Tooltip
-                formatter={(value: number | undefined) => [
-                  value != null ? `₹${value.toLocaleString("en-IN")}` : "—",
-                  "P&L",
-                ]}
-              />
-              <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
-                {moversData.map((d, i) => (
-                  <Cell key={i} fill={d.pnl >= 0 ? "#10b981" : "#ef4444"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+  return (
+    <div className="space-y-6">
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Sector pie */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Sector Allocation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={segData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={95}
+                  dataKey="value"
+                  labelLine={false}
+                  label={CustomPieLabel}
+                >
+                  {segData.map((_, i) => (
+                    <Cell key={i} fill={SEGMENT_COLORS[i % SEGMENT_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number | undefined, name: string | undefined) => [
+                    value != null ? `₹${value.toLocaleString("en-IN")}` : "—",
+                    name ?? "",
+                  ]}
+                />
+                <Legend
+                  formatter={(value) => <span className="text-xs">{value}</span>}
+                  wrapperStyle={{ fontSize: 12 }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Top movers bar */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Top Movers (P&amp;L ₹)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={moversData} margin={{ top: 4, right: 8, left: 0, bottom: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="symbol"
+                  tick={{ fontSize: 10 }}
+                  angle={-35}
+                  textAnchor="end"
+                  interval={0}
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                  width={48}
+                />
+                <Tooltip
+                  formatter={(value: number | undefined) => [
+                    value != null ? `₹${value.toLocaleString("en-IN")}` : "—",
+                    "P&L",
+                  ]}
+                />
+                <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
+                  {moversData.map((d, i) => (
+                    <Cell key={i} fill={d.pnl >= 0 ? "#10b981" : "#ef4444"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Portfolio value over time — shown once we have ≥2 daily snapshots */}
+      {snapData.length >= 2 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Portfolio Value — Last {snapData.length} Days</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={snapData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="valueGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#8b5cf6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10 }}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => `₹${(v / 1_00_000).toFixed(1)}L`}
+                  width={56}
+                />
+                <Tooltip
+                  formatter={(v: number | undefined, name: string | undefined) => {
+                    if (v == null) return ["—", name ?? ""]
+                    if (name === "value")    return [`₹${v.toLocaleString("en-IN")}`, "Portfolio Value"]
+                    if (name === "invested") return [`₹${v.toLocaleString("en-IN")}`, "Invested"]
+                    return [v, name ?? ""]
+                  }}
+                />
+                {/* Horizontal reference line at invested cost */}
+                {latestInvested > 0 && (
+                  <ReferenceLine y={latestInvested} stroke="#6366f1" strokeDasharray="4 4"
+                    label={{ value: "Invested", position: "insideTopRight", fontSize: 10, fill: "#6366f1" }}
+                  />
+                )}
+                <Area type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2} fill="url(#valueGrad)" dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

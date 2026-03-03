@@ -10,19 +10,16 @@ import { NextResponse } from "next/server"
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") ?? ""
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL   ?? ""
 
   // Require service-role bearer to prevent public invocation
   if (!serviceKey || authHeader !== `Bearer ${serviceKey}`) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  if (!supabaseUrl) {
-    return NextResponse.json({ error: "NEXT_PUBLIC_SUPABASE_URL not configured" }, { status: 500 })
-  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://brokerai.rudz.in"
 
   try {
-    const res = await fetch(`${supabaseUrl}/functions/v1/daily-sync`, {
+    const res = await fetch(`${appUrl}/api/cron/sync-all`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -33,7 +30,7 @@ export async function POST(req: Request) {
     const data = await res.json()
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Edge function error", detail: data }, { status: 502 })
+      return NextResponse.json({ error: "sync-all error", detail: data }, { status: 502 })
     }
 
     return NextResponse.json(data)
