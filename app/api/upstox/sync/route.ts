@@ -95,34 +95,42 @@ export async function POST() {
 
   // ── 4. Build payload arrays ───────────────────────────────────────────────
   const instruments = upstoxHoldings.map((h) => {
-    const isin = (h.isin as string) || ""
-    const symbol = (h.trading_symbol as string) || isin
-    const instrumentKey = (h.instrument_token as string) || symbol
+    const isin        = (h.isin as string) || ""
+    const symbol      = (h.trading_symbol as string) || (h.tradingsymbol as string) || isin
+    const companyName = (h.company_name as string) || symbol
+    // Upstox holdings use "instrument_key" (e.g. NSE_EQ|INE002A01018), not "instrument_token"
+    const instrumentKey = (h.instrument_key as string) || symbol
     return {
       instrument_key: instrumentKey,
       trading_symbol: symbol,
-      name: (h.company_name as string) || symbol,
+      name: companyName,
       isin,
       exchange: (h.exchange as string) || "",
-      metadata: {},
+      segment: (h.instrument_type as string) || (h.segment as string) || "",
+      metadata: h,
     }
   })
 
   const holdingsPayload = upstoxHoldings.map((h) => {
-    const isin = (h.isin as string) || ""
-    const symbol = (h.trading_symbol as string) || isin
-    const instrumentKey = (h.instrument_token as string) || symbol
-    const qty = (h.quantity as number) || 0
-    const avgPrice = (h.average_price as number) || 0
+    const isin          = (h.isin as string) || ""
+    const symbol        = (h.trading_symbol as string) || (h.tradingsymbol as string) || isin
+    const companyName   = (h.company_name as string) || symbol
+    // Upstox uses "instrument_key" field — do NOT fall back to instrument_token
+    const instrumentKey = (h.instrument_key as string) || symbol
+    const qty           = (h.quantity as number) || 0
+    const avgPrice      = (h.average_price as number) || 0
     return {
-      portfolio_id: portfolio!.id,
-      instrument_key: instrumentKey,
-      quantity: qty,
-      avg_price: avgPrice,
+      portfolio_id:    portfolio!.id,
+      instrument_key:  instrumentKey,
+      trading_symbol:  symbol,
+      company_name:    companyName,
+      quantity:        qty,
+      avg_price:       avgPrice,
       invested_amount: qty * avgPrice,
-      ltp: (h.last_price as number) || 0,
-      unrealized_pl: (h.pnl as number) || 0,
-      raw: h,
+      ltp:             (h.last_price as number) || 0,
+      unrealized_pl:   (h.pnl as number) || 0,
+      segment:         (h.instrument_type as string) || null,
+      raw:             h,
     }
   })
 

@@ -18,7 +18,7 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Loader2, Save, TestTube2, CheckCircle2, XCircle,
   Eye, EyeOff, Key, Mail, Bell, ExternalLink, RefreshCw,
-  Plus, Trash2, Sparkles,
+  Plus, Trash2, Sparkles, Database,
 } from "lucide-react"
 import { useToast } from "@/lib/hooks/use-toast"
 
@@ -93,6 +93,35 @@ export default function SettingsPage() {
 
   const [savingNotif, setSavingNotif] = useState(false)
   const [sendingDigest, setSendingDigest] = useState(false)
+
+  // Instruments DB seeding
+  const [instrCount, setInstrCount]   = useState<number | null>(null)
+  const [seeding,    setSeeding]       = useState(false)
+  const [seedMsg,    setSeedMsg]       = useState<string | null>(null)
+
+  async function checkInstrumentCount() {
+    try {
+      const r = await fetch("/api/instruments/seed")
+      const d = await r.json()
+      setInstrCount(d.count ?? 0)
+    } catch { /* ignore */ }
+  }
+
+  async function seedInstruments() {
+    setSeeding(true); setSeedMsg(null)
+    try {
+      const r = await fetch("/api/instruments/seed", { method: "POST" })
+      const d = await r.json()
+      setSeedMsg(d.status === "success"
+        ? `Seeded ${d.total.toLocaleString()} instruments (NSE + BSE equity)`
+        : `Partial: ${JSON.stringify(d.summary)}${ d.errors?.length ? " — " + d.errors[0] : "" }`)
+      checkInstrumentCount()
+    } catch (e) {
+      setSeedMsg("Error: " + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setSeeding(false)
+    }
+  }
 
   useEffect(() => {
     loadSettings()
@@ -675,6 +704,45 @@ export default function SettingsPage() {
               {savingToken ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Instruments database */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Database className="h-3.5 w-3.5" />
+            Instruments Database
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Seeds NSE &amp; BSE equity instrument names for stock search in Watchlist.
+            Run once to enable &quot;Search &amp; Add&quot; from the full Indian market.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              {instrCount === null ? (
+                <button className="text-xs text-primary hover:underline" onClick={checkInstrumentCount}>
+                  Check current count
+                </button>
+              ) : (
+                <span className={instrCount > 0 ? "text-emerald-400" : "text-muted-foreground"}>
+                  {instrCount > 0 ? `${instrCount.toLocaleString()} instruments loaded` : "Not seeded yet"}
+                </span>
+              )}
+            </div>
+            <Button size="sm" variant="outline" onClick={seedInstruments} disabled={seeding}>
+              {seeding
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Seeding…</>
+                : "Seed / Refresh"}
+            </Button>
+          </div>
+          {seedMsg && (
+            <p className={`text-xs ${seedMsg.startsWith("Error") ? "text-destructive" : "text-emerald-400"}`}>
+              {seedMsg}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

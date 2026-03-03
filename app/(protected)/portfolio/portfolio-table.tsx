@@ -163,7 +163,12 @@ export default function PortfolioTable({ holdings: initial }: Props) {
       .catch(() => {})
   }, [])
 
-  const toggleWatch = useCallback(async (instrument_key: string) => {
+  const toggleWatch = useCallback(async (
+    instrument_key: string,
+    trading_symbol?: string,
+    company_name?: string,
+    exchange?: string,
+  ) => {
     setWatchPending(instrument_key)
     const isWatched = watchlist.has(instrument_key)
     try {
@@ -174,7 +179,7 @@ export default function PortfolioTable({ holdings: initial }: Props) {
         await fetch("/api/watchlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ instrument_key }),
+          body: JSON.stringify({ instrument_key, trading_symbol, company_name, exchange }),
         })
         setWatchlist((prev) => new Set([...prev, instrument_key]))
       }
@@ -372,7 +377,12 @@ export default function PortfolioTable({ holdings: initial }: Props) {
                   {/* Watch toggle */}
                   <td className="py-3 pl-1 pr-2">
                     <button
-                      onClick={() => toggleWatch(h.instrument_key)}
+                      onClick={() => toggleWatch(
+                        h.instrument_key,
+                        getTradingSymbol(h as unknown as Record<string, unknown>),
+                        getCompanyName(h as unknown as Record<string, unknown>),
+                        getExchange(h),
+                      )}
                       disabled={watchPending === h.instrument_key}
                       title={watchlist.has(h.instrument_key) ? "Remove from watchlist" : "Add to watchlist"}
                       className={`transition-colors ${
