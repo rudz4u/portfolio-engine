@@ -88,17 +88,19 @@ Portfolio Summary (live data):
     .single()
   const prefs = (settingsRow?.preferences as Record<string, string>) || {}
   const preferredLlm = prefs.preferred_llm || "auto"
-  const resolvedOpenai = prefs.openai_key || process.env.OPENAI_API_KEY || ""
+  const resolvedOpenai    = prefs.openai_key    || process.env.OPENAI_API_KEY    || ""
   const resolvedAnthropic = prefs.anthropic_key || process.env.ANTHROPIC_API_KEY || ""
-  const resolvedGemini = prefs.gemini_key || process.env.GOOGLE_GEMINI_API_KEY || ""
+  const resolvedGemini    = prefs.gemini_key    || process.env.GOOGLE_GEMINI_API_KEY || ""
+  const resolvedDeepseek  = prefs.deepseek_key  || process.env.DEEPSEEK_API_KEY  || ""
 
   // Build ordered attempt list based on preferred_llm (model ID → provider)
-  type LLMProvider = "openai" | "anthropic" | "gemini"
-  const allProviders: LLMProvider[] = ["openai", "anthropic", "gemini"]
+  type LLMProvider = "openai" | "anthropic" | "gemini" | "deepseek"
+  const allProviders: LLMProvider[] = ["openai", "anthropic", "gemini", "deepseek"]
   function getProvider(modelId: string): LLMProvider | null {
     if (modelId.startsWith("gpt-") || modelId === "o3" || modelId.startsWith("o4-")) return "openai"
     if (modelId.startsWith("claude-")) return "anthropic"
     if (modelId.startsWith("gemini-")) return "gemini"
+    if (modelId.startsWith("deepseek-")) return "deepseek"
     return null
   }
   const preferredProvider = getProvider(preferredLlm)
@@ -116,7 +118,7 @@ Portfolio Summary (live data):
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedOpenai}` },
           body: JSON.stringify({
-            model: preferredProvider === "openai" ? preferredLlm : "gpt-4o",
+            model: preferredProvider === "openai" ? preferredLlm : "gpt-5.2",
             messages: [
               { role: "system", content: fullSystemPrompt },
               { role: "user", content: message },
@@ -141,7 +143,7 @@ Portfolio Summary (live data):
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
-            model: preferredProvider === "anthropic" ? preferredLlm : "claude-3-5-sonnet-20241022",
+            model: preferredProvider === "anthropic" ? preferredLlm : "claude-sonnet-4-6",
             max_tokens: 800,
             system: fullSystemPrompt,
             messages: [{ role: "user", content: message }],
@@ -156,27 +158,50 @@ Portfolio Summary (live data):
   }
 
   // Try Google Gemini
-  if (!reply) {
-    const geminiKey = resolvedGemini
-    if (geminiKey) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${preferredProvider === "gemini" ? preferredLlm : "gemini-2.0-flash"}:generateContent?key=${geminiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `${fullSystemPrompt}\n\nUser: ${message}` }] }],
-            }),
-          }
-        )
-        if (res.ok) {
-          const data = await res.json()
-          reply = data.candidates?.[0]?.content?.parts?.[0]?.text || ""
+  if (!reply && resolvedGemini) {
+    try {
+      const geminiModel = preferredProvider === "gemini" ? preferredLlm : "gemini-2.5-flash"
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${resolvedGemini}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${fullSystemPrompt}\n\nUser: ${message}` }] }],
+          }),
         }
-      } catch {
-        console.error("Gemini error")
+      )
+      if (res.ok) {
+        const data = await res.json()
+        reply = data.candidates?.[0]?.content?.parts?.[0]?.text || ""
       }
+    } catch {
+      console.error("Gemini error")
+    }
+  }
+
+  // Try DeepSeek (OpenAI-compatible endpoint)
+  if (!reply && resolvedDeepseek) {
+    try {
+      const res = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedDeepseek}` },
+        body: JSON.stringify({
+          model: preferredProvider === "deepseek" ? preferredLlm : "deepseek-chat",
+          messages: [
+            { role: "system", content: fullSystemPrompt },
+            { role: "user", content: message },
+          ],
+          max_tokens: 800,
+          temperature: 0.7,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        reply = data.choices?.[0]?.message?.content || ""
+      }
+    } catch {
+      console.error("DeepSeek error")
     }
   }
 

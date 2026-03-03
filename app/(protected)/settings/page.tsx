@@ -72,12 +72,14 @@ export default function SettingsPage() {
   const [openaiKey, setOpenaiKey] = useState("")
   const [anthropicKey, setAnthropicKey] = useState("")
   const [geminiKey, setGeminiKey] = useState("")
+  const [deepseekKey, setDeepseekKey] = useState("")
   const [tavilyKey, setTavilyKey] = useState("")
   const [showKeys, setShowKeys] = useState(false)
   const [keyStatus, setKeyStatus] = useState({
     openai_key_set: false,
     anthropic_key_set: false,
     gemini_key_set: false,
+    deepseek_key_set: false,
     tavily_key_set: false,
   })
   const [savingKeys, setSavingKeys] = useState(false)
@@ -140,6 +142,7 @@ export default function SettingsPage() {
       openai_key_set: !!data.openai_key_set,
       anthropic_key_set: !!data.anthropic_key_set,
       gemini_key_set: !!data.gemini_key_set,
+      deepseek_key_set: !!data.deepseek_key_set,
       tavily_key_set: !!data.tavily_key_set,
     })
     setAiMode(data.ai_mode === "byok" ? "byok" : "platform")
@@ -242,6 +245,7 @@ export default function SettingsPage() {
     if (openaiKey)    body.openai_key    = openaiKey
     if (anthropicKey) body.anthropic_key = anthropicKey
     if (geminiKey)    body.gemini_key    = geminiKey
+    if (deepseekKey)  body.deepseek_key  = deepseekKey
     if (tavilyKey)    body.tavily_key    = tavilyKey
     const res = await fetch("/api/settings", {
       method: "POST",
@@ -251,7 +255,7 @@ export default function SettingsPage() {
     setSavingKeys(false)
     if (res.ok) {
       toast({ title: "AI settings saved" })
-      setOpenaiKey(""); setAnthropicKey(""); setGeminiKey(""); setTavilyKey("")
+      setOpenaiKey(""); setAnthropicKey(""); setGeminiKey(""); setDeepseekKey(""); setTavilyKey("")
       loadSettings()
     } else {
       toast({ title: "Failed to save AI settings", variant: "destructive" })
@@ -300,31 +304,41 @@ export default function SettingsPage() {
     else toast({ title: "Send failed", description: data.error, variant: "destructive" })
   }
 
-  /* ── LLM options per mode (grouped by provider) ── */
+  /* ── LLM options per mode (grouped by provider, sourced from live docs Mar 2026) ── */
   const llmOptions: Record<string, { value: string; label: string }[]> =
     aiMode === "platform"
       ? { "": [{ value: "brokerai", label: "BrokerAI (recommended)" }] }
       : {
           "OpenAI": [
-            { value: "gpt-4.1",      label: "GPT-4.1 — latest, 1M context" },
-            { value: "gpt-4.1-mini", label: "GPT-4.1 mini — fast & affordable" },
-            { value: "o3",           label: "o3 — advanced reasoning" },
+            { value: "gpt-5.2",      label: "GPT-5.2 — best model, coding & agents" },
+            { value: "gpt-5.2-pro",  label: "GPT-5.2 Pro — smarter & more precise" },
+            { value: "gpt-5",        label: "GPT-5 — intelligent reasoning" },
+            { value: "gpt-5-mini",   label: "GPT-5 mini — fast, cost-efficient" },
+            { value: "gpt-5-nano",   label: "GPT-5 nano — fastest & cheapest" },
+            { value: "o3",           label: "o3 — complex reasoning" },
             { value: "o4-mini",      label: "o4-mini — fast reasoning" },
-            { value: "gpt-4o",       label: "GPT-4o" },
-            { value: "gpt-4o-mini",  label: "GPT-4o mini" },
+            { value: "gpt-4.1",      label: "GPT-4.1 — smartest non-reasoning" },
+            { value: "gpt-4o",       label: "GPT-4o — fast & intelligent" },
+            { value: "gpt-4o-mini",  label: "GPT-4o mini — affordable" },
           ],
           "Anthropic": [
-            { value: "claude-opus-4-5",            label: "Claude Opus 4.5 — most capable" },
-            { value: "claude-sonnet-4-5",          label: "Claude Sonnet 4.5 — balanced" },
-            { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet — fast + smart" },
-            { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
-            { value: "claude-3-5-haiku-20241022",  label: "Claude 3.5 Haiku — cheapest" },
+            { value: "claude-opus-4-6",            label: "Claude Opus 4.6 — most capable" },
+            { value: "claude-sonnet-4-6",          label: "Claude Sonnet 4.6 — speed + intelligence" },
+            { value: "claude-haiku-4-5",           label: "Claude Haiku 4.5 — fastest" },
+            { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet — legacy fast" },
+            { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet — legacy" },
+            { value: "claude-3-5-haiku-20241022",  label: "Claude 3.5 Haiku — legacy cheapest" },
           ],
           "Google": [
-            { value: "gemini-2.5-pro",   label: "Gemini 2.5 Pro — best quality" },
-            { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash — fast" },
-            { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-            { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash — legacy" },
+            { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro Preview — most advanced" },
+            { value: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview — frontier speed" },
+            { value: "gemini-2.5-pro",         label: "Gemini 2.5 Pro — deep reasoning" },
+            { value: "gemini-2.5-flash",        label: "Gemini 2.5 Flash — best price-perf" },
+            { value: "gemini-2.5-flash-lite",   label: "Gemini 2.5 Flash-Lite — budget" },
+          ],
+          "DeepSeek": [
+            { value: "deepseek-chat",     label: "DeepSeek V3.2 — 128K context" },
+            { value: "deepseek-reasoner", label: "DeepSeek V3.2 Reasoner — thinking mode" },
           ],
         }
 
@@ -452,7 +466,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => {
                   setAiMode(mode)
-                  setPreferredLlm(mode === "platform" ? "brokerai" : "gpt-4.1")
+                  setPreferredLlm(mode === "platform" ? "brokerai" : "gpt-5.2")
                 }}
                 className={`rounded-lg border-2 p-3 text-left transition-colors ${
                   aiMode === mode ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/40"
@@ -484,6 +498,7 @@ export default function SettingsPage() {
                   { label: "OpenAI", key: "openai_key_set" as const, clearKey: "openai_key" },
                   { label: "Anthropic", key: "anthropic_key_set" as const, clearKey: "anthropic_key" },
                   { label: "Gemini", key: "gemini_key_set" as const, clearKey: "gemini_key" },
+                  { label: "DeepSeek", key: "deepseek_key_set" as const, clearKey: "deepseek_key" },
                   { label: "Tavily", key: "tavily_key_set" as const, clearKey: "tavily_key" },
                 ]).map(({ label, key, clearKey }) => (
                   <div key={key} className="flex items-center gap-1">
@@ -501,6 +516,7 @@ export default function SettingsPage() {
                 { label: "OpenAI API Key", placeholder: "sk-...", value: openaiKey, set: setOpenaiKey, flagKey: "openai_key_set" as const },
                 { label: "Anthropic API Key", placeholder: "sk-ant-...", value: anthropicKey, set: setAnthropicKey, flagKey: "anthropic_key_set" as const },
                 { label: "Google Gemini API Key", placeholder: "AIza...", value: geminiKey, set: setGeminiKey, flagKey: "gemini_key_set" as const },
+                { label: "DeepSeek API Key", placeholder: "sk-...", value: deepseekKey, set: setDeepseekKey, flagKey: "deepseek_key_set" as const },
                 { label: "Tavily API Key (news research)", placeholder: "tvly-...", value: tavilyKey, set: setTavilyKey, flagKey: "tavily_key_set" as const },
               ]).map(({ label, placeholder, value, set, flagKey }) => (
                 <div key={label} className="space-y-1.5">
