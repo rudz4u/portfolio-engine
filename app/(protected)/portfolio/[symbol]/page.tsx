@@ -24,10 +24,10 @@ import {
 import Link from "next/link"
 
 const SIGNAL_STYLES: Record<string, { badge: string; bg: string; text: string }> = {
-  BUY:   { badge: "bg-green-100 text-green-800",  bg: "bg-green-50",  text: "text-green-700" },
-  HOLD:  { badge: "bg-blue-100 text-blue-800",    bg: "bg-blue-50",   text: "text-blue-700" },
-  SELL:  { badge: "bg-red-100 text-red-700",      bg: "bg-red-50",    text: "text-red-700" },
-  WATCH: { badge: "bg-amber-100 text-amber-800",  bg: "bg-amber-50",  text: "text-amber-700" },
+  BUY:   { badge: "bg-emerald-400/15 text-emerald-400 border border-emerald-400/30",  bg: "bg-emerald-400/10 border border-emerald-400/25", text: "text-emerald-400" },
+  HOLD:  { badge: "bg-blue-400/15 text-blue-400 border border-blue-400/30",           bg: "bg-blue-400/10 border border-blue-400/25",     text: "text-blue-400" },
+  SELL:  { badge: "bg-red-400/15 text-red-400 border border-red-400/30",               bg: "bg-red-400/10 border border-red-400/25",       text: "text-red-400" },
+  WATCH: { badge: "bg-amber-400/15 text-amber-400 border border-amber-400/30",        bg: "bg-amber-400/10 border border-amber-400/25",   text: "text-amber-400" },
 }
 
 function ScoreBar({
@@ -218,7 +218,7 @@ export default async function StockDetailPage({
             label: "Last Traded Price",
             value: `₹${holding.ltp.toFixed(2)}`,
             sub: dayChg !== 0 ? `${dayChg >= 0 ? "+" : ""}${dayChg.toFixed(2)}% today` : null,
-            color: dayChg >= 0 ? "text-green-600" : "text-red-500",
+            color: dayChg >= 0 ? "text-emerald-400" : "text-red-400",
           },
           {
             label: "Invested",
@@ -230,7 +230,7 @@ export default async function StockDetailPage({
             label: "Unrealized P&L",
             value: `${pnlPositive ? "+" : ""}${formatCurrency(holding.unrealized_pl)}`,
             sub: `${pnlPositive ? "+" : ""}${holding.pnl_pct.toFixed(2)}%`,
-            color: pnlPositive ? "text-green-600" : "text-red-500",
+            color: pnlPositive ? "text-emerald-400" : "text-red-400",
           },
           {
             label: "Portfolio Weight",
@@ -243,8 +243,8 @@ export default async function StockDetailPage({
                 : "Well-sized",
             color:
               holding.weight_pct > 12 || holding.weight_pct < 1
-                ? "text-amber-600"
-                : "text-green-600",
+                ? "text-amber-400"
+                : "text-emerald-400",
           },
         ].map(({ label, value, sub, color }) => (
           <Card key={label}>
@@ -322,10 +322,10 @@ export default async function StockDetailPage({
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             {[
-              { range: "70–100", signal: "BUY",   color: "bg-green-100 text-green-800" },
-              { range: "50–69",  signal: "HOLD",  color: "bg-blue-100 text-blue-800" },
-              { range: "35–49",  signal: "WATCH", color: "bg-amber-100 text-amber-800" },
-              { range: "0–34",   signal: "SELL",  color: "bg-red-100 text-red-700" },
+              { range: "70–100", signal: "BUY",   color: "bg-emerald-400/15 text-emerald-400" },
+              { range: "50–69",  signal: "HOLD",  color: "bg-blue-400/15 text-blue-400" },
+              { range: "35–49",  signal: "WATCH", color: "bg-amber-400/15 text-amber-400" },
+              { range: "0–34",   signal: "SELL",  color: "bg-red-400/15 text-red-400" },
             ].map(({ range, signal, color }) => (
               <div key={signal} className={`rounded-md px-2 py-1.5 ${color}`}>
                 <span className="font-semibold">{signal}</span>

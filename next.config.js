@@ -23,6 +23,7 @@ const nextConfig = {
       "/recommendations",
       "/sandbox",
       "/analytics",
+      "/watchlist",
       "/trade",
     ]
     return protectedRoutes.map((path) => ({

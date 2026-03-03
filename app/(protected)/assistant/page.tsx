@@ -34,6 +34,7 @@ export default function AssistantPage() {
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [clearingChat, setClearingChat] = useState(false)
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -96,7 +97,16 @@ export default function AssistantPage() {
     setHistoryLoaded(true)
   }
 
-  function clearChat() {
+  async function clearChat() {
+    setClearingChat(true)
+    // Delete from DB
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from("chat_history").delete().eq("user_id", user.id)
+      }
+    } catch { /* non-critical */ }
     setMessages([
       {
         id: "welcome_new",
@@ -105,6 +115,7 @@ export default function AssistantPage() {
         timestamp: new Date(),
       },
     ])
+    setClearingChat(false)
   }
 
   async function sendMessage(text: string) {
@@ -192,10 +203,13 @@ export default function AssistantPage() {
             </CardTitle>
             <button
               onClick={clearChat}
-              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
-              title="Clear visible chat"
+              disabled={clearingChat}
+              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors disabled:opacity-50"
+              title="Clear chat & delete history from database"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              {clearingChat
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Trash2 className="h-3.5 w-3.5" />}
               Clear
             </button>
           </div>

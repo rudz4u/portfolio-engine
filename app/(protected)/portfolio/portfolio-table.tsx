@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
-import { ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react"
+import { ArrowUpDown, ChevronUp, ChevronDown, Bookmark, BookmarkCheck } from "lucide-react"
 
 /* ─── Segments ─────────────────────────────────────────────────────────── */
 
@@ -152,6 +152,37 @@ export default function PortfolioTable({ holdings: initial }: Props) {
     dir: "desc",
   })
 
+  /* ── Watchlist ─────────────────────────────────────────────────────────── */
+  const [watchlist, setWatchlist] = useState<Set<string>>(new Set())
+  const [watchPending, setWatchPending] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/watchlist")
+      .then((r) => r.json())
+      .then((d) => setWatchlist(new Set(d.symbols ?? [])))
+      .catch(() => {})
+  }, [])
+
+  const toggleWatch = useCallback(async (instrument_key: string) => {
+    setWatchPending(instrument_key)
+    const isWatched = watchlist.has(instrument_key)
+    try {
+      if (isWatched) {
+        await fetch(`/api/watchlist?instrument_key=${encodeURIComponent(instrument_key)}`, { method: "DELETE" })
+        setWatchlist((prev) => { const next = new Set(prev); next.delete(instrument_key); return next })
+      } else {
+        await fetch("/api/watchlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ instrument_key }),
+        })
+        setWatchlist((prev) => new Set([...prev, instrument_key]))
+      }
+    } finally {
+      setWatchPending(null)
+    }
+  }, [watchlist])
+
   function toggleSort(key: SortKey) {
     setSortConfig((prev) => {
       if (prev?.key === key) return { key, dir: prev.dir === "asc" ? "desc" : "asc" }
@@ -217,6 +248,7 @@ export default function PortfolioTable({ holdings: initial }: Props) {
               <SortHeader label="P&amp;L"     sortKey="pnl"           config={sortConfig} onSort={toggleSort} />
               <SortHeader label="Day Chg%"    sortKey="day_change"    config={sortConfig} onSort={toggleSort} className="hidden xl:table-cell" />
               <SortHeader label="Segment"     sortKey="segment"       config={sortConfig} onSort={toggleSort} className="hidden lg:table-cell" />
+              <th className="w-8" />
             </tr>
           </thead>
           <tbody>
@@ -283,7 +315,7 @@ export default function PortfolioTable({ holdings: initial }: Props) {
                   </td>
 
                   {/* P&L + % */}
-                  <td className={`text-right py-3 px-2 ${pnl >= 0 ? "text-green-600" : "text-red-500"}`}>
+                  <td className={`text-right py-3 px-2 ${pnl >= 0 ? "text-emerald-500 dark:text-emerald-400" : "text-red-500"}`}>
                     <div className="tabular-nums font-medium whitespace-nowrap">
                       {pnl >= 0 ? "+" : ""}{formatCurrency(pnl)}
                     </div>
@@ -294,7 +326,7 @@ export default function PortfolioTable({ holdings: initial }: Props) {
 
                   {/* Day Change % */}
                   <td className={`text-right py-3 px-2 text-xs font-medium tabular-nums hidden xl:table-cell ${
-                    dayChg >= 0 ? "text-green-600" : "text-red-500"
+                    dayChg >= 0 ? "text-emerald-500 dark:text-emerald-400" : "text-red-500"
                   }`}>
                     {dayChg !== 0 ? `${dayChg >= 0 ? "+" : ""}${dayChg.toFixed(2)}%` : "—"}
                   </td>
@@ -336,6 +368,22 @@ export default function PortfolioTable({ holdings: initial }: Props) {
                         </div>
                       )}
                     </div>
+                  </td>
+                  {/* Watch toggle */}
+                  <td className="py-3 pl-1 pr-2">
+                    <button
+                      onClick={() => toggleWatch(h.instrument_key)}
+                      disabled={watchPending === h.instrument_key}
+                      title={watchlist.has(h.instrument_key) ? "Remove from watchlist" : "Add to watchlist"}
+                      className={`transition-colors ${
+                        watchPending === h.instrument_key ? "opacity-40" :
+                        watchlist.has(h.instrument_key) ? "text-primary hover:text-destructive" : "text-muted-foreground/40 hover:text-primary"
+                      }`}
+                    >
+                      {watchlist.has(h.instrument_key)
+                        ? <BookmarkCheck className="h-4 w-4" />
+                        : <Bookmark className="h-4 w-4" />}
+                    </button>
                   </td>
                 </tr>
               )

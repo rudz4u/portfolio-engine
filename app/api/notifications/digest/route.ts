@@ -42,8 +42,8 @@ function buildDigestHtml(summary: {
   totalPnL: number
   pnlPercent: number
   count: number
-  topGainers: Array<{ instrument_key: string; unrealized_pl: number }>
-  topLosers: Array<{ instrument_key: string; unrealized_pl: number }>
+  topGainers: Array<{ display_name: string; unrealized_pl: number }>
+  topLosers: Array<{ display_name: string; unrealized_pl: number }>
   recentOrders: Array<{ side: string; instrument_key: string; meta: Record<string, string>; quantity: number; status: string }>
   date: string
 }): string {
@@ -56,7 +56,7 @@ function buildDigestHtml(summary: {
     .slice(0, 3)
     .map(
       (h) =>
-        `<tr><td style="padding:4px 8px">${h.instrument_key}</td><td style="padding:4px 8px;color:#10b981;text-align:right">+${fmt(h.unrealized_pl)}</td></tr>`
+        `<tr><td style="padding:4px 8px">${h.display_name}</td><td style="padding:4px 8px;color:#10b981;text-align:right">+${fmt(h.unrealized_pl)}</td></tr>`
     )
     .join("")
 
@@ -64,7 +64,7 @@ function buildDigestHtml(summary: {
     .slice(0, 3)
     .map(
       (h) =>
-        `<tr><td style="padding:4px 8px">${h.instrument_key}</td><td style="padding:4px 8px;color:#ef4444;text-align:right">${fmt(h.unrealized_pl)}</td></tr>`
+        `<tr><td style="padding:4px 8px">${h.display_name}</td><td style="padding:4px 8px;color:#ef4444;text-align:right">${fmt(h.unrealized_pl)}</td></tr>`
     )
     .join("")
 
@@ -215,7 +215,7 @@ export async function POST(request: Request) {
 
   const { data: holdings } = await supabase
     .from("holdings")
-    .select("instrument_key, invested_amount, unrealized_pl, quantity, segment")
+    .select("instrument_key, company_name, trading_symbol, invested_amount, unrealized_pl, quantity, segment")
     .eq("portfolio_id", portfolio.id)
     .not("instrument_key", "eq", "Total")
 
@@ -226,9 +226,25 @@ export async function POST(request: Request) {
   const pnlPercent = totalInvested > 0 ? totalPnL / totalInvested : 0
   const count = rows.filter((h) => h.quantity > 0).length
 
+  // Helper: prefer company_name > trading_symbol > instrument_key (strip exchange prefix)
+  function displayName(h: { instrument_key: string; company_name?: string | null; trading_symbol?: string | null }): string {
+    if (h.company_name) return h.company_name
+    if (h.trading_symbol) return h.trading_symbol
+    // strip "NSE_EQ|" / "BSE_EQ|" prefix if present
+    const raw = h.instrument_key || ""
+    return raw.includes("|") ? raw.split("|")[1] : raw
+  }
+
   const sorted = [...rows].filter((h) => h.unrealized_pl != null && h.quantity > 0)
-  const topGainers = sorted.sort((a, b) => (b.unrealized_pl || 0) - (a.unrealized_pl || 0)).slice(0, 3)
-  const topLosers = sorted.sort((a, b) => (a.unrealized_pl || 0) - (b.unrealized_pl || 0)).slice(0, 3)
+  const topGainers = sorted
+    .sort((a, b) => (b.unrealized_pl || 0) - (a.unrealized_pl || 0))
+    .slice(0, 3)
+    .map((h) => ({ display_name: displayName(h), unrealized_pl: h.unrealized_pl || 0 }))
+  const topLosers = [...rows]
+    .filter((h) => h.unrealized_pl != null && h.quantity > 0)
+    .sort((a, b) => (a.unrealized_pl || 0) - (b.unrealized_pl || 0))
+    .slice(0, 3)
+    .map((h) => ({ display_name: displayName(h), unrealized_pl: h.unrealized_pl || 0 }))
 
   const { data: recentOrdersRaw } = await supabase
     .from("orders")

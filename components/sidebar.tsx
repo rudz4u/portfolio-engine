@@ -14,6 +14,7 @@ import {
   Star,
   Zap,
   BarChart2,
+  Bookmark,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/dashboard",        label: "Dashboard",        icon: LayoutDashboard },
   { href: "/portfolio",        label: "Portfolio",        icon: Briefcase },
   { href: "/analytics",        label: "Analytics",        icon: BarChart2 },
+  { href: "/watchlist",        label: "Watchlist",        icon: Bookmark },
   { href: "/recommendations",  label: "Recommendations",  icon: Star },
   { href: "/trade",            label: "Trade",            icon: TrendingUp },
   { href: "/assistant",        label: "AI Assistant",     icon: Bot },
