@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { createAdminClient } from '../../lib/supabase/server'
-import { computeCompositeScore } from 'quant-engine'
+import { computeCompositeScore } from '../../lib/quant-engine'
 
 const supabase = createAdminClient()
 

@@ -1,0 +1,2 @@
+[    1937ms] [ERROR] Access to fetch at 'https://brokerai.rudz.in/signin' from origin 'null' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ about:blank:0
+[    1937ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://brokerai.rudz.in/signin:0

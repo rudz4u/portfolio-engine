@@ -5,7 +5,7 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { z } from 'zod'
 import { createClient, createAdminClient } from '../../../lib/supabase/server'
-import { computeCompositeScore } from 'quant-engine'
+import { computeCompositeScore } from '../../../lib/quant-engine'
 
 // ─── LLM Provider Resolution ────────────────────────────────────────────────
 // Priority: user Anthropic key → user OpenAI key → env Anthropic → env OpenAI → Gemini → simulated
