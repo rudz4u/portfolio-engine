@@ -1,8 +1,22 @@
-html,body,#__next{height:100%}
 @import "tailwindcss";
+
+html, body, #__next { height: 100%; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-table,th,td{border:1px solid #ddd;padding:8px}
-th{background:#f6f6f6}
+
+/* Reset table styles — dashboard tables override with Tailwind */
+table { border-collapse: collapse; }
+th, td { border: none; padding: 0; }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fade-in 0.3s ease-out both;
+}

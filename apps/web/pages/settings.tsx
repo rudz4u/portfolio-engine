@@ -12,6 +12,7 @@ export default function Settings() {
 
     const [openaiKey, setOpenaiKey] = useState('')
     const [anthropicKey, setAnthropicKey] = useState('')
+    const [tavilyKey, setTavilyKey] = useState('')
     const [upstoxApiKey, setUpstoxApiKey] = useState('')
     const [upstoxSecret, setUpstoxSecret] = useState('')
     const [upstoxAccessToken, setUpstoxAccessToken] = useState('')
@@ -44,6 +45,7 @@ export default function Settings() {
                     const keys = JSON.parse(data.encrypted_keys)
                     setOpenaiKey(keys.openai_key || '')
                     setAnthropicKey(keys.anthropic_key || '')
+                    setTavilyKey(keys.tavily_key || '')
                     setUpstoxApiKey(keys.upstox_api_key || '')
                     setUpstoxSecret(keys.upstox_secret || '')
                     setUpstoxAccessToken(keys.upstox_access_token || '')
@@ -77,6 +79,7 @@ export default function Settings() {
         const keysToStore = {
             openai_key: openaiKey,
             anthropic_key: anthropicKey,
+            tavily_key: tavilyKey,
             upstox_api_key: upstoxApiKey,
             upstox_secret: upstoxSecret,
             upstox_access_token: upstoxAccessToken
@@ -243,6 +246,20 @@ export default function Settings() {
                                                 placeholder="sk-ant-..."
                                                 className="w-full bg-zinc-950/50 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
                                             />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-400 mb-2">
+                                                Tavily API Key
+                                                <span className="ml-2 text-xs text-zinc-600">(for live market news search)</span>
+                                            </label>
+                                            <input
+                                                type="password"
+                                                value={tavilyKey}
+                                                onChange={e => setTavilyKey(e.target.value)}
+                                                placeholder="tvly-..."
+                                                className="w-full bg-zinc-950/50 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                                            />
+                                            <p className="mt-1 text-xs text-zinc-600">Get a free key at <a href="https://tavily.com" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">tavily.com</a> — used by the AI assistant for real-time market research.</p>
                                         </div>
                                     </div>
                                 </div>

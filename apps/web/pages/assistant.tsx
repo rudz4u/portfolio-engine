@@ -8,6 +8,7 @@ interface Message {
     role: 'user' | 'assistant'
     content: string
     timestamp: string
+    provider?: string
 }
 
 export default function Assistant() {
@@ -15,6 +16,7 @@ export default function Assistant() {
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
+    const [provider, setProvider] = useState<string>('Simulated')
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -71,12 +73,15 @@ export default function Assistant() {
             const data = await response.json()
 
             if (response.ok) {
-                setMessages(prev => [...prev, {
+                const aiMsg = {
                     id: Date.now().toString() + '_ai',
-                    role: 'assistant',
+                    role: 'assistant' as const,
                     content: data.content,
-                    timestamp: data.timestamp
-                }])
+                    timestamp: data.timestamp,
+                    provider: data.provider,
+                }
+                setMessages(prev => [...prev, aiMsg])
+                if (data.provider) setProvider(data.provider)
             } else {
                 throw new Error(data.error || 'Failed to communicate with assistant')
             }
@@ -128,9 +133,28 @@ export default function Assistant() {
             </header>
 
             <main className="relative flex-1 max-w-5xl w-full mx-auto px-6 py-8 flex flex-col min-h-0">
-                <div className="mb-6 flex-shrink-0">
-                    <h2 className="text-3xl font-semibold mb-2">Quant Assistant</h2>
-                    <p className="text-sm text-zinc-500">Query your portfolio algorithms using natural language.</p>
+                <div className="mb-4 flex-shrink-0 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-3xl font-semibold mb-1">Quant Assistant</h2>
+                        <p className="text-sm text-zinc-500">Natural language interface to your portfolio algorithms.</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                        {provider}
+                    </span>
+                </div>
+
+                {/* Quick prompts */}
+                <div className="mb-4 flex flex-wrap gap-2 flex-shrink-0">
+                    {['Show my portfolio', 'RSI analysis', 'VIX discount today', 'MACD signals', 'Best buy opportunity'].map(prompt => (
+                        <button
+                            key={prompt}
+                            onClick={() => setInput(prompt)}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:border-indigo-500/30 transition-all"
+                        >
+                            {prompt}
+                        </button>
+                    ))}
                 </div>
 
                 <section className="flex-1 bg-zinc-900/40 border border-white/5 rounded-2xl backdrop-blur-sm shadow-2xl flex flex-col min-h-[50vh] overflow-hidden">
@@ -144,7 +168,7 @@ export default function Assistant() {
                                     </div>
                                 )}
 
-                                <div className={`max-w-[80%] rounded-2xl px-5 py-3.5 shadow-sm text-sm leading-relaxed ${msg.role === 'user'
+                                <div className={`max-w-[80%] rounded-2xl px-5 py-3.5 shadow-sm text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
                                         ? 'bg-indigo-600 text-white rounded-br-none shadow-indigo-600/20'
                                         : 'bg-zinc-800/60 border border-white/5 text-zinc-200 rounded-bl-none'
                                     }`}>

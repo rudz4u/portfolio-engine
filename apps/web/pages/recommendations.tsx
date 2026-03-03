@@ -7,9 +7,11 @@ interface Recommendation {
     instrument_name: string
     instrument_key: string
     current_price: string
+    ltp: string | null
     score: number
     signal: 'BUY' | 'SELL' | 'HOLD'
     insights: string[]
+    is_live: boolean
 }
 
 export default function Recommendations() {
@@ -17,7 +19,9 @@ export default function Recommendations() {
     const [recommendations, setRecommendations] = useState<Recommendation[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [executing, setExecuting] = useState<string | null>(null) // holds instrument matching ID if executing order
+    const [source, setSource] = useState<string>('mock_data')
+    const [vix, setVix] = useState<number>(18)
+    const [executing, setExecuting] = useState<string | null>(null)
 
     useEffect(() => {
         let mounted = true
@@ -32,12 +36,10 @@ export default function Recommendations() {
                 const response = await fetch('/api/recommendations')
                 const data = await response.json()
                 if (data.status === 'success' && mounted) {
-                    // Sort by highest convincing signal (score)
-                    const sorted = data.data.sort((a: Recommendation, b: Recommendation) => {
-                        // Put BUYs at the top, then HOLDs, then SELLs with lowest scores at bottom
-                        return b.score - a.score;
-                    });
+                    const sorted = data.data.sort((a: Recommendation, b: Recommendation) => b.score - a.score)
                     setRecommendations(sorted)
+                    setSource(data.source || 'mock_data')
+                    setVix(data.vix || 18)
                 } else {
                     setError('Failed to fetch algorithmic recommendations.')
                 }
@@ -112,8 +114,23 @@ export default function Recommendations() {
 
             <main className="relative max-w-6xl mx-auto px-6 mt-12 w-full pb-20">
                 <div className="mb-10">
-                    <h2 className="text-3xl font-semibold mb-2">Quant Recommendations</h2>
-                    <p className="text-sm text-zinc-500">Live signals calculated from your RSI, MACD, and Bollinger Bands matrices.</p>
+                    <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
+                        <h2 className="text-3xl font-semibold">Quant Signals</h2>
+                        <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
+                                source === 'live_holdings'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${source === 'live_holdings' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                                {source === 'live_holdings' ? 'Live Holdings' : 'Mock Data'}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-zinc-900 text-zinc-400 border-white/10">
+                                VIX {vix}
+                            </span>
+                        </div>
+                    </div>
+                    <p className="text-sm text-zinc-500">RSI, MACD, Bollinger Bands composite scores with VIX-adjusted signals.</p>
                 </div>
 
                 {loading ? (

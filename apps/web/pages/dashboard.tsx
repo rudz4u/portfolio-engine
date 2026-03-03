@@ -82,6 +82,7 @@ export default function Dashboard() {
 
   const investedTotal = filtered.reduce((s, h) => s + (Number(h.invested_amount) || 0), 0)
   const unrealizedTotal = filtered.reduce((s, h) => s + (Number(h.unrealized_pl) || 0), 0)
+  const plPercent = investedTotal > 0 ? (unrealizedTotal / investedTotal) * 100 : 0
 
   function logout() {
     supabase.auth.signOut().then(() => router.push('/signin'))
@@ -103,6 +104,9 @@ export default function Dashboard() {
           <h1 className="text-xl font-medium tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">Portfolio Engine</h1>
         </div>
         <div className="flex items-center gap-4">
+          <Link href="/analytics" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+            Analytics
+          </Link>
           <Link href="/recommendations" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
             Signals
           </Link>
@@ -234,6 +238,9 @@ export default function Dashboard() {
                 </div>
                 <p className="text-sm font-medium text-zinc-400 mb-1">Holdings Count</p>
                 <p className="text-3xl font-semibold text-white">{total}</p>
+                <Link href="/analytics" className="mt-3 text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
+                  View Analytics →
+                </Link>
               </div>
             </div>
 
