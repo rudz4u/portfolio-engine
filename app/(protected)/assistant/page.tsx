@@ -10,8 +10,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Bot, Send, User, Loader2, TrendingUp } from "lucide-react"
+import { Bot, Send, User, Loader2, Key, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import Link from "next/link"
 
 interface Message {
   id: string
@@ -24,26 +25,86 @@ const STARTER_PROMPTS = [
   "What is my portfolio's overall performance?",
   "Which sectors am I most exposed to?",
   "Show me my top performing stocks",
-  "What stocks should I consider buying today?",
+  "Analyse my highest-risk positions",
 ]
 
 export default function AssistantPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Hello! I'm your AI portfolio assistant. I can help you analyze your holdings, discuss market conditions, and give you quantitative insights. What would you like to know today?",
-      timestamp: new Date(),
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    loadHistory()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  async function loadHistory() {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    // Check if user has any LLM key configured
+    const settingsRes = await fetch("/api/settings")
+    if (settingsRes.ok) {
+      const s = await settingsRes.json()
+      setHasApiKey(s.openai_key_set || s.anthropic_key_set || s.gemini_key_set ||
+        !!process.env.NEXT_PUBLIC_HAS_LLM_KEY)
+    }
+
+    const { data: history } = await supabase
+      .from("chat_history")
+      .select("id, message, reply, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(30)
+
+    if (history && history.length > 0) {
+      const histMsgs: Message[] = history.flatMap((h) => [
+        {
+          id: h.id + "_u",
+          role: "user" as const,
+          content: h.message || "",
+          timestamp: new Date(h.created_at),
+        },
+        {
+          id: h.id + "_a",
+          role: "assistant" as const,
+          content: h.reply || "",
+          timestamp: new Date(h.created_at),
+        },
+      ])
+      setMessages(histMsgs)
+    } else {
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content:
+            "Hello! I'm your AI portfolio assistant. I can help you analyse your holdings, discuss market conditions, and give you quantitative insights. What would you like to know today?",
+          timestamp: new Date(),
+        },
+      ])
+    }
+    setHistoryLoaded(true)
+  }
+
+  function clearChat() {
+    setMessages([
+      {
+        id: "welcome_new",
+        role: "assistant",
+        content: "Chat cleared. How can I help you today?",
+        timestamp: new Date(),
+      },
+    ])
+  }
 
   async function sendMessage(text: string) {
     if (!text.trim()) return
@@ -107,25 +168,44 @@ export default function AssistantPage() {
         </p>
       </div>
 
-      {/* Not configured notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-2">
-        <TrendingUp className="h-4 w-4 text-blue-600 shrink-0" />
-        <p className="text-sm text-blue-800">
-          Configure your OpenAI / Anthropic / Gemini API key in Netlify env vars to enable AI
-          responses.
-        </p>
-      </div>
+      {/* API key notice */}
+      {hasApiKey === false && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-center gap-2">
+          <Key className="h-4 w-4 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800">
+            No AI provider configured.{" "}
+            <Link href="/settings" className="underline font-medium">Add an API key in Settings</Link>{" "}
+            to enable AI responses.
+          </p>
+        </div>
+      )}
 
       {/* Chat area */}
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader className="pb-3 border-b">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Bot className="h-4 w-4" />
-            Portfolio Assistant
-            <Badge variant="secondary" className="text-xs">Beta</Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              Portfolio Assistant
+              <Badge variant="secondary" className="text-xs">Beta</Badge>
+            </CardTitle>
+            <button
+              onClick={clearChat}
+              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1"
+              title="Clear visible chat"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear
+            </button>
+          </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+          {!historyLoaded && (
+            <div className="flex items-center justify-center py-6 text-muted-foreground text-sm gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading history…
+            </div>
+          )}
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -171,7 +251,7 @@ export default function AssistantPage() {
 
         {/* Starter prompts + input */}
         <div className="p-4 border-t space-y-3">
-          {messages.length === 1 && (
+          {historyLoaded && messages.filter((m) => m.role === "user").length === 0 && (
             <div className="flex flex-wrap gap-2">
               {STARTER_PROMPTS.map((prompt) => (
                 <button

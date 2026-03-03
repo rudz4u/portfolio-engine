@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, Briefcase, Activity } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { PortfolioCharts } from "./portfolio-charts"
 
 async function getPortfolioSummary(userId: string) {
   const supabase = await createClient()
@@ -67,6 +68,17 @@ async function getPortfolioSummary(userId: string) {
   }
 }
 
+async function getRecentOrders(userId: string) {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("orders")
+    .select("id, instrument_key, side, quantity, price, status, external_order_id, meta, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(5)
+  return data ?? []
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const {
@@ -76,6 +88,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/signin")
 
   const summary = await getPortfolioSummary(user.id)
+  const recentOrders = await getRecentOrders(user.id)
 
   return (
     <div className="space-y-6">
@@ -247,24 +260,83 @@ export default async function DashboardPage() {
               </Card>
             </div>
           </div>
+
+          {/* Portfolio Charts */}
+          <PortfolioCharts
+            segments={summary.segments}
+            totalInvested={summary.totalInvested}
+            topGainers={summary.topGainers}
+            topLosers={summary.topLosers}
+          />
         </>
       )}
 
-      {/* Recent Activity stub */}
+      {/* Recent Activity */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Recent Activity
           </CardTitle>
-          <CardDescription>
-            Order history and portfolio changes
-          </CardDescription>
+          <CardDescription>Last 5 orders from sandbox &amp; live trading</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-6">
-            No recent orders. Connect Upstox in Settings to start trading.
-          </p>
+          {recentOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              No orders yet. Use the Sandbox page to place test orders.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {recentOrders.map((order) => {
+                const tradingSymbol =
+                  (order.meta as Record<string, string>)?.trading_symbol ||
+                  order.instrument_key
+                const isGain = order.side === "BUY"
+                const statusColor =
+                  order.status === "PLACED"
+                    ? "bg-green-100 text-green-700"
+                    : order.status === "FAILED"
+                    ? "bg-red-100 text-red-600"
+                    : "bg-muted text-muted-foreground"
+                return (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between py-2 border-b last:border-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                          isGain
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-600"
+                        }`}
+                      >
+                        {order.side}
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium">{tradingSymbol}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {order.quantity} shares
+                          {order.price ? ` @ ₹${Number(order.price).toFixed(2)}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor}`}>
+                        {order.status}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(order.created_at).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

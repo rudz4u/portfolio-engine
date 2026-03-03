@@ -16,7 +16,11 @@ import {
   ShoppingCart,
   X,
   AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  CheckCircle2,
 } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
 
 interface UpstoxHolding {
@@ -37,6 +41,18 @@ export default function SandboxPage() {
   const [profile, setProfile] = useState<{ user_name: string; email: string } | null>(null)
   const [error, setError] = useState("")
   const [syncMsg, setSyncMsg] = useState("")
+
+  // Order form state
+  const [orderForm, setOrderForm] = useState<{
+    instrument_key: string
+    trading_symbol: string
+    quantity: string
+    side: "BUY" | "SELL"
+    order_type: "MARKET" | "LIMIT"
+    price: string
+  } | null>(null)
+  const [ordering, setOrdering] = useState(false)
+  const [orderResult, setOrderResult] = useState<{ success: boolean; message: string; order_id?: string } | null>(null)
 
   async function loadFromUpstox() {
     setLoading(true)
@@ -78,6 +94,51 @@ export default function SandboxPage() {
       setError("Sync request failed")
     }
     setSyncing(false)
+  }
+
+  function openOrderForm(h: UpstoxHolding, side: "BUY" | "SELL") {
+    setOrderResult(null)
+    setOrderForm({
+      instrument_key: h.isin || h.trading_symbol,
+      trading_symbol: h.trading_symbol,
+      quantity: "1",
+      side,
+      order_type: "MARKET",
+      price: h.last_price?.toFixed(2) ?? "0",
+    })
+  }
+
+  async function placeOrder() {
+    if (!orderForm) return
+    setOrdering(true)
+    setOrderResult(null)
+    try {
+      const res = await fetch("/api/orders/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instrument_key: orderForm.instrument_key,
+          trading_symbol: orderForm.trading_symbol,
+          quantity: Number(orderForm.quantity),
+          side: orderForm.side,
+          order_type: orderForm.order_type,
+          price: orderForm.order_type === "LIMIT" ? Number(orderForm.price) : undefined,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.status === "success") {
+        setOrderResult({
+          success: true,
+          message: data.message,
+          order_id: data.order_id,
+        })
+      } else {
+        setOrderResult({ success: false, message: data.message || "Order failed" })
+      }
+    } catch {
+      setOrderResult({ success: false, message: "Network error placing order" })
+    }
+    setOrdering(false)
   }
 
   return (
@@ -177,6 +238,7 @@ export default function SandboxPage() {
                     <th className="text-right py-2 px-2 font-medium">Avg Price</th>
                     <th className="text-right py-2 px-2 font-medium">LTP</th>
                     <th className="text-right py-2 px-2 font-medium">P&amp;L</th>
+                    <th className="text-right py-2 pl-2 font-medium">Trade</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -206,6 +268,28 @@ export default function SandboxPage() {
                         {(h.pnl || 0) >= 0 ? "+" : ""}
                         {formatCurrency(h.pnl || 0)}
                       </td>
+                      <td className="text-right py-2.5 pl-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-green-700 border-green-300 hover:bg-green-50"
+                            onClick={() => openOrderForm(h, "BUY")}
+                          >
+                            <TrendingUp className="h-3.5 w-3.5 mr-1" />
+                            Buy
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-red-700 border-red-300 hover:bg-red-50"
+                            onClick={() => openOrderForm(h, "SELL")}
+                          >
+                            <TrendingDown className="h-3.5 w-3.5 mr-1" />
+                            Sell
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -213,6 +297,174 @@ export default function SandboxPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+      {/* Order confirmation dialog */}
+      {orderForm && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <span
+                    className={`text-sm font-semibold px-2 py-0.5 rounded ${
+                      orderForm.side === "BUY"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {orderForm.side}
+                  </span>
+                  {orderForm.trading_symbol}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => { setOrderForm(null); setOrderResult(null) }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <CardDescription>Confirm sandbox test order</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {orderResult ? (
+                <div
+                  className={`rounded-md px-4 py-3 flex items-start gap-3 ${
+                    orderResult.success
+                      ? "bg-green-50 text-green-800"
+                      : "bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {orderResult.success ? (
+                    <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
+                  ) : (
+                    <X className="h-5 w-5 shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className="font-medium">
+                      {orderResult.success ? "Order Submitted" : "Order Failed"}
+                    </p>
+                    <p className="text-sm mt-0.5">{orderResult.message}</p>
+                    {orderResult.order_id && (
+                      <p className="text-xs mt-1 font-mono opacity-70">
+                        ID: {orderResult.order_id}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Quantity
+                      </label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={orderForm.quantity}
+                        onChange={(e) =>
+                          setOrderForm((prev) => prev ? { ...prev, quantity: e.target.value } : null)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Order Type
+                      </label>
+                      <select
+                        className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                        value={orderForm.order_type}
+                        onChange={(e) =>
+                          setOrderForm((prev) =>
+                            prev ? { ...prev, order_type: e.target.value as "MARKET" | "LIMIT" } : null
+                          )
+                        }
+                      >
+                        <option value="MARKET">MARKET</option>
+                        <option value="LIMIT">LIMIT</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {orderForm.order_type === "LIMIT" && (
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">
+                        Limit Price (₹)
+                      </label>
+                      <Input
+                        type="number"
+                        step="0.05"
+                        value={orderForm.price}
+                        onChange={(e) =>
+                          setOrderForm((prev) => prev ? { ...prev, price: e.target.value } : null)
+                        }
+                      />
+                    </div>
+                  )}
+
+                  <div className="bg-muted/50 rounded-md px-3 py-2 text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Side</span>
+                      <span
+                        className={`font-semibold ${orderForm.side === "BUY" ? "text-green-700" : "text-red-600"}`}
+                      >
+                        {orderForm.side}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Symbol</span>
+                      <span className="font-medium">{orderForm.trading_symbol}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Qty</span>
+                      <span>{orderForm.quantity}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Type</span>
+                      <span>{orderForm.order_type}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => { setOrderForm(null); setOrderResult(null) }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className={`flex-1 ${
+                        orderForm.side === "BUY"
+                          ? "bg-green-600 hover:bg-green-700"
+                          : "bg-red-600 hover:bg-red-700"
+                      }`}
+                      onClick={placeOrder}
+                      disabled={ordering || !orderForm.quantity || Number(orderForm.quantity) < 1}
+                    >
+                      {ordering ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Confirm {orderForm.side}
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {orderResult && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => { setOrderForm(null); setOrderResult(null) }}
+                >
+                  Close
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   )
