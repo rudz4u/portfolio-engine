@@ -9,17 +9,38 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Versioned static assets (content-addressed filenames) can be cached forever
 [[headers]]
-  for = "/_next/static/*"
+  for = "/_next/static/chunks/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
-  for = "/*.html"
+  for = "/_next/static/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/_next/static/media/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Next.js build manifests must NEVER be cached — they change on every deploy
+[[headers]]
+  for = "/_next/static/*/_buildManifest.js"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
-  for = "/"
+  for = "/_next/static/*/_ssgManifest.js"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+# All HTML pages (SSR + static shell): never store in CDN edge cache
+# This prevents Netlify Edge from serving stale HTML after a new deploy
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Netlify-CDN-Cache-Control = "no-store"
+    X-Content-Type-Options = "nosniff"
