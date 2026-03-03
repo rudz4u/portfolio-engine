@@ -22,7 +22,8 @@ export default function SignIn() {
       return
     }
     const returnTo = (router.query.next as string) || '/dashboard'
-    router.push(returnTo)
+    // Hard redirect so the browser sends the fresh session cookie to middleware
+    window.location.href = returnTo
   }
 
   async function handleMagicLink(e: React.FormEvent) {
