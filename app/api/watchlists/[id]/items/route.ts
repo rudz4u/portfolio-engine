@@ -72,7 +72,18 @@ export async function GET(
     }
   }
 
-  return NextResponse.json({ list, holdings })
+  // Fetch instrument metadata as a fallback for trading_symbol / company_name
+  // (covers watchlist items not in the user's portfolio, or items stored with ISIN)
+  let instruments: Record<string, unknown>[] = []
+  if (instrumentKeys.length > 0) {
+    const { data: instData } = await supabase
+      .from("instruments")
+      .select("instrument_key, trading_symbol, name, exchange")
+      .in("instrument_key", instrumentKeys)
+    instruments = (instData ?? []) as Record<string, unknown>[]
+  }
+
+  return NextResponse.json({ list, holdings, instruments })
 }
 
 // ─── POST /api/watchlists/[id]/items ── { instrument_key, trading_symbol, company_name, exchange }

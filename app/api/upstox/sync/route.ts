@@ -111,6 +111,15 @@ export async function POST() {
     }
   })
 
+  // ── Preserve user-set segments before we wipe holdings ──────────────────
+  const { data: existingHoldingsRows } = await admin
+    .from("holdings")
+    .select("instrument_key, segment")
+    .eq("portfolio_id", portfolio!.id)
+  const existingSegments = new Map<string, string | null>(
+    (existingHoldingsRows ?? []).map((row) => [row.instrument_key as string, row.segment as string | null])
+  )
+
   const holdingsPayload = upstoxHoldings.map((h) => {
     const isin          = (h.isin as string) || ""
     const symbol        = (h.trading_symbol as string) || (h.tradingsymbol as string) || isin
@@ -119,6 +128,11 @@ export async function POST() {
     const instrumentKey = (h.instrument_key as string) || symbol
     const qty           = (h.quantity as number) || 0
     const avgPrice      = (h.average_price as number) || 0
+    // For existing holdings, keep the user-set segment; only use Upstox value for brand-new ones
+    const derivedSegment = (h.instrument_type as string) || null
+    const segment = existingSegments.has(instrumentKey)
+      ? (existingSegments.get(instrumentKey) ?? derivedSegment)
+      : derivedSegment
     return {
       portfolio_id:    portfolio!.id,
       instrument_key:  instrumentKey,
@@ -129,7 +143,7 @@ export async function POST() {
       invested_amount: qty * avgPrice,
       ltp:             (h.last_price as number) || 0,
       unrealized_pl:   (h.pnl as number) || 0,
-      segment:         (h.instrument_type as string) || null,
+      segment,
       raw:             h,
     }
   })

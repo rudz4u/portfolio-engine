@@ -58,12 +58,19 @@ interface SearchResult {
   isin?:          string | null
 }
 
+interface InstrumentLookup {
+  instrument_key: string
+  trading_symbol: string
+  name:           string
+  exchange:       string
+}
+
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
 
-function resolveDisplay(item: WatchlistItem, holding?: HoldingData) {
+function resolveDisplay(item: WatchlistItem, holding?: HoldingData, instrument?: InstrumentLookup) {
   const raw  = (holding?.raw as Record<string, unknown>) || {}
-  const sym  = holding?.trading_symbol || (raw.trading_symbol as string) || item.trading_symbol
-  const name = holding?.company_name   || (raw.company_name   as string) || item.company_name
+  const sym  = holding?.trading_symbol || (raw.trading_symbol as string) || instrument?.trading_symbol || item.trading_symbol
+  const name = holding?.company_name   || (raw.company_name   as string) || instrument?.name           || item.company_name
   return { sym, name }
 }
 
@@ -168,11 +175,11 @@ function StockSearch({ listId, existingKeys, onAdded }: {
 
 /* ─── Watchlist Card ─────────────────────────────────────────────────────── */
 
-function WatchlistCard({ item, holding, listId, onRemoved }: {
-  item: WatchlistItem; holding?: HoldingData; listId: string; onRemoved: () => void
+function WatchlistCard({ item, holding, instrument, listId, onRemoved }: {
+  item: WatchlistItem; holding?: HoldingData; instrument?: InstrumentLookup; listId: string; onRemoved: () => void
 }) {
   const [removing, setRemoving] = useState(false)
-  const { sym, name } = resolveDisplay(item, holding)
+  const { sym, name } = resolveDisplay(item, holding, instrument)
 
   async function remove() {
     setRemoving(true)
@@ -250,6 +257,7 @@ export default function WatchlistPage() {
   const [watchlists,   setWatchlists]   = useState<WatchlistDef[]>([])
   const [activeId,     setActiveId]     = useState<string>("default")
   const [holdings,     setHoldings]     = useState<HoldingData[]>([])
+  const [instruments,  setInstruments]  = useState<InstrumentLookup[]>([])
   const [loading,      setLoading]      = useState(true)
   const [loadingItems, setLoadingItems] = useState(false)
 
@@ -282,6 +290,7 @@ export default function WatchlistPage() {
       const res  = await fetch(`/api/watchlists/${listId}/items`)
       const data = await res.json()
       setHoldings(data.holdings ?? [])
+      setInstruments((data.instruments ?? []) as InstrumentLookup[])
       if (data.list) setWatchlists((prev) => prev.map((l) => l.id === listId ? data.list : l))
     } finally { setLoadingItems(false) }
   }, [])
@@ -290,7 +299,8 @@ export default function WatchlistPage() {
   useEffect(() => { if (activeId) loadItems(activeId) }, [activeId, loadItems])
 
   const activeList   = watchlists.find((l) => l.id === activeId)
-  const holdingMap   = new Map(holdings.map((h) => [h.instrument_key, h]))
+  const holdingMap    = new Map(holdings.map((h) => [h.instrument_key, h]))
+  const instrumentMap = new Map(instruments.map((i) => [i.instrument_key, i]))
   const existingKeys = new Set(activeList?.items.map((i) => i.instrument_key) ?? [])
 
   async function createList() {
@@ -414,7 +424,9 @@ export default function WatchlistPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {activeList.items.map((item) => (
                 <WatchlistCard key={item.instrument_key} item={item}
-                  holding={holdingMap.get(item.instrument_key)} listId={activeId}
+                  holding={holdingMap.get(item.instrument_key)}
+                  instrument={instrumentMap.get(item.instrument_key)}
+                  listId={activeId}
                   onRemoved={() => loadItems(activeId)} />
               ))}
             </div>
