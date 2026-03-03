@@ -118,7 +118,7 @@ Portfolio Summary (live data):
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedOpenai}` },
           body: JSON.stringify({
-            model: preferredProvider === "openai" ? preferredLlm : "gpt-5.2",
+            model: preferredProvider === "openai" ? preferredLlm : "gpt-4o",
             messages: [
               { role: "system", content: fullSystemPrompt },
               { role: "user", content: message },

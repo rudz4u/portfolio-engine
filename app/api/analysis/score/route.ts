@@ -32,14 +32,15 @@ export async function GET(request: NextRequest) {
     .from("holdings")
     .select(`
       instrument_key,
+      trading_symbol,
+      company_name,
       quantity,
       avg_price,
       invested_amount,
       ltp,
       unrealized_pl,
       segment,
-      raw,
-      instruments(trading_symbol, name, exchange)
+      raw
     `)
     .eq("portfolio_id", portfolioId)
 
@@ -50,13 +51,13 @@ export async function GET(request: NextRequest) {
   // Map to HoldingInput
   const inputs: HoldingInput[] = holdings.map((h) => {
     const raw = (h.raw as Record<string, number>) || {}
-    const instRaw = h.instruments
-    const instObj = Array.isArray(instRaw) ? instRaw[0] : instRaw
-    const inst = (instObj as unknown as Record<string, string>) || {}
+    // trading_symbol + company_name are stored directly on holdings (migration 005)
+    const symbol = (h.trading_symbol as string) || h.instrument_key
+    const name   = (h.company_name   as string) || symbol
     return {
       instrument_key: h.instrument_key,
-      trading_symbol: inst.trading_symbol || h.instrument_key,
-      name: inst.name || h.instrument_key,
+      trading_symbol: symbol,
+      name,
       quantity: Number(h.quantity) || 0,
       avg_price: Number(h.avg_price) || 0,
       ltp: Number(h.ltp) || Number(h.avg_price) || 0,
