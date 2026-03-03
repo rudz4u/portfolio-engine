@@ -37,17 +37,25 @@ interface MoverEntry {
   pnl: number
 }
 
+interface HoldingForChart {
+  instrument_key: string
+  unrealized_pl?: number | null
+  raw?: Record<string, unknown> | null
+}
+
 interface PortfolioChartsProps {
   segments: Record<string, number>
   totalInvested: number
-  topGainers: { instrument_key: string; unrealized_pl?: number | null }[]
-  topLosers: { instrument_key: string; unrealized_pl?: number | null }[]
+  topGainers: HoldingForChart[]
+  topLosers: HoldingForChart[]
 }
 
-function shortSymbol(key: string) {
-  // "NSE_EQ|INE848E01016" → last segment, or trading_symbol if available
-  const parts = key.split("|")
-  const raw = parts[parts.length - 1] || key
+function shortSymbol(h: HoldingForChart): string {
+  const ts = (h.raw as Record<string, unknown> | null)?.trading_symbol as string | undefined
+  if (ts) return ts.length > 10 ? ts : ts
+  // fallback: strip exchange prefix from instrument_key
+  const parts = h.instrument_key.split("|")
+  const raw = parts[parts.length - 1] || h.instrument_key
   return raw.length > 10 ? raw.slice(0, 10) : raw
 }
 
@@ -71,8 +79,8 @@ export function PortfolioCharts({ segments, totalInvested, topGainers, topLosers
     .sort((a, b) => b.value - a.value)
 
   const moversData: MoverEntry[] = [
-    ...topGainers.map((h) => ({ symbol: shortSymbol(h.instrument_key), pnl: Number((h.unrealized_pl ?? 0).toFixed(0)) })),
-    ...topLosers.map((h) => ({ symbol: shortSymbol(h.instrument_key), pnl: Number((h.unrealized_pl ?? 0).toFixed(0)) })),
+    ...topGainers.map((h) => ({ symbol: shortSymbol(h), pnl: Number((h.unrealized_pl ?? 0).toFixed(0)) })),
+    ...topLosers.map((h) => ({ symbol: shortSymbol(h), pnl: Number((h.unrealized_pl ?? 0).toFixed(0)) })),
   ].sort((a, b) => b.pnl - a.pnl).slice(0, 10)
 
   return (

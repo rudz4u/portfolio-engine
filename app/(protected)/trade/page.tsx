@@ -11,15 +11,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
-  Loader2,
-  RefreshCw,
-  TrendingUp,
-  TrendingDown,
-  CheckCircle2,
-  X,
-  Clock,
-  Activity,
-  Wifi,
+  Loader2, RefreshCw, TrendingUp, TrendingDown,
+  CheckCircle2, X, Clock, Activity, Wifi,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
@@ -40,6 +33,8 @@ interface UpstoxHolding {
   day_change_percentage?: number
 }
 
+interface ProfileData { user_name: string; email: string }
+
 interface Order {
   id: string
   instrument_key: string
@@ -51,18 +46,48 @@ interface Order {
   meta?: Record<string, unknown>
 }
 
-/* ─── Main page ─────────────────────────────────────────────────────────── */
+type QuickRange = "1w" | "1m" | "3m" | "6m" | "1y" | "custom"
+
+/* ─── Quick date helper ─────────────────────────────────────────────────── */
+
+function isoDate(d: Date) {
+  return d.toISOString().slice(0, 10)
+}
+
+function startOfRange(range: QuickRange): { from: string; to: string } {
+  const now = new Date()
+  const to = isoDate(now)
+  const d = new Date()
+  switch (range) {
+    case "1w": d.setDate(d.getDate() - 7);   break
+    case "1m": d.setMonth(d.getMonth() - 1); break
+    case "3m": d.setMonth(d.getMonth() - 3); break
+    case "6m": d.setMonth(d.getMonth() - 6); break
+    case "1y": d.setFullYear(d.getFullYear() - 1); break
+    default:   d.setMonth(d.getMonth() - 1); break
+  }
+  return { from: isoDate(d), to }
+}
+
+const CACHE_KEY = "trade_live_holdings"
+const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
+
+/* ─── Component ─────────────────────────────────────────────────────────── */
 
 export default function TradePage() {
   const [loading, setLoading] = useState(false)
   const [holdings, setHoldings] = useState<UpstoxHolding[]>([])
-  const [profile, setProfile] = useState<{ user_name: string; email: string } | null>(null)
+  const [profile, setProfile] = useState<ProfileData | null>(null)
   const [error, setError] = useState("")
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [fromCache, setFromCache] = useState(false)
 
   // Order history
   const [orders, setOrders] = useState<Order[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
+  const [quickRange, setQuickRange] = useState<QuickRange>("1m")
+  const [dateFrom, setDateFrom] = useState(() => startOfRange("1m").from)
+  const [dateTo, setDateTo] = useState(() => isoDate(new Date()))
 
   // Order form
   const [orderForm, setOrderForm] = useState<{
@@ -75,15 +100,46 @@ export default function TradePage() {
   } | null>(null)
   const [placing, setPlacing] = useState(false)
   const [orderResult, setOrderResult] = useState<{
-    success: boolean
-    message: string
-    order_id?: string
+    success: boolean; message: string; order_id?: string
   } | null>(null)
 
+  /* ── Restore cached holdings on mount ── */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY)
+      if (raw) {
+        const { data, profile: cachedProfile, ts } = JSON.parse(raw) as {
+          data: UpstoxHolding[]; profile: ProfileData | null; ts: number
+        }
+        if (Date.now() - ts < CACHE_TTL_MS && data.length > 0) {
+          setHoldings(data)
+          setProfile(cachedProfile)
+          setLastRefresh(new Date(ts))
+          setFromCache(true)
+        }
+      }
+    } catch { /* ignore */ }
+  }, [])
+
+  /* ── Load orders on mount + when date range changes ── */
+  const loadOrders = useCallback(async (from: string, to: string) => {
+    setOrdersLoading(true)
+    try {
+      const res = await fetch(`/api/orders/history?limit=200&from=${from}&to=${to}`)
+      const data = await res.json()
+      if (res.ok && data.status === "success") setOrders(data.data || [])
+    } finally {
+      setOrdersLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadOrders(dateFrom, dateTo) }, [dateFrom, dateTo, loadOrders])
+
   /* ── Fetch live holdings ── */
-  const loadHoldings = useCallback(async () => {
+  const fetchHoldings = useCallback(async () => {
     setLoading(true)
     setError("")
+    setFromCache(false)
     try {
       const [profileRes, holdingsRes] = await Promise.all([
         fetch("/api/upstox/profile"),
@@ -92,39 +148,36 @@ export default function TradePage() {
       const profileData = await profileRes.json()
       const holdingsData = await holdingsRes.json()
 
-      if (profileRes.ok && profileData.status === "success") {
-        setProfile(profileData.data)
-      }
+      const prof = profileRes.ok && profileData.status === "success" ? profileData.data : null
+      if (prof) setProfile(prof)
+
       if (holdingsRes.ok && holdingsData.status === "success") {
-        setHoldings(holdingsData.data || [])
-        setLastRefresh(new Date())
+        const data: UpstoxHolding[] = holdingsData.data || []
+        setHoldings(data)
+        const ts = Date.now()
+        setLastRefresh(new Date(ts))
+        // Persist in localStorage
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ data, profile: prof, ts }))
+        } catch { /* ignore storage errors */ }
       } else {
-        setError(holdingsData.message || "Failed to load holdings")
+        setError(holdingsData.message || "Failed to load holdings from Upstox.")
       }
     } catch {
-      setError("Could not connect to Upstox. Check your access token in Settings.")
+      setError("Could not reach Upstox API. Verify your access token in Settings.")
     }
     setLoading(false)
   }, [])
 
-  /* ── Fetch order history ── */
-  const loadOrders = useCallback(async () => {
-    setOrdersLoading(true)
-    try {
-      const res = await fetch("/api/orders/history?limit=20")
-      const data = await res.json()
-      if (res.ok && data.status === "success") {
-        setOrders(data.data || [])
-      }
-    } finally {
-      setOrdersLoading(false)
+  /* ── Quick range selector ── */
+  function applyQuickRange(range: QuickRange) {
+    setQuickRange(range)
+    if (range !== "custom") {
+      const { from, to } = startOfRange(range)
+      setDateFrom(from)
+      setDateTo(to)
     }
-  }, [])
-
-  // Load orders on mount
-  useEffect(() => {
-    loadOrders()
-  }, [loadOrders])
+  }
 
   /* ── Place order ── */
   async function placeOrder() {
@@ -147,7 +200,7 @@ export default function TradePage() {
       const data = await res.json()
       if (res.ok && data.status === "success") {
         setOrderResult({ success: true, message: data.message, order_id: data.order_id })
-        loadOrders() // refresh order history
+        loadOrders(dateFrom, dateTo)
       } else {
         setOrderResult({ success: false, message: data.message || "Order failed" })
       }
@@ -169,12 +222,11 @@ export default function TradePage() {
     })
   }
 
-  /* ── Status badge for orders ── */
   function orderStatusBadge(status: string) {
-    const s = status?.toLowerCase()
-    if (s === "complete" || s === "filled")
+    const s = (status || "").toLowerCase()
+    if (s === "complete" || s === "filled" || s === "placed")
       return <Badge variant="success" className="text-xs">{status}</Badge>
-    if (s === "rejected" || s === "cancelled")
+    if (s === "rejected" || s === "cancelled" || s === "failed")
       return <Badge variant="destructive" className="text-xs">{status}</Badge>
     return <Badge variant="secondary" className="text-xs">{status}</Badge>
   }
@@ -184,7 +236,7 @@ export default function TradePage() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             Trade
@@ -194,20 +246,19 @@ export default function TradePage() {
             </span>
           </h1>
           <p className="text-muted-foreground mt-0.5">
-            Execute orders and monitor your live Upstox portfolio in real time.
+            Execute orders on your live Upstox portfolio.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2">
           {lastRefresh && (
-            <span className="text-xs text-muted-foreground hidden sm:block">
-              Updated {lastRefresh.toLocaleTimeString()}
+            <span className="text-xs text-muted-foreground">
+              {fromCache ? "Cached · " : ""}
+              {lastRefresh.toLocaleTimeString()}
             </span>
           )}
-          <Button onClick={loadHoldings} disabled={loading} variant="outline" size="sm">
-            {loading
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <RefreshCw className="h-3.5 w-3.5" />}
-            <span className="ml-1.5">{loading ? "Loading…" : "Load live data"}</span>
+          <Button onClick={fetchHoldings} disabled={loading} variant="outline" size="sm">
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            <span className="ml-1.5">{loading ? "Loading…" : holdings.length ? "Refresh" : "Load live data"}</span>
           </Button>
         </div>
       </div>
@@ -232,19 +283,15 @@ export default function TradePage() {
         </div>
       )}
 
-      {/* Live holdings */}
-      {holdings.length > 0 && (
+      {/* Live holdings table */}
+      {holdings.length > 0 ? (
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-4 w-4" />
-                  Live Holdings
-                </CardTitle>
-                <CardDescription>{holdings.length} positions from Upstox</CardDescription>
-              </div>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Live Holdings
+            </CardTitle>
+            <CardDescription>{holdings.length} positions · click Buy or Sell to trade</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -278,35 +325,29 @@ export default function TradePage() {
                         <td className="text-right py-2.5 px-2 tabular-nums font-medium">
                           ₹{h.last_price?.toFixed(2)}
                         </td>
-                        <td className={`text-right py-2.5 px-2 tabular-nums text-xs hidden sm:table-cell ${
+                        <td className={`text-right py-2.5 px-2 text-xs tabular-nums hidden sm:table-cell ${
                           dayChg >= 0 ? "text-green-600" : "text-red-500"
                         }`}>
                           {dayChg !== 0 ? `${dayChg >= 0 ? "+" : ""}${dayChg.toFixed(2)}%` : "—"}
                         </td>
                         <td className={`text-right py-2.5 px-2 ${(h.pnl || 0) >= 0 ? "text-green-600" : "text-red-500"}`}>
-                          <span className="tabular-nums">
-                            {(h.pnl || 0) >= 0 ? "+" : ""}{formatCurrency(h.pnl || 0)}
-                          </span>
+                          <span className="tabular-nums">{(h.pnl || 0) >= 0 ? "+" : ""}{formatCurrency(h.pnl || 0)}</span>
                         </td>
                         <td className="text-right py-2.5 pl-2">
                           <div className="flex items-center justify-end gap-1">
                             <Button
-                              size="sm"
-                              variant="outline"
+                              size="sm" variant="outline"
                               className="h-7 px-2 text-green-700 border-green-300 hover:bg-green-50 hover:border-green-400"
                               onClick={() => openOrderForm(h, "BUY")}
                             >
-                              <TrendingUp className="h-3 w-3 mr-1" />
-                              Buy
+                              <TrendingUp className="h-3 w-3 mr-1" /> Buy
                             </Button>
                             <Button
-                              size="sm"
-                              variant="outline"
+                              size="sm" variant="outline"
                               className="h-7 px-2 text-red-700 border-red-300 hover:bg-red-50 hover:border-red-400"
                               onClick={() => openOrderForm(h, "SELL")}
                             >
-                              <TrendingDown className="h-3 w-3 mr-1" />
-                              Sell
+                              <TrendingDown className="h-3 w-3 mr-1" /> Sell
                             </Button>
                           </div>
                         </td>
@@ -318,85 +359,150 @@ export default function TradePage() {
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {!holdings.length && !loading && !error && (
+      ) : !loading && !error ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
             <p className="font-medium">No live data loaded</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Click &ldquo;Load live data&rdquo; to fetch your current positions from Upstox.
+              Click <strong>Load live data</strong> to fetch your current positions from Upstox.
             </p>
+            <Button onClick={fetchHoldings} disabled={loading} className="mt-4">
+              Load live data
+            </Button>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
-      {/* Order history */}
+      {/* ── Order History ── */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Order History
               </CardTitle>
-              <CardDescription>Recent orders placed via this platform</CardDescription>
+              <CardDescription>Orders placed via BrokerAI</CardDescription>
             </div>
-            <Button size="sm" variant="ghost" onClick={loadOrders} disabled={ordersLoading}>
+            <Button size="sm" variant="ghost" onClick={() => loadOrders(dateFrom, dateTo)} disabled={ordersLoading}>
               {ordersLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             </Button>
           </div>
+
+          {/* Date range filters */}
+          <div className="flex items-center gap-1.5 flex-wrap mt-3">
+            {(["1w", "1m", "3m", "6m", "1y"] as QuickRange[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => applyQuickRange(r)}
+                className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                  quickRange === r
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {r === "1w" ? "1 Week" : r === "1m" ? "1 Month" : r === "3m" ? "3 Months" : r === "6m" ? "6 Months" : "1 Year"}
+              </button>
+            ))}
+            <button
+              onClick={() => setQuickRange("custom")}
+              className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                quickRange === "custom"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              Custom
+            </button>
+          </div>
+
+          {/* Custom date inputs */}
+          {quickRange === "custom" && (
+            <div className="flex items-center gap-2 mt-2">
+              <Input
+                type="date"
+                value={dateFrom}
+                max={dateTo}
+                className="h-8 text-xs w-36"
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={dateTo}
+                min={dateFrom}
+                max={isoDate(new Date())}
+                className="h-8 text-xs w-36"
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => loadOrders(dateFrom, dateTo)}
+              >
+                Apply
+              </Button>
+            </div>
+          )}
         </CardHeader>
+
         <CardContent>
           {ordersLoading && orders.length === 0 ? (
-            <div className="flex items-center justify-center py-6">
+            <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : orders.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-6">
-              No orders placed yet. Use the Buy / Sell buttons above.
+            <p className="text-center text-sm text-muted-foreground py-8">
+              No orders found for the selected period.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-muted-foreground text-xs">
-                    <th className="text-left py-2 pr-4 font-medium">Symbol</th>
-                    <th className="text-right py-2 px-2 font-medium">Side</th>
-                    <th className="text-right py-2 px-2 font-medium">Qty</th>
-                    <th className="text-right py-2 px-2 font-medium hidden sm:table-cell">Price</th>
-                    <th className="text-right py-2 px-2 font-medium">Status</th>
-                    <th className="text-right py-2 pl-2 font-medium hidden md:table-cell">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="py-2.5 pr-4 font-medium">{o.instrument_key}</td>
-                      <td className="text-right py-2.5 px-2">
-                        <span className={`text-xs font-semibold ${o.side === "BUY" ? "text-green-700" : "text-red-600"}`}>
-                          {o.side}
-                        </span>
-                      </td>
-                      <td className="text-right py-2.5 px-2 tabular-nums">{o.quantity}</td>
-                      <td className="text-right py-2.5 px-2 tabular-nums hidden sm:table-cell">
-                        {o.price ? `₹${o.price}` : "Market"}
-                      </td>
-                      <td className="text-right py-2.5 px-2">
-                        {orderStatusBadge(o.status)}
-                      </td>
-                      <td className="text-right py-2.5 pl-2 text-xs text-muted-foreground hidden md:table-cell">
-                        {new Date(o.created_at).toLocaleString("en-IN", {
-                          day: "numeric", month: "short",
-                          hour: "2-digit", minute: "2-digit",
-                        })}
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground text-xs">
+                      <th className="text-left py-2 pr-4 font-medium">Symbol</th>
+                      <th className="text-right py-2 px-2 font-medium">Side</th>
+                      <th className="text-right py-2 px-2 font-medium">Qty</th>
+                      <th className="text-right py-2 px-2 font-medium hidden sm:table-cell">Price</th>
+                      <th className="text-right py-2 px-2 font-medium">Status</th>
+                      <th className="text-right py-2 pl-2 font-medium hidden md:table-cell">Time</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {orders.map((o) => {
+                      const sym = (o.meta as Record<string, string>)?.trading_symbol || o.instrument_key
+                      return (
+                        <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="py-2.5 pr-4 font-medium">{sym}</td>
+                          <td className="text-right py-2.5 px-2">
+                            <span className={`text-xs font-bold ${o.side === "BUY" ? "text-green-700" : "text-red-600"}`}>
+                              {o.side}
+                            </span>
+                          </td>
+                          <td className="text-right py-2.5 px-2 tabular-nums">{o.quantity}</td>
+                          <td className="text-right py-2.5 px-2 tabular-nums hidden sm:table-cell">
+                            {o.price ? `₹${o.price}` : "Market"}
+                          </td>
+                          <td className="text-right py-2.5 px-2">{orderStatusBadge(o.status)}</td>
+                          <td className="text-right py-2.5 pl-2 text-xs text-muted-foreground hidden md:table-cell">
+                            {new Date(o.created_at).toLocaleString("en-IN", {
+                              day: "numeric", month: "short",
+                              hour: "2-digit", minute: "2-digit",
+                            })}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 text-right">
+                {orders.length} order{orders.length !== 1 ? "s" : ""} · {dateFrom} to {dateTo}
+              </p>
+            </>
           )}
         </CardContent>
       </Card>
@@ -410,21 +516,15 @@ export default function TradePage() {
                 <CardTitle className="flex items-center gap-2 text-base">
                   <span
                     className={`px-2 py-0.5 rounded text-xs font-bold ${
-                      orderForm.side === "BUY"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
+                      orderForm.side === "BUY" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                     }`}
                   >
                     {orderForm.side}
                   </span>
                   {orderForm.trading_symbol}
                 </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => { setOrderForm(null); setOrderResult(null) }}
-                >
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                  onClick={() => { setOrderForm(null); setOrderResult(null) }}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
@@ -434,29 +534,22 @@ export default function TradePage() {
             <CardContent className="space-y-4">
               {orderResult ? (
                 <>
-                  <div
-                    className={`rounded-md px-4 py-3 flex items-start gap-3 ${
-                      orderResult.success
-                        ? "bg-green-50 text-green-800"
-                        : "bg-destructive/10 text-destructive"
-                    }`}
-                  >
+                  <div className={`rounded-md px-4 py-3 flex items-start gap-3 ${
+                    orderResult.success ? "bg-green-50 text-green-800" : "bg-destructive/10 text-destructive"
+                  }`}>
                     {orderResult.success
                       ? <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
                       : <X className="h-5 w-5 shrink-0 mt-0.5" />}
                     <div>
-                      <p className="font-medium">
-                        {orderResult.success ? "Order Submitted" : "Order Failed"}
-                      </p>
+                      <p className="font-medium">{orderResult.success ? "Order Submitted" : "Order Failed"}</p>
                       <p className="text-sm mt-0.5">{orderResult.message}</p>
                       {orderResult.order_id && (
-                        <p className="text-xs mt-1 font-mono opacity-70">
-                          Order ID: {orderResult.order_id}
-                        </p>
+                        <p className="text-xs mt-1 font-mono opacity-70">ID: {orderResult.order_id}</p>
                       )}
                     </div>
                   </div>
-                  <Button variant="outline" className="w-full" onClick={() => { setOrderForm(null); setOrderResult(null) }}>
+                  <Button variant="outline" className="w-full"
+                    onClick={() => { setOrderForm(null); setOrderResult(null) }}>
                     Close
                   </Button>
                 </>
@@ -465,21 +558,15 @@ export default function TradePage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Quantity</label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={orderForm.quantity}
-                        onChange={(e) => setOrderForm((p) => p ? { ...p, quantity: e.target.value } : null)}
-                      />
+                      <Input type="number" min="1" value={orderForm.quantity}
+                        onChange={(e) => setOrderForm((p) => p ? { ...p, quantity: e.target.value } : null)} />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Order Type</label>
                       <select
                         className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                         value={orderForm.order_type}
-                        onChange={(e) =>
-                          setOrderForm((p) => p ? { ...p, order_type: e.target.value as "MARKET" | "LIMIT" } : null)
-                        }
+                        onChange={(e) => setOrderForm((p) => p ? { ...p, order_type: e.target.value as "MARKET" | "LIMIT" } : null)}
                       >
                         <option value="MARKET">MARKET</option>
                         <option value="LIMIT">LIMIT</option>
@@ -490,22 +577,17 @@ export default function TradePage() {
                   {orderForm.order_type === "LIMIT" && (
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Limit Price (₹)</label>
-                      <Input
-                        type="number"
-                        step="0.05"
-                        value={orderForm.price}
-                        onChange={(e) => setOrderForm((p) => p ? { ...p, price: e.target.value } : null)}
-                      />
+                      <Input type="number" step="0.05" value={orderForm.price}
+                        onChange={(e) => setOrderForm((p) => p ? { ...p, price: e.target.value } : null)} />
                     </div>
                   )}
 
-                  {/* Order summary */}
                   <div className="bg-muted/50 rounded-md px-3 py-3 text-sm space-y-1.5">
                     {[
-                      ["Side", <span key="s" className={`font-bold ${orderForm.side === "BUY" ? "text-green-700" : "text-red-600"}`}>{orderForm.side}</span>],
-                      ["Symbol", orderForm.trading_symbol],
+                      ["Side",     <span key="s" className={`font-bold ${orderForm.side === "BUY" ? "text-green-700" : "text-red-600"}`}>{orderForm.side}</span>],
+                      ["Symbol",   orderForm.trading_symbol],
                       ["Quantity", orderForm.quantity],
-                      ["Type", orderForm.order_type],
+                      ["Type",     orderForm.order_type],
                       ...(orderForm.order_type === "LIMIT" ? [["Limit", `₹${orderForm.price}`]] : []),
                     ].map(([label, value]) => (
                       <div key={String(label)} className="flex justify-between">
@@ -516,14 +598,13 @@ export default function TradePage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1" onClick={() => { setOrderForm(null); setOrderResult(null) }}>
+                    <Button variant="outline" className="flex-1"
+                      onClick={() => { setOrderForm(null); setOrderResult(null) }}>
                       Cancel
                     </Button>
                     <Button
                       className={`flex-1 font-semibold ${
-                        orderForm.side === "BUY"
-                          ? "bg-green-600 hover:bg-green-700"
-                          : "bg-red-600 hover:bg-red-700"
+                        orderForm.side === "BUY" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
                       }`}
                       onClick={placeOrder}
                       disabled={placing || !orderForm.quantity || Number(orderForm.quantity) < 1}

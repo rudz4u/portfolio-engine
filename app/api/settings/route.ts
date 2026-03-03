@@ -48,10 +48,15 @@ export async function GET() {
     brevo_key_set: Boolean(prefs.brevo_key),
     upstox_token_set: Boolean(prefs.upstox_access_token),
     upstox_token_expires_at: upstoxTokenExpiresAt,
-    preferred_llm: prefs.preferred_llm || "auto",
+    preferred_llm: prefs.preferred_llm || "brokerai",
+    ai_mode: prefs.ai_mode || "platform",  // "platform" | "byok"
     sandbox_mode: prefs.sandbox_mode !== "false",
-    email_digest: prefs.email_digest === "true",
-    notification_email: prefs.notification_email || "",
+    // Notifications
+    notification_emails: prefs.notification_emails || "",  // comma-separated, up to 4
+    notif_daily_digest:       prefs.notif_daily_digest !== "false",
+    notif_order_placed:       prefs.notif_order_placed !== "false",
+    notif_portfolio_alert:    prefs.notif_portfolio_alert === "true",
+    notif_price_alert:        prefs.notif_price_alert === "true",
   })
 }
 
@@ -66,7 +71,14 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const allowed = ["openai_key", "anthropic_key", "gemini_key", "brevo_key", "upstox_access_token", "preferred_llm", "sandbox_mode", "email_digest", "notification_email"]
+  const allowed = [
+    "openai_key", "anthropic_key", "gemini_key", "brevo_key",
+    "upstox_access_token", "preferred_llm", "ai_mode", "sandbox_mode",
+    // notification fields
+    "notification_emails",
+    "notif_daily_digest", "notif_order_placed",
+    "notif_portfolio_alert", "notif_price_alert",
+  ]
 
   // Get existing preferences
   const { data: existing } = await supabase

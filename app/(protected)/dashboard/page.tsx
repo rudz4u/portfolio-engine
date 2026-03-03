@@ -293,7 +293,7 @@ export default async function DashboardPage() {
         <CardContent>
           {recentOrders.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              No orders yet. Use the Sandbox page to place test orders.
+              No orders yet. Go to the Trade page to place orders.
             </p>
           ) : (
             <div className="space-y-2">

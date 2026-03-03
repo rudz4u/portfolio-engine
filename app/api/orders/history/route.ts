@@ -12,14 +12,30 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "10"), 50)
+  const limit = Math.min(parseInt(searchParams.get("limit") ?? "50"), 200)
 
-  const { data: orders, error } = await supabase
+  // Date range params
+  const fromParam = searchParams.get("from")   // ISO date string  e.g. "2025-01-01"
+  const toParam   = searchParams.get("to")     // ISO date string  e.g. "2025-12-31"
+
+  let query = supabase
     .from("orders")
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(limit)
+
+  if (fromParam) {
+    query = query.gte("created_at", new Date(fromParam).toISOString())
+  }
+  if (toParam) {
+    // Add 1 day so "to" is inclusive of the selected end date
+    const toDate = new Date(toParam)
+    toDate.setDate(toDate.getDate() + 1)
+    query = query.lt("created_at", toDate.toISOString())
+  }
+
+  const { data: orders, error } = await query
 
   if (error) {
     return NextResponse.json(
