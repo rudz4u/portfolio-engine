@@ -1,14 +1,16 @@
 "use client"
 
 import { usePathname, useRouter } from "next/navigation"
+import Link from "next/link"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { Briefcase, ChevronDown, Check } from "lucide-react"
+import { Briefcase, ChevronDown, Check, Plus } from "lucide-react"
 
 export interface PortfolioOption {
   id: string
@@ -27,8 +29,9 @@ function portfolioLabel(p: PortfolioOption, index: number): string {
 }
 
 /**
- * Shows a dropdown to switch between portfolios.
- * Renders nothing when the user has only one portfolio.
+ * Portfolio switcher dropdown.
+ * - With 1 portfolio: shows the current name + a hint to add more via Settings.
+ * - With 2+ portfolios: full switcher with all options.
  */
 export function PortfolioSwitcher({
   portfolios,
@@ -40,19 +43,14 @@ export function PortfolioSwitcher({
   const router = useRouter()
   const pathname = usePathname()
 
-  // Only render if the user has more than one portfolio
-  if (portfolios.length <= 1) return null
-
   const currentIndex = portfolios.findIndex((p) => p.id === currentId)
-  const current =
-    currentIndex >= 0 ? portfolios[currentIndex] : portfolios[0]
+  const current = currentIndex >= 0 ? portfolios[currentIndex] : portfolios[0]
+
+  if (!current) return null
 
   function switchTo(id: string) {
     const params = new URLSearchParams()
-    // Only set pid if it is not the default (first/most-recent) portfolio
-    if (id !== portfolios[0].id) {
-      params.set("pid", id)
-    }
+    if (id !== portfolios[0].id) params.set("pid", id)
     const qs = params.toString()
     router.push(qs ? `${pathname}?${qs}` : pathname)
   }
@@ -66,7 +64,9 @@ export function PortfolioSwitcher({
           <ChevronDown className="h-3 w-3 ml-0.5 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[200px]">
+
+      <DropdownMenuContent align="end" className="min-w-[220px]">
+        {/* All portfolios */}
         {portfolios.map((p, i) => (
           <DropdownMenuItem
             key={p.id}
@@ -93,6 +93,21 @@ export function PortfolioSwitcher({
             )}
           </DropdownMenuItem>
         ))}
+
+        <DropdownMenuSeparator />
+
+        {/* Add / manage link → Settings */}
+        <DropdownMenuItem asChild>
+          <Link
+            href="/settings"
+            className="flex items-center gap-2 text-muted-foreground"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {portfolios.length === 1
+              ? "Connect another account"
+              : "Manage portfolios"}
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
