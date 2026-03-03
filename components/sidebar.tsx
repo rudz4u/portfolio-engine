@@ -11,6 +11,7 @@ import {
   Bot,
   Menu,
   X,
+  Star,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -21,6 +22,7 @@ import { useRouter } from "next/navigation"
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+  { href: "/recommendations", label: "Recommendations", icon: Star },
   { href: "/sandbox", label: "Sandbox", icon: TrendingUp },
   { href: "/assistant", label: "AI Assistant", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },

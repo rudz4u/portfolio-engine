@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2, Save, TestTube2, CheckCircle2, XCircle } from "lucide-react"
+import { Loader2, Save, TestTube2, CheckCircle2, XCircle, Eye, EyeOff, Key } from "lucide-react"
 import { useToast } from "@/lib/hooks/use-toast"
 
 export default function SettingsPage() {
@@ -22,59 +22,86 @@ export default function SettingsPage() {
   const supabase = createClient()
 
   const [saving, setSaving] = useState(false)
+  const [savingKeys, setSavingKeys] = useState(false)
   const [testing, setTesting] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "unknown">("unknown")
 
-  const [upstoxToken, setUpstoxToken] = useState("")
   const [upstoxSandbox, setUpstoxSandbox] = useState(true)
   const [openaiKey, setOpenaiKey] = useState("")
   const [anthropicKey, setAnthropicKey] = useState("")
   const [geminiKey, setGeminiKey] = useState("")
-  const [tavilyKey, setTavilyKey] = useState("")
+  const [preferredLlm, setPreferredLlm] = useState("auto")
+  const [showKeys, setShowKeys] = useState(false)
+  const [keyStatus, setKeyStatus] = useState({
+    openai_key_set: false,
+    anthropic_key_set: false,
+    gemini_key_set: false,
+  })
 
   useEffect(() => {
     loadSettings()
   }, [])
 
   async function loadSettings() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { data } = await supabase
-      .from("user_settings")
-      .select("*")
-      .eq("user_id", user.id)
-      .single()
-
-    if (data?.preferences) {
-      const prefs = data.preferences as Record<string, unknown>
-      if (prefs.upstox_sandbox !== undefined) setUpstoxSandbox(prefs.upstox_sandbox as boolean)
+    const res = await fetch("/api/settings")
+    if (res.ok) {
+      const data = await res.json()
+      setKeyStatus({
+        openai_key_set: !!data.openai_key_set,
+        anthropic_key_set: !!data.anthropic_key_set,
+        gemini_key_set: !!data.gemini_key_set,
+      })
+      setPreferredLlm(data.preferred_llm || "auto")
+      setUpstoxSandbox(data.sandbox_mode !== false)
     }
   }
 
   async function handleSave() {
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { error } = await supabase
-      .from("user_settings")
-      .upsert({
-        user_id: user.id,
-        preferences: {
-          upstox_sandbox: upstoxSandbox,
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id)
-
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sandbox_mode: String(upstoxSandbox) }),
+    })
     setSaving(false)
-
-    if (error) {
-      toast({ title: "Error saving settings", description: error.message, variant: "destructive" })
+    if (res.ok) {
+      toast({ title: "Settings saved" })
     } else {
-      toast({ title: "Settings saved", description: "Your preferences have been updated." })
+      toast({ title: "Failed to save", variant: "destructive" })
     }
+  }
+
+  async function handleSaveKeys() {
+    setSavingKeys(true)
+    const body: Record<string, string> = { preferred_llm: preferredLlm }
+    if (openaiKey) body.openai_key = openaiKey
+    if (anthropicKey) body.anthropic_key = anthropicKey
+    if (geminiKey) body.gemini_key = geminiKey
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    setSavingKeys(false)
+    if (res.ok) {
+      toast({ title: "API keys saved" })
+      setOpenaiKey("")
+      setAnthropicKey("")
+      setGeminiKey("")
+      loadSettings()
+    } else {
+      toast({ title: "Failed to save keys", variant: "destructive" })
+    }
+  }
+
+  async function handleClearKey(key: string) {
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [key]: "" }),
+    })
+    toast({ title: `${key} cleared` })
+    loadSettings()
   }
 
   async function handleTestUpstox() {
@@ -219,29 +246,74 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* AI Keys info */}
+      {/* AI Keys */}
       <Card>
         <CardHeader>
-          <CardTitle>AI & Research Keys</CardTitle>
-          <CardDescription>
-            LLM and search API keys for the AI Assistant (set via Netlify env vars)
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {[
-            { label: "OpenAI API Key", envVar: "OPENAI_API_KEY" },
-            { label: "Anthropic API Key", envVar: "ANTHROPIC_API_KEY" },
-            { label: "Gemini API Key", envVar: "GEMINI_API_KEY" },
-            { label: "Tavily API Key", envVar: "TAVILY_API_KEY" },
-          ].map((item) => (
-            <div key={item.envVar} className="flex items-center justify-between py-1">
-              <span className="text-sm">{item.label}</span>
-              <code className="text-xs bg-muted px-2 py-1 rounded">{item.envVar}</code>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                AI Provider Keys
+              </CardTitle>
+              <CardDescription>
+                Your own LLM API keys — take precedence over server env vars.
+              </CardDescription>
             </div>
-          ))}
-          <p className="text-xs text-muted-foreground mt-2">
-            Configure these in your Netlify dashboard under Site Configuration → Environment Variables.
-          </p>
+            <Button variant="ghost" size="sm" onClick={() => setShowKeys(!showKeys)}>
+              {showKeys ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            {([
+              { label: "OpenAI", key: "openai_key_set" as const, clearKey: "openai_key" },
+              { label: "Anthropic", key: "anthropic_key_set" as const, clearKey: "anthropic_key" },
+              { label: "Gemini", key: "gemini_key_set" as const, clearKey: "gemini_key" },
+            ]).map(({ label, key, clearKey }) => (
+              <div key={key} className="flex items-center gap-1">
+                <Badge variant={keyStatus[key] ? "success" : "secondary"} className="flex items-center gap-1">
+                  {keyStatus[key] && <CheckCircle2 className="h-3 w-3" />}
+                  {label}
+                </Badge>
+                {keyStatus[key] && (
+                  <button onClick={() => handleClearKey(clearKey)} className="text-xs text-muted-foreground hover:text-destructive">✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm">OpenAI API Key</Label>
+              <Input type={showKeys ? "text" : "password"} placeholder={keyStatus.openai_key_set ? "sk-... (set — enter new to update)" : "sk-..."} value={openaiKey} onChange={(e) => setOpenaiKey(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Anthropic API Key</Label>
+              <Input type={showKeys ? "text" : "password"} placeholder={keyStatus.anthropic_key_set ? "sk-ant-... (set)" : "sk-ant-..."} value={anthropicKey} onChange={(e) => setAnthropicKey(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Google Gemini API Key</Label>
+              <Input type={showKeys ? "text" : "password"} placeholder={keyStatus.gemini_key_set ? "AIza... (set)" : "AIza..."} value={geminiKey} onChange={(e) => setGeminiKey(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-sm">Preferred LLM</Label>
+            <select value={preferredLlm} onChange={(e) => setPreferredLlm(e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="auto">Auto (best available)</option>
+              <option value="openai">OpenAI GPT-4o mini</option>
+              <option value="anthropic">Anthropic Claude Haiku</option>
+              <option value="gemini">Google Gemini Flash</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={handleSaveKeys} disabled={savingKeys}>
+              {savingKeys ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save Keys
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

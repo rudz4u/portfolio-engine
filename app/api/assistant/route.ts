@@ -47,47 +47,58 @@ export async function POST(request: NextRequest) {
 
   const fullSystemPrompt = SYSTEM_PROMPT + portfolioContext
 
+  // Resolve user-saved LLM keys (user prefs override env vars)
+  const { data: settingsRow } = await supabase
+    .from("user_settings")
+    .select("preferences")
+    .eq("user_id", user.id)
+    .single()
+  const prefs = (settingsRow?.preferences as Record<string, string>) || {}
+  const preferredLlm = prefs.preferred_llm || "auto"
+  const resolvedOpenai = prefs.openai_key || process.env.OPENAI_API_KEY || ""
+  const resolvedAnthropic = prefs.anthropic_key || process.env.ANTHROPIC_API_KEY || ""
+  const resolvedGemini = prefs.gemini_key || process.env.GOOGLE_GEMINI_API_KEY || ""
+
+  // Build ordered attempt list based on preferred_llm
+  type LLMProvider = "openai" | "anthropic" | "gemini"
+  const allProviders: LLMProvider[] = ["openai", "anthropic", "gemini"]
+  const orderedProviders: LLMProvider[] =
+    preferredLlm !== "auto" && allProviders.includes(preferredLlm as LLMProvider)
+      ? [preferredLlm as LLMProvider, ...allProviders.filter((p) => p !== preferredLlm)]
+      : allProviders
+
   let reply = ""
 
-  // Try OpenAI first
-  const openaiKey = process.env.OPENAI_API_KEY
-  if (openaiKey) {
-    try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${openaiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: fullSystemPrompt },
-            { role: "user", content: message },
-          ],
-          max_tokens: 800,
-          temperature: 0.7,
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        reply = data.choices?.[0]?.message?.content || ""
-      }
-    } catch {
-      console.error("OpenAI error, trying fallback")
+  for (const provider of orderedProviders) {
+    if (reply) break
+    if (provider === "openai" && resolvedOpenai) {
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedOpenai}` },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: fullSystemPrompt },
+              { role: "user", content: message },
+            ],
+            max_tokens: 800,
+            temperature: 0.7,
+          }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          reply = data.choices?.[0]?.message?.content || ""
+        }
+      } catch { console.error("OpenAI error") }
     }
-  }
-
-  // Try Anthropic Claude
-  if (!reply) {
-    const anthropicKey = process.env.ANTHROPIC_API_KEY
-    if (anthropicKey) {
+    if (provider === "anthropic" && resolvedAnthropic) {
       try {
         const res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-api-key": anthropicKey,
+            "x-api-key": resolvedAnthropic,
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
@@ -101,15 +112,13 @@ export async function POST(request: NextRequest) {
           const data = await res.json()
           reply = data.content?.[0]?.text || ""
         }
-      } catch {
-        console.error("Anthropic error, trying fallback")
-      }
+      } catch { console.error("Anthropic error") }
     }
   }
 
   // Try Google Gemini
   if (!reply) {
-    const geminiKey = process.env.GOOGLE_GEMINI_API_KEY
+    const geminiKey = resolvedGemini
     if (geminiKey) {
       try {
         const res = await fetch(
