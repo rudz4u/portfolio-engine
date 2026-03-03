@@ -15,6 +15,8 @@ import { UPSTOX_CONFIG, getUpstoxHeaders } from "@/lib/upstox"
 import { resolveUpstoxToken } from "@/lib/upstox-token"
 import {
   BrokerProvider,
+  HistoricalTrade,
+  HistoricalTradesPage,
   NormalizedOrder,
   NormalizedTrade,
   OrderHistoryEntry,
@@ -70,6 +72,24 @@ interface UpstoxTradeRaw {
   trade_id: string
   order_ref_id: string
   order_timestamp: string
+}
+
+interface UpstoxHistoricalTradeRaw {
+  exchange: string
+  segment: string
+  option_type: string | null
+  quantity: number
+  amount: number
+  trade_id: string
+  trade_date: string
+  transaction_type: string
+  scrip_name: string
+  strike_price: number | null
+  expiry: string | null
+  price: number
+  isin: string | null
+  symbol: string
+  instrument_token: string
 }
 
 /* ─── normalisation helpers ────────────────────────────────────────────── */
@@ -146,6 +166,28 @@ function normalizeHistoryEntry(raw: UpstoxOrderRaw): OrderHistoryEntry {
   }
 }
 
+function normalizeHistoricalTrade(raw: UpstoxHistoricalTradeRaw): HistoricalTrade {
+  return {
+    provider:         "upstox",
+    trade_id:         raw.trade_id,
+    trade_date:       raw.trade_date,
+    exchange:         raw.exchange,
+    segment:          raw.segment,
+    transaction_type: (raw.transaction_type?.toUpperCase() ?? "BUY") as "BUY" | "SELL",
+    trading_symbol:   raw.symbol,
+    scrip_name:       raw.scrip_name,
+    instrument_key:   raw.instrument_token,
+    isin:             raw.isin ?? null,
+    quantity:         raw.quantity,
+    price:            raw.price,
+    amount:           raw.amount,
+    option_type:      raw.option_type ?? null,
+    strike_price:     raw.strike_price ?? null,
+    expiry:           raw.expiry ?? null,
+    raw,
+  }
+}
+
 /* ─── Provider class ───────────────────────────────────────────────────── */
 
 export class UpstoxProvider implements BrokerProvider {
@@ -206,5 +248,37 @@ export class UpstoxProvider implements BrokerProvider {
     const entries = json?.data
     if (!Array.isArray(entries)) return []
     return entries.map(normalizeHistoryEntry)
+  }
+
+  async getHistoricalTrades(
+    startDate: string,
+    endDate: string,
+    segment = "EQ",
+    pageNumber = 1,
+    pageSize = 50,
+  ): Promise<HistoricalTradesPage> {
+    const params = new URLSearchParams({
+      start_date:  startDate,
+      end_date:    endDate,
+      page_number: String(pageNumber),
+      page_size:   String(pageSize),
+    })
+    if (segment) params.set("segment", segment)
+
+    const json = await this.apiGet<{
+      data: UpstoxHistoricalTradeRaw[]
+      meta_data: { page: { page_number: number; page_size: number; total_records: number; total_pages: number } }
+    }>(`/charges/historical-trades?${params}`)
+
+    const rows = Array.isArray(json?.data) ? json.data : []
+    const page = json?.meta_data?.page ?? { page_number: pageNumber, page_size: pageSize, total_records: rows.length, total_pages: 1 }
+
+    return {
+      data:          rows.map(normalizeHistoricalTrade),
+      page_number:   page.page_number,
+      page_size:     page.page_size,
+      total_records: page.total_records,
+      total_pages:   page.total_pages,
+    }
   }
 }

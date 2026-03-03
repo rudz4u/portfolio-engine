@@ -15,7 +15,7 @@ import {
   CheckCircle2, X, Clock, Activity, Wifi,
   ChevronDown, ChevronRight, Zap, History, AlertCircle,
 } from "lucide-react"
-import type { NormalizedOrder, NormalizedTrade, OrderHistoryEntry } from "@/lib/providers"
+import type { NormalizedOrder, NormalizedTrade, OrderHistoryEntry, HistoricalTrade } from "@/lib/providers"
 import { Input } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
 
@@ -36,17 +36,6 @@ interface UpstoxHolding {
 }
 
 interface ProfileData { user_name: string; email: string }
-
-interface Order {
-  id: string
-  instrument_key: string
-  side: "BUY" | "SELL"
-  quantity: number
-  price: number
-  status: string
-  created_at: string
-  meta?: Record<string, unknown>
-}
 
 type QuickRange = "1w" | "1m" | "3m" | "6m" | "1y" | "custom"
 
@@ -84,9 +73,15 @@ export default function TradePage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [fromCache, setFromCache] = useState(false)
 
-  // Order history
-  const [orders, setOrders] = useState<Order[]>([])
-  const [ordersLoading, setOrdersLoading] = useState(false)
+  // Historical trades (Upstox — up to 3 financial years)
+  const [historicalTrades, setHistoricalTrades] = useState<HistoricalTrade[]>([])
+  const [historicalLoading, setHistoricalLoading] = useState(false)
+  const [historicalError, setHistoricalError] = useState("")
+  const [historicalMeta, setHistoricalMeta] = useState<{
+    page_number: number; page_size: number; total_records: number; total_pages: number
+  } | null>(null)
+  const [historicalPage, setHistoricalPage] = useState(1)
+  const [historicalSegment, setHistoricalSegment] = useState("EQ")
   const [quickRange, setQuickRange] = useState<QuickRange>("1m")
   const [dateFrom, setDateFrom] = useState(() => startOfRange("1m").from)
   const [dateTo, setDateTo] = useState(() => isoDate(new Date()))
@@ -135,19 +130,41 @@ export default function TradePage() {
     } catch { /* ignore */ }
   }, [])
 
-  /* ── Load orders on mount + when date range changes ── */
-  const loadOrders = useCallback(async (from: string, to: string) => {
-    setOrdersLoading(true)
+  /* ── Load historical trades from Upstox ── */
+  const loadHistoricalTrades = useCallback(async (
+    from: string, to: string, segment: string, page: number,
+  ) => {
+    setHistoricalLoading(true)
+    setHistoricalError("")
     try {
-      const res = await fetch(`/api/orders/history?limit=200&from=${from}&to=${to}`)
+      const params = new URLSearchParams({
+        start_date: from, end_date: to,
+        segment, page: String(page), page_size: "50",
+        source: providerSource,
+      })
+      const res  = await fetch(`/api/trade/historical-trades?${params}`)
       const data = await res.json()
-      if (res.ok && data.status === "success") setOrders(data.data || [])
-    } finally {
-      setOrdersLoading(false)
+      if (res.ok && data.status === "success") {
+        setHistoricalTrades(data.data || [])
+        setHistoricalMeta({
+          page_number:   data.page_number,
+          page_size:     data.page_size,
+          total_records: data.total_records,
+          total_pages:   data.total_pages,
+        })
+      } else {
+        setHistoricalError(data.message || "Failed to load historical trades.")
+        setHistoricalTrades([])
+      }
+    } catch {
+      setHistoricalError("Could not reach broker API.")
     }
-  }, [])
+    setHistoricalLoading(false)
+  }, [providerSource])
 
-  useEffect(() => { loadOrders(dateFrom, dateTo) }, [dateFrom, dateTo, loadOrders])
+  useEffect(() => {
+    loadHistoricalTrades(dateFrom, dateTo, historicalSegment, historicalPage)
+  }, [dateFrom, dateTo, historicalSegment, historicalPage, loadHistoricalTrades])
 
   /* ── Load today's live order book from the broker ── */
   const loadLiveOrderBook = useCallback(async () => {
@@ -237,6 +254,7 @@ export default function TradePage() {
   /* ── Quick range selector ── */
   function applyQuickRange(range: QuickRange) {
     setQuickRange(range)
+    setHistoricalPage(1)
     if (range !== "custom") {
       const { from, to } = startOfRange(range)
       setDateFrom(from)
@@ -265,7 +283,7 @@ export default function TradePage() {
       const data = await res.json()
       if (res.ok && data.status === "success") {
         setOrderResult({ success: true, message: data.message, order_id: data.order_id })
-        loadOrders(dateFrom, dateTo)
+        loadHistoricalTrades(dateFrom, dateTo, historicalSegment, historicalPage)
       } else {
         setOrderResult({ success: false, message: data.message || "Order failed" })
       }
@@ -458,9 +476,9 @@ export default function TradePage() {
               </CardDescription>
             </div>
             <Button size="sm" variant="ghost"
-              onClick={() => { loadLiveOrderBook(); loadLiveTradeBook(); loadOrders(dateFrom, dateTo) }}
-              disabled={liveOrdersLoading || ordersLoading}>
-              {(liveOrdersLoading || ordersLoading)
+              onClick={() => { loadLiveOrderBook(); loadLiveTradeBook(); loadHistoricalTrades(dateFrom, dateTo, historicalSegment, historicalPage) }}
+              disabled={liveOrdersLoading || historicalLoading}>
+              {(liveOrdersLoading || historicalLoading)
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 : <RefreshCw className="h-3.5 w-3.5" />}
             </Button>
@@ -631,102 +649,161 @@ export default function TradePage() {
           {/* Divider */}
           <div className="border-t" />
 
-          {/* ── Section 2: Portfolio Engine DB history ── */}
+          {/* ── Section 2: Upstox Historical Trades (up to 3 financial years) ── */}
           <div>
             <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <History className="h-3 w-3" />
-                Past orders · Portfolio Engine
+                Trade History · Upstox
+                {historicalLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+                {!historicalLoading && historicalMeta && (
+                  <span className="font-normal normal-case tracking-normal">
+                    ({historicalMeta.total_records} trades)
+                  </span>
+                )}
               </h3>
-              {/* Date range filters */}
+
+              {/* Segment pills */}
               <div className="flex items-center gap-1.5 flex-wrap">
-                {(["1w", "1m", "3m", "6m", "1y"] as QuickRange[]).map((r) => (
-                  <button key={r} onClick={() => applyQuickRange(r)}
+                {(["ALL", "EQ", "FO", "COM", "CD"] as const).map((seg) => (
+                  <button key={seg} onClick={() => { setHistoricalSegment(seg === "ALL" ? "" : seg); setHistoricalPage(1) }}
                     className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
-                      quickRange === r
-                        ? "bg-primary text-primary-foreground border-primary"
+                      historicalSegment === (seg === "ALL" ? "" : seg)
+                        ? "bg-violet-500/20 text-violet-400 border-violet-500/40"
                         : "border-border text-muted-foreground hover:bg-muted"
                     }`}>
-                    {r === "1w" ? "1W" : r === "1m" ? "1M" : r === "3m" ? "3M" : r === "6m" ? "6M" : "1Y"}
+                    {seg}
                   </button>
                 ))}
-                <button onClick={() => setQuickRange("custom")}
+              </div>
+            </div>
+
+            {/* Date range filters */}
+            <div className="flex items-center gap-1.5 flex-wrap mb-3">
+              {(["1w", "1m", "3m", "6m", "1y"] as QuickRange[]).map((r) => (
+                <button key={r} onClick={() => applyQuickRange(r)}
                   className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
-                    quickRange === "custom"
+                    quickRange === r
                       ? "bg-primary text-primary-foreground border-primary"
                       : "border-border text-muted-foreground hover:bg-muted"
                   }`}>
-                  Custom
+                  {r === "1w" ? "1W" : r === "1m" ? "1M" : r === "3m" ? "3M" : r === "6m" ? "6M" : "1Y"}
                 </button>
-              </div>
+              ))}
+              <button onClick={() => setQuickRange("custom")}
+                className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                  quickRange === "custom"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                }`}>
+                Custom
+              </button>
             </div>
 
             {quickRange === "custom" && (
               <div className="flex items-center gap-2 mb-3">
                 <Input type="date" value={dateFrom} max={dateTo} className="h-8 text-xs w-36"
-                  onChange={(e) => setDateFrom(e.target.value)} />
+                  onChange={(e) => { setDateFrom(e.target.value); setHistoricalPage(1) }} />
                 <span className="text-xs text-muted-foreground">to</span>
                 <Input type="date" value={dateTo} min={dateFrom} max={isoDate(new Date())} className="h-8 text-xs w-36"
-                  onChange={(e) => setDateTo(e.target.value)} />
+                  onChange={(e) => { setDateTo(e.target.value); setHistoricalPage(1) }} />
                 <Button size="sm" variant="outline" className="h-8 text-xs"
-                  onClick={() => loadOrders(dateFrom, dateTo)}>Apply</Button>
+                  onClick={() => loadHistoricalTrades(dateFrom, dateTo, historicalSegment, 1)}>Apply</Button>
               </div>
             )}
 
-            {ordersLoading && orders.length === 0 ? (
+            {historicalError && (
+              <div className="flex items-start gap-2 rounded-md bg-destructive/10 text-destructive text-sm px-3 py-2.5 mb-3">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{historicalError}</span>
+                <button className="ml-auto underline underline-offset-2 shrink-0 hover:opacity-80"
+                  onClick={() => loadHistoricalTrades(dateFrom, dateTo, historicalSegment, historicalPage)}>Retry</button>
+              </div>
+            )}
+
+            {historicalLoading && historicalTrades.length === 0 ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ) : orders.length === 0 ? (
+            ) : !historicalLoading && historicalTrades.length === 0 && !historicalError ? (
               <p className="text-center text-sm text-muted-foreground py-6">
-                No orders placed via Portfolio Engine in this period.
+                No trades found for this period.
               </p>
-            ) : (
+            ) : historicalTrades.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-muted-foreground text-xs">
+                        <th className="text-left py-2 pr-4 font-medium">Date</th>
                         <th className="text-left py-2 pr-4 font-medium">Symbol</th>
                         <th className="text-right py-2 px-2 font-medium">Side</th>
                         <th className="text-right py-2 px-2 font-medium">Qty</th>
                         <th className="text-right py-2 px-2 font-medium hidden sm:table-cell">Price</th>
-                        <th className="text-right py-2 px-2 font-medium">Status</th>
-                        <th className="text-right py-2 pl-2 font-medium hidden md:table-cell">Time</th>
+                        <th className="text-right py-2 px-2 font-medium hidden md:table-cell">Amount</th>
+                        <th className="text-right py-2 pl-2 font-medium hidden md:table-cell">Exchange</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {orders.map((o) => {
-                        const sym = (o.meta as Record<string, string>)?.trading_symbol || o.instrument_key
-                        return (
-                          <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                            <td className="py-2.5 pr-4 font-medium">{sym}</td>
-                            <td className="text-right py-2.5 px-2">
-                              <span className={`text-xs font-bold ${o.side === "BUY" ? "text-emerald-400" : "text-red-400"}`}>
-                                {o.side}
-                              </span>
-                            </td>
-                            <td className="text-right py-2.5 px-2 tabular-nums">{o.quantity}</td>
-                            <td className="text-right py-2.5 px-2 tabular-nums hidden sm:table-cell">
-                              {o.price ? `₹${o.price}` : "Market"}
-                            </td>
-                            <td className="text-right py-2.5 px-2">{orderStatusBadge(o.status)}</td>
-                            <td className="text-right py-2.5 pl-2 text-xs text-muted-foreground hidden md:table-cell">
-                              {new Date(o.created_at).toLocaleString("en-IN", {
-                                day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-                              })}
-                            </td>
-                          </tr>
-                        )
-                      })}
+                      {historicalTrades.map((t) => (
+                        <tr key={t.trade_id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="py-2.5 pr-4 text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                            {new Date(t.trade_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}
+                          </td>
+                          <td className="py-2.5 pr-4">
+                            <div className="font-semibold">{t.trading_symbol}</div>
+                            {t.scrip_name && t.scrip_name !== t.trading_symbol && (
+                              <div className="text-xs text-muted-foreground truncate max-w-[140px]">{t.scrip_name}</div>
+                            )}
+                          </td>
+                          <td className="text-right py-2.5 px-2">
+                            <span className={`text-xs font-bold ${t.transaction_type === "BUY" ? "text-emerald-400" : "text-red-400"}`}>
+                              {t.transaction_type}
+                            </span>
+                          </td>
+                          <td className="text-right py-2.5 px-2 tabular-nums">{t.quantity}</td>
+                          <td className="text-right py-2.5 px-2 tabular-nums hidden sm:table-cell">
+                            ₹{t.price?.toFixed(2)}
+                          </td>
+                          <td className="text-right py-2.5 px-2 tabular-nums hidden md:table-cell">
+                            ₹{t.amount?.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="text-right py-2.5 pl-2 text-xs text-muted-foreground hidden md:table-cell">
+                            {t.exchange}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 text-right">
-                  {orders.length} order{orders.length !== 1 ? "s" : ""} · {dateFrom} to {dateTo}
-                </p>
+
+                {/* Pagination */}
+                {historicalMeta && historicalMeta.total_pages > 1 && (
+                  <div className="flex items-center justify-between mt-3">
+                    <p className="text-xs text-muted-foreground">
+                      Page {historicalMeta.page_number} of {historicalMeta.total_pages} · {historicalMeta.total_records} trades
+                    </p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        disabled={historicalPage <= 1 || historicalLoading}
+                        onClick={() => setHistoricalPage((p) => Math.max(1, p - 1))}>
+                        Prev
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        disabled={historicalPage >= historicalMeta.total_pages || historicalLoading}
+                        onClick={() => setHistoricalPage((p) => p + 1)}>
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {historicalMeta && historicalMeta.total_pages <= 1 && (
+                  <p className="text-xs text-muted-foreground mt-2 text-right">
+                    {historicalMeta.total_records} trade{historicalMeta.total_records !== 1 ? "s" : ""} · {dateFrom} to {dateTo}
+                  </p>
+                )}
               </>
-            )}
+            ) : null}
           </div>
 
         </CardContent>

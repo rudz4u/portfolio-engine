@@ -82,6 +82,40 @@ export interface OrderHistoryEntry {
   raw?: unknown
 }
 
+/** A historical trade record from the broker (up to 3 financial years) */
+export interface HistoricalTrade {
+  provider: string
+  trade_id: string
+  /** Date string "YYYY-MM-DD" */
+  trade_date: string
+  exchange: string
+  /** "EQ" | "FO" | "COM" | "CD" | "MF" */
+  segment: string
+  transaction_type: "BUY" | "SELL"
+  /** Upstox `symbol` field */
+  trading_symbol: string
+  scrip_name: string
+  /** Upstox `instrument_token` field */
+  instrument_key: string
+  isin: string | null
+  quantity: number
+  price: number
+  /** Total value = quantity × price */
+  amount: number
+  option_type: string | null
+  strike_price: number | null
+  expiry: string | null
+  raw?: unknown
+}
+
+export interface HistoricalTradesPage {
+  data: HistoricalTrade[]
+  page_number: number
+  page_size: number
+  total_records: number
+  total_pages: number
+}
+
 /* ─── Provider contract ────────────────────────────────────────────────── */
 
 /**
@@ -112,6 +146,18 @@ export interface BrokerProvider {
    * Note: only available for orders placed during the CURRENT trading session.
    */
   getOrderHistory(orderId: string): Promise<OrderHistoryEntry[]>
+
+  /**
+   * Historical trades up to 3 financial years with pagination.
+   * Upstox — GET /v2/charges/historical-trades
+   */
+  getHistoricalTrades(
+    startDate: string,
+    endDate: string,
+    segment?: string,
+    pageNumber?: number,
+    pageSize?: number,
+  ): Promise<HistoricalTradesPage>
 }
 
 /* ─── Provider error ───────────────────────────────────────────────────── */
