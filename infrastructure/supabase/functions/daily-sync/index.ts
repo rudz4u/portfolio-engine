@@ -90,13 +90,13 @@ function buildEmailHtml(
 
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><title>BrokerAI Daily Briefing</title></head>
+<head><meta charset="UTF-8"><title>InvestBuddy AI Daily Briefing</title></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;margin:0;padding:24px;">
   <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
 
     <!-- Header -->
     <div style="background:#0f172a;padding:24px 28px;">
-      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">📊 BrokerAI Daily Briefing</h1>
+      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">📊 InvestBuddy AI Daily Briefing</h1>
       <p style="margin:4px 0 0;color:#94a3b8;font-size:13px;">${runAt} IST &nbsp;·&nbsp; ${portfolioName}</p>
     </div>
 
@@ -150,7 +150,7 @@ function buildEmailHtml(
 
     <!-- Footer -->
     <div style="padding:16px 28px;font-size:11px;color:#9ca3af;border-top:1px solid #f3f4f6;margin-top:16px;">
-      This is an automated daily briefing from BrokerAI. Data sourced from Upstox. Not financial advice.
+      This is an automated daily briefing from InvestBuddy AI. Data sourced from your connected broker. Not financial advice.
       <br>View live dashboard → <a href="https://brokerai.rudz.in/dashboard" style="color:#6366f1;">brokerai.rudz.in</a>
     </div>
   </div>
@@ -174,7 +174,7 @@ async function sendBrevoEmail(
       "api-key": brevoKey,
     },
     body: JSON.stringify({
-      sender: { name: "BrokerAI", email: "noreply@brokerai.rudz.in" },
+      sender: { name: "InvestBuddy AI", email: "noreply@investbuddyai.com" },
       to: [{ email: toEmail, name: toName }],
       subject,
       htmlContent,
@@ -361,7 +361,7 @@ serve(async (req) => {
         if (email) {
           const totalPnL = upstoxHoldings.reduce((s, h) => s + h.pnl, 0)
           const pnlSign  = totalPnL >= 0 ? "+" : ""
-          const subject  = `📊 BrokerAI Morning Briefing — ${pnlSign}₹${Math.round(totalPnL)} today`
+          const subject  = `📊 InvestBuddy AI Morning Briefing — ${pnlSign}₹${Math.round(totalPnL)} today`
           const html     = buildEmailHtml(upstoxHoldings, portfolioName, runAt)
           const emailRes = await sendBrevoEmail(email, name, subject, html, brevoKey)
           if (emailRes.ok) {

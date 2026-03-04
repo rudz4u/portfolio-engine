@@ -88,7 +88,7 @@ export default function SignInForm() {
           <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center glow">
             <Zap className="h-5 w-5 text-white" strokeWidth={2.5} />
           </div>
-          <span className="text-2xl font-bold gradient-text">Broker<span className="text-white">AI</span></span>
+          <span className="text-2xl font-bold gradient-text">Invest<span className="text-white">Buddy AI</span></span>
         </div>
 
         <h2 className="text-4xl font-bold leading-tight text-white mb-4">
@@ -149,7 +149,7 @@ export default function SignInForm() {
           <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center glow">
             <Zap className="h-6 w-6 text-white" strokeWidth={2.5} />
           </div>
-          <span className="text-2xl font-bold gradient-text">BrokerAI</span>
+          <span className="text-2xl font-bold gradient-text">InvestBuddy AI</span>
           <p className="text-xs text-white/45">AI-Powered Equity Management</p>
         </div>
 

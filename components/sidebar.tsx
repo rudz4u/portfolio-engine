@@ -20,6 +20,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
+import { BetaBadge } from "@/components/beta-badge"
 import { useRouter } from "next/navigation"
 
 const navItems = [
@@ -43,12 +44,15 @@ function SidebarContent({ pathname, onNavClick, onSignOut }: SidebarContentProps
   return (
     <aside className="flex flex-col h-full w-64 bg-sidebar border-r border-sidebar-border">
       {/* ── Logo ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
         <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-lg glow-sm shrink-0">
           <Zap className="h-4.5 w-4.5 text-white" strokeWidth={2.5} />
         </div>
-        <div>
-          <span className="font-bold text-base tracking-tight gradient-text">BrokerAI</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-base tracking-tight gradient-text">InvestBuddy AI</span>
+            <BetaBadge tooltip />
+          </div>
           <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Quant · AI · Markets</p>
         </div>
       </div>
@@ -119,7 +123,7 @@ export function Sidebar() {
           <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
             <Zap className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
           </div>
-          <span className="font-bold text-sm gradient-text">BrokerAI</span>
+          <span className="font-bold text-sm gradient-text">InvestBuddy AI</span>
         </div>
         <Button
           variant="ghost"

@@ -8,32 +8,113 @@ const inter = Inter({
   display: "swap",
 })
 
+const APP_URL = "https://investbuddyai.com"
+const APP_NAME = "InvestBuddy AI"
+const DESCRIPTION =
+  "AI-powered equity portfolio management for Indian markets. Get quant-driven buy/sell signals, live P&L tracking, sector analytics, and AI recommendations — all in one platform. Supports Upstox, Zerodha and more."
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  themeColor: "#0f0f0f",
+  themeColor: "#080c18",
 }
 
 export const metadata: Metadata = {
-  title: "BrokerAI — AI-Powered Equity Management",
-  description:
-    "Intelligent portfolio management with AI-driven insights, quantitative analysis, and Upstox integration.",
+  metadataBase: new URL(APP_URL),
+
+  title: {
+    default: `${APP_NAME} — AI-Powered Equity Management (Beta)`,
+    template: `%s | ${APP_NAME}`,
+  },
+
+  description: DESCRIPTION,
+
+  keywords: [
+    "AI stock portfolio management India",
+    "quant analysis NSE BSE stocks",
+    "AI buy sell signals Indian equities",
+    "portfolio tracker India",
+    "Upstox portfolio management",
+    "Zerodha AI portfolio",
+    "stock recommendation AI",
+    "Indian equity management platform",
+    "RSI MACD stock signals India",
+    "composite quant score stocks",
+    "investment portfolio AI India",
+    "InvestBuddy AI",
+    "equity management software India",
+    "AI trading assistant India",
+    "portfolio analytics NSE",
+  ],
+
+  authors: [{ name: "InvestBuddy AI", url: APP_URL }],
+  creator: "InvestBuddy AI",
+  publisher: "InvestBuddy AI",
+
+  category: "Finance",
+
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    url: APP_URL,
+    siteName: APP_NAME,
+    title: `${APP_NAME} — AI-Powered Equity Management for Indian Markets`,
+    description: DESCRIPTION,
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: `${APP_NAME} — AI-Powered Equity Management for Indian Markets`,
+        type: "image/png",
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    site: "@investbuddyai",
+    creator: "@investbuddyai",
+    title: `${APP_NAME} — AI Equity Management for India`,
+    description: DESCRIPTION,
+    images: ["/opengraph-image"],
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+
+  alternates: {
+    canonical: APP_URL,
+  },
+
   manifest: "/manifest.json",
+
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "BrokerAI",
+    title: APP_NAME,
+  },
+
+  other: {
+    "mobile-web-app-capable": "yes",
+    "application-name": APP_NAME,
+    "msapplication-TileColor": "#080c18",
+    "msapplication-config": "/browserconfig.xml",
   },
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en-IN" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`}>{children}</body>
     </html>
   )

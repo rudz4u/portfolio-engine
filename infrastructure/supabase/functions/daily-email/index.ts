@@ -21,7 +21,7 @@ async function sendEmail(
       "api-key": apiKey,
     },
     body: JSON.stringify({
-      sender: { name: "BrokerAI", email: "noreply@brokerai.rudz.in" },
+      sender: { name: "InvestBuddy AI", email: "noreply@investbuddyai.com" },
       to: [{ email: toEmail, name: toName }],
       subject,
       htmlContent,
@@ -68,7 +68,7 @@ function buildHtml(
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
 <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
   <div style="background:#0f172a;padding:24px 28px">
-    <h1 style="margin:0;color:#f8fafc;font-size:20px;font-weight:700">BrokerAI</h1>
+    <h1 style="margin:0;color:#f8fafc;font-size:20px;font-weight:700">InvestBuddy AI</h1>
     <p style="margin:4px 0 0;color:#94a3b8;font-size:13px">Portfolio Digest — ${date}</p>
   </div>
   <div style="padding:24px 28px;border-bottom:1px solid #e2e8f0">
