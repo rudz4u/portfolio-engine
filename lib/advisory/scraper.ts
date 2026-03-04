@@ -85,7 +85,7 @@ async function fetchDirect(source: AdvisorySource): Promise<RawSourceContent[]> 
     const res = await fetch(source.website_url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; PortfolioEngineBot/1.0; +https://brokerai.rudz.in)",
+          "Mozilla/5.0 (compatible; InvestBuddyAIBot/1.0; +https://investbuddyai.com)",
         Accept: "text/html,application/xhtml+xml",
       },
       signal: controller.signal,

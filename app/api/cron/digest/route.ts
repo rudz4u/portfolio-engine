@@ -179,7 +179,7 @@ export async function POST(req: Request) {
     <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${ordersHtml}</tbody></table>
   </div>` : ""}
   <div style="padding:14px 28px;background:#f8fafc;border-top:1px solid #e2e8f0">
-    <p style="margin:0;font-size:12px;color:#94a3b8">${count} active holdings · <a href="https://brokerai.rudz.in/dashboard" style="color:#6366f1">Open Dashboard</a></p>
+    <p style="margin:0;font-size:12px;color:#94a3b8">${count} active holdings · <a href="https://investbuddyai.com/dashboard" style="color:#6366f1">Open Dashboard</a></p>
   </div>
 </div>
 </body></html>`
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
           "api-key": brevoKey,
         },
         body: JSON.stringify({
-          sender: { name: "BrokerAI", email: "noreply@brokerai.rudz.in" },
+          sender: { name: "InvestBuddy AI", email: "noreply@investbuddyai.com" },
           to: [{ email: toEmail, name: toName }],
           subject,
           htmlContent: html,

@@ -104,9 +104,9 @@ function buildHtml(
   <div style="padding:16px 28px;background:#f8fafc">
     <p style="margin:0;font-size:12px;color:#94a3b8">
       ${count} active holdings &nbsp;·&nbsp;
-      <a href="https://brokerai.rudz.in/dashboard" style="color:#6366f1;text-decoration:none">Open Dashboard</a>
+      <a href="https://investbuddyai.com/dashboard" style="color:#6366f1;text-decoration:none">Open Dashboard</a>
       &nbsp;·&nbsp;
-      <a href="https://brokerai.rudz.in/settings" style="color:#94a3b8;text-decoration:none">Unsubscribe</a>
+      <a href="https://investbuddyai.com/settings" style="color:#94a3b8;text-decoration:none">Unsubscribe</a>
     </p>
   </div>
 </div>

@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://brokerai.rudz.in"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://investbuddyai.com"
 
   try {
     const res = await fetch(`${appUrl}/api/cron/sync-all`, {

@@ -2,7 +2,7 @@
 export const UPSTOX_CONFIG = {
   clientId: process.env.UPSTOX_CLIENT_ID || "",
   clientSecret: process.env.UPSTOX_CLIENT_SECRET || "",
-  redirectUri: process.env.UPSTOX_REDIRECT_URI || "https://brokerai.rudz.in/api/oauth/upstox/callback",
+  redirectUri: process.env.UPSTOX_REDIRECT_URI || "https://investbuddyai.com/api/oauth/upstox/callback",
   accessToken: process.env.UPSTOX_ACCESS_TOKEN || "",
   sandbox: process.env.UPSTOX_SANDBOX === "true",
   baseUrl: "https://api.upstox.com/v2",

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   // causing all post-OAuth redirects to land on the wrong host.
   const redirectUri =
     UPSTOX_CONFIG.redirectUri ||
-    "https://brokerai.rudz.in/api/oauth/upstox/callback"
+    "https://investbuddyai.com/api/oauth/upstox/callback"
   const baseUrl = new URL(redirectUri).origin
 
   if (error || !code) {

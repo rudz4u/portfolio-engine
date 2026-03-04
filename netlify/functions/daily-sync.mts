@@ -16,7 +16,7 @@ export default async function handler() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
   // The live Next.js app URL — used to call /api/cron/digest after sync
-  const appUrl      = process.env.NEXT_PUBLIC_APP_URL || "https://brokerai.rudz.in"
+  const appUrl      = process.env.NEXT_PUBLIC_APP_URL || "https://investbuddyai.com"
 
   if (!supabaseUrl || !serviceKey) {
     console.error("[daily-sync] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")

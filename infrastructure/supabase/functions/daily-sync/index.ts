@@ -151,7 +151,7 @@ function buildEmailHtml(
     <!-- Footer -->
     <div style="padding:16px 28px;font-size:11px;color:#9ca3af;border-top:1px solid #f3f4f6;margin-top:16px;">
       This is an automated daily briefing from InvestBuddy AI. Data sourced from your connected broker. Not financial advice.
-      <br>View live dashboard → <a href="https://brokerai.rudz.in/dashboard" style="color:#6366f1;">brokerai.rudz.in</a>
+      <br>View live dashboard → <a href="https://investbuddyai.com/dashboard" style="color:#6366f1;">investbuddyai.com</a>
     </div>
   </div>
 </body>

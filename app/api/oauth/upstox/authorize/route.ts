@@ -17,7 +17,7 @@ export async function GET() {
   // The redirect URI MUST match exactly what is registered in the Upstox developer portal.
   const redirectUri =
     UPSTOX_CONFIG.redirectUri ||
-    "https://brokerai.rudz.in/api/oauth/upstox/callback"
+    "https://investbuddyai.com/api/oauth/upstox/callback"
 
   const params = new URLSearchParams({
     response_type: "code",

@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     )
 
   // ── 3. Trigger advisory scan pipeline ────────────────────────────────
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://brokerai.rudz.in"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://investbuddyai.com"
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
   const scanStart = Date.now()

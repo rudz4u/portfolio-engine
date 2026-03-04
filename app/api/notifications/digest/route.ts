@@ -21,7 +21,7 @@ async function sendBrevoEmail(
       "api-key": apiKey,
     },
     body: JSON.stringify({
-      sender: { name: "BrokerAI", email: "noreply@brokerai.rudz.in" },
+      sender: { name: "InvestBuddy AI", email: "noreply@investbuddyai.com" },
       to: [{ email: toEmail, name: toName }],
       subject,
       htmlContent,
@@ -141,9 +141,9 @@ function buildDigestHtml(summary: {
     <div style="padding:16px 28px;background:#f8fafc">
       <p style="margin:0;font-size:12px;color:#94a3b8">
         ${summary.count} active holdings &nbsp;·&nbsp;
-        <a href="https://brokerai.rudz.in/dashboard" style="color:#6366f1;text-decoration:none">Open Dashboard</a>
+        <a href="https://investbuddyai.com/dashboard" style="color:#6366f1;text-decoration:none">Open Dashboard</a>
         &nbsp;·&nbsp;
-        <a href="https://brokerai.rudz.in/settings" style="color:#94a3b8;text-decoration:none">Unsubscribe</a>
+        <a href="https://investbuddyai.com/settings" style="color:#94a3b8;text-decoration:none">Unsubscribe</a>
       </p>
     </div>
   </div>

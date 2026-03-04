@@ -9,7 +9,7 @@ import type { Config } from "@netlify/functions"
  */
 export async function runAdvisoryScan() {
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const appUrl      = process.env.NEXT_PUBLIC_APP_URL || "https://brokerai.rudz.in"
+  const appUrl      = process.env.NEXT_PUBLIC_APP_URL || "https://investbuddyai.com"
 
   if (!serviceKey) {
     console.error("[advisory-scan] Missing SUPABASE_SERVICE_ROLE_KEY")
