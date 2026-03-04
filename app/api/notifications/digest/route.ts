@@ -180,7 +180,7 @@ export async function GET() {
     .from("user_settings").select("preferences").eq("user_id", user.id).single()
   const prefs = (settingsRow?.preferences as Record<string, string> | null) || {}
 
-  const brevoKey = prefs.brevo_key || process.env.BREVO_API_KEY || ""
+  const brevoKey = process.env.BREVO_API_KEY || prefs.brevo_key || ""
   const senderEmail = process.env.BREVO_SENDER_EMAIL || "noreply@investbuddyai.com"
   const senderName  = process.env.BREVO_SENDER_NAME  || "InvestBuddy AI"
 
@@ -190,7 +190,7 @@ export async function GET() {
   return NextResponse.json({
     status: "ok",
     diagnostics: {
-      brevo_key_source:   prefs.brevo_key ? "user_settings" : process.env.BREVO_API_KEY ? "env_var" : "MISSING",
+      brevo_key_source:   process.env.BREVO_API_KEY ? "env_var" : prefs.brevo_key ? "user_settings" : "MISSING",
       brevo_key_set:      !!brevoKey,
       sender_email:       senderEmail,
       sender_name:        senderName,
@@ -233,8 +233,8 @@ async function handleDigest(request: Request) {
 
   const prefsPre = (settingsRowPre?.preferences as Record<string, string> | null) || {}
 
-  // Allow user-supplied Brevo key first, fall back to server env
-  const brevoKey = prefsPre.brevo_key || process.env.BREVO_API_KEY || ""
+  // Server env var wins; fall back to user-supplied key stored in settings
+  const brevoKey = process.env.BREVO_API_KEY || prefsPre.brevo_key || ""
 
   if (!brevoKey) {
     return NextResponse.json(
