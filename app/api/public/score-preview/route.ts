@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 
+// ── Synthetic demo scores for well-known NSE symbols ─────────────────────────
+// Shown when the instruments table is empty (fresh deploy / not yet seeded).
+// These are plausible quant scores for illustrative purposes only.
+const DEMO_SYMBOLS: Record<string, { name: string; exchange: string; score: number }> = {
+  RELIANCE:   { name: "Reliance Industries Ltd",           exchange: "NSE", score: 72 },
+  INFY:       { name: "Infosys Ltd",                       exchange: "NSE", score: 68 },
+  TCS:        { name: "Tata Consultancy Services Ltd",     exchange: "NSE", score: 75 },
+  HDFCBANK:   { name: "HDFC Bank Ltd",                     exchange: "NSE", score: 71 },
+  ICICIBANK:  { name: "ICICI Bank Ltd",                    exchange: "NSE", score: 73 },
+  SBIN:       { name: "State Bank of India",               exchange: "NSE", score: 66 },
+  IRFC:       { name: "Indian Railway Finance Corp Ltd",   exchange: "NSE", score: 65 },
+  ADANIENT:   { name: "Adani Enterprises Ltd",             exchange: "NSE", score: 58 },
+  ADANIPORTS: { name: "Adani Ports & SEZ Ltd",             exchange: "NSE", score: 61 },
+  WIPRO:      { name: "Wipro Ltd",                         exchange: "NSE", score: 62 },
+  BAJFINANCE: { name: "Bajaj Finance Ltd",                 exchange: "NSE", score: 69 },
+  TITAN:      { name: "Titan Company Ltd",                 exchange: "NSE", score: 74 },
+  MARUTI:     { name: "Maruti Suzuki India Ltd",           exchange: "NSE", score: 70 },
+  SUNPHARMA:  { name: "Sun Pharmaceutical Industries Ltd", exchange: "NSE", score: 67 },
+  LTIM:       { name: "LTIMindtree Ltd",                   exchange: "NSE", score: 64 },
+  KOTAKBANK:  { name: "Kotak Mahindra Bank Ltd",           exchange: "NSE", score: 70 },
+  ASIANPAINT: { name: "Asian Paints Ltd",                  exchange: "NSE", score: 63 },
+  NESTLEIND:  { name: "Nestlé India Ltd",                  exchange: "NSE", score: 76 },
+  ULTRACEMCO: { name: "UltraTech Cement Ltd",              exchange: "NSE", score: 66 },
+  POWERGRID:  { name: "Power Grid Corporation of India",   exchange: "NSE", score: 60 },
+}
+
 // Simple in-memory rate limiter: IP → { count, resetAt }
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const RATE_LIMIT = 10
@@ -56,20 +82,50 @@ export async function GET(req: NextRequest) {
       .ilike("symbol", `${symbol}%`)
       .limit(3)
 
-    if (!fuzzy || fuzzy.length === 0) {
+    if (fuzzy && fuzzy.length > 0) {
+      // Return suggestions from live DB
+      const symbols = (fuzzy as { symbol: string }[]).map((i) => i.symbol)
       return NextResponse.json({
         found: false,
         symbol,
-        message: `${symbol} is not yet in our universe. Sign up to request it.`,
+        suggestions: symbols,
+        message: `Did you mean: ${symbols.join(", ")}?`,
       })
     }
-    // Return suggestions
-    const symbols = (fuzzy as { symbol: string }[]).map((i) => i.symbol)
+
+    // ── Synthetic fallback: return demo score for well-known symbols ──────
+    const demo = DEMO_SYMBOLS[symbol]
+    if (demo) {
+      const { signal, color } = scoreToSignal(demo.score)
+      return NextResponse.json({
+        found: true,
+        symbol,
+        name: demo.name,
+        exchange: demo.exchange,
+        composite_score: demo.score,
+        signal,
+        signal_color: color,
+        is_preview: true,
+        is_demo: true,
+        note: "Sign up to see live quant scores, full breakdown, and AI-powered recommendations.",
+      })
+    }
+
+    // ── Fuzzy suggestions from demo map for partial matches ───────────────
+    const demoMatches = Object.keys(DEMO_SYMBOLS).filter((s) => s.startsWith(symbol))
+    if (demoMatches.length > 0) {
+      return NextResponse.json({
+        found: false,
+        symbol,
+        suggestions: demoMatches.slice(0, 3),
+        message: `Did you mean: ${demoMatches.slice(0, 3).join(", ")}?`,
+      })
+    }
+
     return NextResponse.json({
       found: false,
       symbol,
-      suggestions: symbols,
-      message: `Did you mean: ${symbols.join(", ")}?`,
+      message: `${symbol} is not yet in our universe. Sign up to request it.`,
     })
   }
 

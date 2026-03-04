@@ -9,16 +9,22 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, TrendingDown, PieChart as PieIcon, BarChart2, Activity, RefreshCw } from "lucide-react"
+import { TrendingUp, TrendingDown, PieChart as PieIcon, BarChart2, Activity, RefreshCw, Terminal, Cpu, Radio } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SectorCorrelationHeatmap } from "./sector-correlation"
 
-/* ─── palette ──────────────────────────────────────────────── */
+/* ─── neon sci-fi palette ──────────────────────────────────── */
 const COLORS = [
-  "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b",
-  "#ef4444", "#3b82f6", "#ec4899", "#84cc16",
-  "#f97316", "#6366f1", "#14b8a6", "#a855f7", "#e11d48",
+  "#00ffcc", "#7c3aed", "#06b6d4", "#f59e0b",
+  "#f43f5e", "#3b82f6", "#a3e635", "#e879f9",
+  "#fb923c", "#38bdf8", "#4ade80", "#c084fc", "#fbbf24",
 ]
+
+/* ─── neon chart config ─────────────────────────────────────── */
+const CHART_GRID = "rgba(0,255,200,0.06)"
+const CHART_TICK = "rgba(0,255,200,0.45)"
+const CHART_GAIN = "#00ffcc"
+const CHART_LOSS = "#f43f5e"
 
 /* ─── types ─────────────────────────────────────────────────── */
 interface HoldingRow {
@@ -52,7 +58,7 @@ const fmtCr = (n: number) => {
   return `₹${n.toFixed(0)}`
 }
 
-/* ─── custom tooltip ──────────────────────────────────────────── */
+/* ─── terminal tooltips ────────────────────────────────────────── */
 function DarkTooltip({ active, payload, label }: {
   active?: boolean
   payload?: Array<{ name: string; value: number; color?: string }>
@@ -60,13 +66,13 @@ function DarkTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-lg border border-border/60 bg-card/95 backdrop-blur px-3 py-2 shadow-xl text-xs space-y-1">
-      {label && <p className="font-semibold text-foreground mb-1">{label}</p>}
+    <div className="rounded border border-[#00ffcc]/30 bg-[#01100a]/95 backdrop-blur px-3 py-2 shadow-xl text-xs space-y-1 font-mono">
+      {label && <p className="text-[#00ffcc]/70 mb-1 uppercase tracking-wider text-[10px]">▶ {label}</p>}
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full shrink-0" style={{ background: p.color || "#8b5cf6" }} />
-          <span className="text-muted-foreground">{p.name}:</span>
-          <span className="font-medium text-foreground">{fmtCr(p.value)}</span>
+          <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: p.color || "#00ffcc" }} />
+          <span className="text-[#00ffcc]/50">{p.name}:</span>
+          <span className="font-medium text-[#00ffcc]">{fmtCr(p.value)}</span>
         </div>
       ))}
     </div>
@@ -81,9 +87,9 @@ function PctTooltip({ active, payload, label }: {
   if (!active || !payload?.length) return null
   const v = payload[0]?.value ?? 0
   return (
-    <div className="rounded-lg border border-border/60 bg-card/95 backdrop-blur px-3 py-2 shadow-xl text-xs">
-      <p className="font-semibold text-foreground mb-1">{label}</p>
-      <p className={v >= 0 ? "text-emerald-400" : "text-red-400"}>
+    <div className="rounded border border-[#00ffcc]/30 bg-[#01100a]/95 backdrop-blur px-3 py-2 shadow-xl text-xs font-mono">
+      <p className="text-[#00ffcc]/70 mb-1 uppercase tracking-wider text-[10px]">▶ {label}</p>
+      <p className={v >= 0 ? "text-[#00ffcc]" : "text-[#f43f5e]"}>
         {v >= 0 ? "+" : ""}{v.toFixed(2)}%
       </p>
     </div>
@@ -289,15 +295,26 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header — Command Center */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold gradient-text">Analytics</h1>
-          <p className="text-muted-foreground mt-0.5">{rows.length} holdings across {segmentAlloc.length} segments</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Terminal className="h-4 w-4 text-primary" />
+            <span className="text-[10px] font-mono text-primary/60 uppercase tracking-[0.2em]">Portfolio · Command Center</span>
+            <span className="flex items-center gap-1 text-[10px] font-mono">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-400/70">LIVE</span>
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold holo-text">Analytics</h1>
+          <p className="text-muted-foreground/60 mt-0.5 font-mono text-xs">
+            <span className="text-primary/60">&gt;_</span> {rows.length} HOLDINGS · {segmentAlloc.length} SEGMENTS
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading}
+          className="font-mono text-xs border-primary/30 hover:border-primary/60 hover:text-primary">
           <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          REFRESH
         </Button>
       </div>
 
@@ -308,15 +325,15 @@ export default function AnalyticsPage() {
               <Skeleton key={i} className="h-20 rounded-xl" />
             ))
           : kpis.map((k) => (
-              <Card key={k.label} className="card-elevated">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    {k.icon}
-                    <span className="text-xs">{k.label}</span>
-                  </div>
-                  <p className={`text-xl font-bold tabular-nums ${k.color}`}>{k.value}</p>
-                </CardContent>
-              </Card>
+              <div key={k.label}
+                className="relative rounded-lg border border-[#00ffcc]/20 bg-[#010d07]/80 p-4 overflow-hidden group hover:border-[#00ffcc]/40 transition-colors">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#00ffcc]/[0.03] to-transparent" />
+                <div className="flex items-center gap-2 text-[#00ffcc]/50 mb-1">
+                  {k.icon}
+                  <span className="text-[10px] font-mono uppercase tracking-widest">{k.label}</span>
+                </div>
+                <p className={`text-xl font-bold tabular-nums font-mono ${k.color}`}>{k.value}</p>
+              </div>
             ))}
       </div>
 
@@ -324,10 +341,10 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Segment Allocation donut */}
-        <Card className="card-elevated">
+        <Card className="glow-border-card glass">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <PieIcon className="h-4 w-4 text-primary" /> Segment Allocation
+            <CardTitle className="text-sm font-mono font-semibold flex items-center gap-2 text-[#00ffcc]/80 uppercase tracking-widest">
+              <PieIcon className="h-4 w-4" /> Segment Allocation
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -384,10 +401,10 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Segment P&L bar */}
-        <Card className="card-elevated">
+        <Card className="glow-border-card glass">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <BarChart2 className="h-4 w-4 text-primary" /> P&amp;L by Segment
+            <CardTitle className="text-sm font-mono font-semibold flex items-center gap-2 text-[#00ffcc]/80 uppercase tracking-widest">
+              <BarChart2 className="h-4 w-4" /> P&amp;L by Segment
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -400,11 +417,11 @@ export default function AnalyticsPage() {
                   data={segmentAlloc}
                   margin={{ top: 0, right: 10, left: 4, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.06)" />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={CHART_GRID} />
                   <XAxis
                     type="number"
                     tickFormatter={fmtCr}
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 10, fill: CHART_TICK, fontFamily: "monospace" }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -412,15 +429,15 @@ export default function AnalyticsPage() {
                     type="category"
                     dataKey="name"
                     width={85}
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 10, fill: CHART_TICK, fontFamily: "monospace" }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <Tooltip content={<DarkTooltip />} />
-                  <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" />
+                  <ReferenceLine x={0} stroke="rgba(0,255,200,0.2)" />
                   <Bar dataKey="pnl" name="P&L" radius={[0, 4, 4, 0]}>
                     {segmentAlloc.map((s, i) => (
-                      <Cell key={i} fill={s.pnl >= 0 ? "#10b981" : "#ef4444"} fillOpacity={0.85} />
+                      <Cell key={i} fill={s.pnl >= 0 ? CHART_GAIN : CHART_LOSS} fillOpacity={0.85} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -434,12 +451,12 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Top 10 gainers */}
-        <Card className="card-elevated">
+        <Card className="glow-border-card glass">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-400" />
+            <CardTitle className="text-sm font-mono font-semibold flex items-center gap-2 text-[#00ffcc]/80 uppercase tracking-widest">
+              <TrendingUp className="h-4 w-4" />
               Top Gainers
-              <Badge variant="secondary" className="ml-auto text-xs">{top10Gainers.length}</Badge>
+              <Badge variant="secondary" className="ml-auto text-xs font-mono border border-[#00ffcc]/20 bg-[#00ffcc]/10 text-[#00ffcc]/70">{top10Gainers.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -454,11 +471,11 @@ export default function AnalyticsPage() {
                   data={top10Gainers}
                   margin={{ top: 0, right: 8, left: 4, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.06)" />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={CHART_GRID} />
                   <XAxis
                     type="number"
                     tickFormatter={fmtCr}
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 10, fill: CHART_TICK, fontFamily: "monospace" }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -466,12 +483,12 @@ export default function AnalyticsPage() {
                     type="category"
                     dataKey="symbol"
                     width={72}
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 10, fill: CHART_TICK, fontFamily: "monospace" }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <Tooltip content={<DarkTooltip />} />
-                  <Bar dataKey="pl_value" name="P&L" fill="#10b981" fillOpacity={0.85} radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="pl_value" name="P&L" fill={CHART_GAIN} fillOpacity={0.85} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -479,12 +496,12 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Top 10 losers */}
-        <Card className="card-elevated">
+        <Card className="glow-border-card glass">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-red-400" />
+            <CardTitle className="text-sm font-mono font-semibold flex items-center gap-2 text-[#f43f5e]/80 uppercase tracking-widest">
+              <TrendingDown className="h-4 w-4" />
               Top Losers
-              <Badge variant="secondary" className="ml-auto text-xs">{top10Losers.length}</Badge>
+              <Badge variant="secondary" className="ml-auto text-xs font-mono border border-[#f43f5e]/20 bg-[#f43f5e]/10 text-[#f43f5e]/70">{top10Losers.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -499,11 +516,11 @@ export default function AnalyticsPage() {
                   data={top10Losers}
                   margin={{ top: 0, right: 8, left: 4, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.06)" />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={CHART_GRID} />
                   <XAxis
                     type="number"
                     tickFormatter={fmtCr}
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 10, fill: CHART_TICK, fontFamily: "monospace" }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -511,12 +528,12 @@ export default function AnalyticsPage() {
                     type="category"
                     dataKey="symbol"
                     width={72}
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 10, fill: CHART_TICK, fontFamily: "monospace" }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <Tooltip content={<DarkTooltip />} />
-                  <Bar dataKey="pl_value" name="P&L" fill="#ef4444" fillOpacity={0.85} radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="pl_value" name="P&L" fill={CHART_LOSS} fillOpacity={0.85} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -526,12 +543,12 @@ export default function AnalyticsPage() {
       </div>
 
       {/* P&L % leaderboard */}
-      <Card className="card-elevated">
+      <Card className="glow-border-card glass">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" />
+          <CardTitle className="text-sm font-mono font-semibold flex items-center gap-2 text-[#00ffcc]/80 uppercase tracking-widest">
+            <Activity className="h-4 w-4" />
             Return % — Best &amp; Worst Performers
-            <span className="text-xs font-normal text-muted-foreground ml-1">(holdings &gt; ₹1K invested)</span>
+            <span className="text-[10px] font-normal text-[#00ffcc]/40 ml-1 normal-case tracking-normal">(holdings &gt; ₹1K)</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -544,11 +561,11 @@ export default function AnalyticsPage() {
                 data={top20ByPct}
                 margin={{ top: 0, right: 50, left: 4, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.06)" />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={CHART_GRID} />
                 <XAxis
                   type="number"
                   tickFormatter={(v) => `${v.toFixed(0)}%`}
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 10, fill: CHART_TICK, fontFamily: "monospace" }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -556,15 +573,15 @@ export default function AnalyticsPage() {
                   type="category"
                   dataKey="symbol"
                   width={72}
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 10, fill: CHART_TICK, fontFamily: "monospace" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip content={<PctTooltip />} />
-                <ReferenceLine x={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} />
+                <ReferenceLine x={0} stroke="rgba(0,255,200,0.25)" strokeWidth={1.5} />
                 <Bar dataKey="pl_pct" name="Return %" radius={[0, 4, 4, 0]}>
                   {top20ByPct.map((h, i) => (
-                    <Cell key={i} fill={h.pl_pct >= 0 ? "#10b981" : "#ef4444"} fillOpacity={0.85} />
+                    <Cell key={i} fill={h.pl_pct >= 0 ? CHART_GAIN : CHART_LOSS} fillOpacity={0.85} />
                   ))}
                 </Bar>
               </BarChart>
@@ -574,10 +591,10 @@ export default function AnalyticsPage() {
       </Card>
 
       {/* Segment table summary */}
-      <Card className="card-elevated">
+      <Card className="glow-border-card glass">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <BarChart2 className="h-4 w-4 text-primary" /> Segment Summary
+          <CardTitle className="text-sm font-mono font-semibold flex items-center gap-2 text-[#00ffcc]/80 uppercase tracking-widest">
+            <BarChart2 className="h-4 w-4" /> Segment Summary
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -587,21 +604,21 @@ export default function AnalyticsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm font-mono">
                 <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="text-left py-2 text-xs text-muted-foreground font-medium">Segment</th>
-                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">Invested</th>
-                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">Allocation</th>
-                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">P&amp;L</th>
-                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">Return</th>
+                  <tr className="border-b border-[#00ffcc]/20">
+                    <th className="text-left py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">Segment</th>
+                    <th className="text-right py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">Invested</th>
+                    <th className="text-right py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">Allocation</th>
+                    <th className="text-right py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">P&amp;L</th>
+                    <th className="text-right py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">Return</th>
                   </tr>
                 </thead>
                 <tbody>
                   {segmentAlloc.map((s, i) => {
                     const returnPct = s.invested > 0 ? (s.pnl / s.invested) * 100 : 0
                     return (
-                      <tr key={s.name} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                      <tr key={s.name} className="border-b border-[#00ffcc]/10 hover:bg-[#00ffcc]/5 transition-colors">
                         <td className="py-2.5 flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
                           {s.name}
@@ -619,7 +636,7 @@ export default function AnalyticsPage() {
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t border-border/50 font-semibold">
+                  <tr className="border-t border-[#00ffcc]/30 font-semibold text-[#00ffcc]/80">
                     <td className="py-2.5">Total</td>
                     <td className="text-right py-2.5 tabular-nums">{fmtCr(totalInvested)}</td>
                     <td className="text-right py-2.5">100%</td>
@@ -640,33 +657,33 @@ export default function AnalyticsPage() {
       {/* Risk & Concentration Metrics */}
       {/* Sector Concentration Card */}
       {!loading && segmentConcentration.length > 0 && (
-        <Card className="card-elevated">
+        <Card className="glow-border-card glass">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <PieIcon className="h-4 w-4 text-primary" /> Sector Concentration
-              <span className="text-xs font-normal text-muted-foreground ml-1">
-                (within-segment HHI — lower is more distributed)
+            <CardTitle className="text-sm font-mono font-semibold flex items-center gap-2 text-[#00ffcc]/80 uppercase tracking-widest">
+              <Cpu className="h-4 w-4" /> Sector Concentration
+              <span className="text-[10px] font-normal text-[#00ffcc]/40 ml-1 normal-case tracking-normal">
+                (HHI — lower is better)
               </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm font-mono">
                 <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="text-left py-2 text-xs text-muted-foreground font-medium">Segment</th>
-                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">Stocks</th>
-                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">Weight</th>
-                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">HHI</th>
-                    <th className="text-right py-2 text-xs text-muted-foreground font-medium">Concentration</th>
-                    <th className="text-left py-2 text-xs text-muted-foreground font-medium pl-4">Top Holding</th>
+                  <tr className="border-b border-[#00ffcc]/20">
+                    <th className="text-left py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">Segment</th>
+                    <th className="text-right py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">Stocks</th>
+                    <th className="text-right py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">Weight</th>
+                    <th className="text-right py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">HHI</th>
+                    <th className="text-right py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest">Signal</th>
+                    <th className="text-left py-2 text-[10px] text-[#00ffcc]/50 font-medium uppercase tracking-widest pl-4">Top Stock</th>
                   </tr>
                 </thead>
                 <tbody>
                   {segmentConcentration.map((s) => (
                     <tr
                       key={s.segment}
-                      className="border-b border-border/20 hover:bg-muted/20 transition-colors"
+                      className="border-b border-[#00ffcc]/10 hover:bg-[#00ffcc]/5 transition-colors"
                     >
                       <td className="py-2.5 font-medium">{s.segment}</td>
                       <td className="text-right py-2.5 tabular-nums">{s.count}</td>
@@ -720,10 +737,10 @@ export default function AnalyticsPage() {
       )}
 
       {!loading && riskMetrics && (
-        <Card className="card-elevated">
+        <Card className="glow-border-card glass">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Activity className="h-4 w-4 text-primary" /> Risk &amp; Concentration Metrics
+            <CardTitle className="text-sm font-mono font-semibold flex items-center gap-2 text-[#00ffcc]/80 uppercase tracking-widest">
+              <Radio className="h-4 w-4" /> Risk &amp; Concentration Metrics
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -731,18 +748,18 @@ export default function AnalyticsPage() {
 
               {/* Cross-sectional Sharpe proxy */}
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Cross-sect. Sharpe</p>
+                <p className="text-[10px] font-mono text-[#00ffcc]/50 uppercase tracking-widest">Cross-sect. Sharpe</p>
                 <p className={`text-xl font-bold tabular-nums ${riskMetrics.sharpeProxy >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                   {riskMetrics.sharpeProxy.toFixed(2)}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] font-mono text-[#00ffcc]/40">
                   μ={riskMetrics.mean.toFixed(1)}% σ={riskMetrics.stdDev.toFixed(1)}%
                 </p>
               </div>
 
               {/* HHI Concentration */}
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">HHI Concentration</p>
+                <p className="text-[10px] font-mono text-[#00ffcc]/50 uppercase tracking-widest">HHI Conc.</p>
                 <p className={`text-xl font-bold tabular-nums ${
                   riskMetrics.hhi < 0.1 ? "text-emerald-400"
                   : riskMetrics.hhi < 0.18 ? "text-amber-400"
@@ -761,31 +778,31 @@ export default function AnalyticsPage() {
 
               {/* Win Rate */}
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Win Rate</p>
+                <p className="text-[10px] font-mono text-[#00ffcc]/50 uppercase tracking-widest">Win Rate</p>
                 <p className={`text-xl font-bold tabular-nums ${riskMetrics.winRate >= 50 ? "text-emerald-400" : "text-amber-400"}`}>
                   {riskMetrics.winRate.toFixed(1)}%
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] font-mono text-[#00ffcc]/40">
                   {riskMetrics.winners}/{riskMetrics.total} positive
                 </p>
               </div>
 
               {/* Best performer */}
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Best Return</p>
+                <p className="text-[10px] font-mono text-[#00ffcc]/50 uppercase tracking-widest">Best Return</p>
                 <p className="text-xl font-bold tabular-nums text-emerald-400">
                   +{riskMetrics.best.pl_pct.toFixed(1)}%
                 </p>
-                <p className="text-xs text-muted-foreground truncate">{riskMetrics.best.symbol}</p>
+                <p className="text-[10px] font-mono text-[#00ffcc]/40 truncate">{riskMetrics.best.symbol}</p>
               </div>
 
               {/* Worst performer */}
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Worst Return</p>
+                <p className="text-[10px] font-mono text-[#00ffcc]/50 uppercase tracking-widest">Worst Return</p>
                 <p className="text-xl font-bold tabular-nums text-red-400">
                   {riskMetrics.worst.pl_pct.toFixed(1)}%
                 </p>
-                <p className="text-xs text-muted-foreground truncate">{riskMetrics.worst.symbol}</p>
+                <p className="text-[10px] font-mono text-[#00ffcc]/40 truncate">{riskMetrics.worst.symbol}</p>
               </div>
 
             </div>
