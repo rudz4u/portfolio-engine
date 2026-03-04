@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { BetaBadge } from "@/components/beta-badge"
 import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "framer-motion"
 
 const navItems = [
   { href: "/dashboard",        label: "Dashboard",        icon: LayoutDashboard },
@@ -82,7 +83,11 @@ function SidebarContent({ pathname, onNavClick, onSignOut }: SidebarContentProps
               />
               {item.label}
               {active && (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+                <motion.span
+                  layoutId="active-nav-indicator"
+                  className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
               )}
             </Link>
           )
@@ -140,22 +145,35 @@ export function Sidebar() {
       </div>
 
       {/* ── Mobile sidebar ────────────────────────────────────────────── */}
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 lg:hidden transition-transform duration-200",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            key="mobile-sidebar"
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            className="fixed inset-y-0 left-0 z-50 lg:hidden"
+          >
+            <SidebarContent pathname={pathname} onNavClick={() => setMobileOpen(false)} onSignOut={handleSignOut} />
+          </motion.div>
         )}
-      >
-        <SidebarContent pathname={pathname} onNavClick={() => setMobileOpen(false)} onSignOut={handleSignOut} />
-      </div>
+      </AnimatePresence>
 
-      {/* ── Mobile overlay ────────────────────────────────────────────── */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      {/* ── Mobile overlay ─────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            key="mobile-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 }

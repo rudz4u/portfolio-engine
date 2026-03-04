@@ -21,7 +21,7 @@ async function sendBrevoEmail(
       "api-key": apiKey,
     },
     body: JSON.stringify({
-      sender: { name: "InvestBuddy AI", email: "noreply@brokerai.rudz.in" },
+      sender: { name: "InvestBuddy AI", email: "noreply@investbuddyai.com" },
       to: [{ email: toEmail, name: toName }],
       subject,
       htmlContent,
@@ -87,8 +87,8 @@ function buildDigestHtml(summary: {
   <div style="max-width:560px;margin:32px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
     <!-- Header -->
     <div style="background:#0f172a;padding:24px 28px">
-      <h1 style="margin:0;color:#f8fafc;font-size:20px;font-weight:700">BrokerAI</h1>
-      <p style="margin:4px 0 0;color:#94a3b8;font-size:13px">Portfolio Digest — ${summary.date}</p>
+      <h1 style="margin:0;color:#f8fafc;font-size:20px;font-weight:700">InvestBuddy AI</h1>
+      <p style="margin:4px 0 0;color:#94a3b8;font-size:13px">Portfolio Digest &mdash; ${summary.date}</p>
     </div>
 
     <!-- KPIs -->
