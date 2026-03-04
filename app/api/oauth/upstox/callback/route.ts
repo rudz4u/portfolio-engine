@@ -16,7 +16,16 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get("code")
   const error = searchParams.get("error")
-  const baseUrl = new URL(request.url).origin
+
+  // Derive the canonical base URL from the registered redirect URI (which is always
+  // the production/custom domain). Falling back to request.url.origin is unreliable
+  // on Netlify because the function runtime resolves it to the internal deploy URL
+  // (e.g. https://<hash>--portfoliomanagerai.netlify.app) instead of the custom domain,
+  // causing all post-OAuth redirects to land on the wrong host.
+  const redirectUri =
+    UPSTOX_CONFIG.redirectUri ||
+    "https://brokerai.rudz.in/api/oauth/upstox/callback"
+  const baseUrl = new URL(redirectUri).origin
 
   if (error || !code) {
     console.error("[OAuth callback] Upstox returned error:", error)
@@ -28,10 +37,6 @@ export async function GET(request: NextRequest) {
   }
 
   // ── 1. Exchange code for access token ────────────────────────────────────
-  const redirectUri =
-    UPSTOX_CONFIG.redirectUri ||
-    "https://brokerai.rudz.in/api/oauth/upstox/callback"
-
   let accessToken: string
   try {
     const tokenRes = await fetch(UPSTOX_CONFIG.tokenUrl, {
