@@ -141,7 +141,7 @@ export async function POST(req: Request) {
     const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;margin:0;padding:0;background:#f1f5f9">
 <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)">
   <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:28px">
-    <h1 style="margin:0;color:#fff;font-size:22px">BrokerAI — Morning Digest</h1>
+    <h1 style="margin:0;color:#fff;font-size:22px">InvestBuddy AI — Morning Digest</h1>
     <p style="margin:4px 0 0;color:rgba(255,255,255,.8);font-size:13px">${date}</p>
   </div>
   <div style="padding:20px 28px">
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
           "api-key": brevoKey,
         },
         body: JSON.stringify({
-          sender: { name: "InvestBuddy AI", email: "noreply@brokerai.rudz.in" },
+          sender: { name: "InvestBuddy AI", email: "noreply@investbuddyai.com" },
           to: [{ email: toEmail, name: toName }],
           subject,
           htmlContent: html,

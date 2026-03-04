@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Loader2, Zap, TrendingUp, ShieldCheck, BarChart2, ArrowRight } from "lucide-react"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -154,7 +155,12 @@ export default function SignInForm() {
         </div>
 
         {/* Card */}
-        <div className="w-full max-w-sm">
+        <motion.div
+          className="w-full max-w-sm"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        >
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-2xl shadow-black/40 p-8">
 
             {/* Header */}
@@ -257,6 +263,36 @@ export default function SignInForm() {
                 {mode === "signin" ? "Sign In" : "Create Account"}
               </Button>
             </form>
+
+            {/* ── OR divider ── */}
+            <div className="relative my-5 flex items-center gap-3">
+              <div className="flex-1 border-t border-white/[0.08]" />
+              <span className="text-[10px] font-medium uppercase tracking-widest text-white/30">or continue with</span>
+              <div className="flex-1 border-t border-white/[0.08]" />
+            </div>
+
+            {/* ── Broker OAuth buttons ── */}
+            <div className="space-y-2.5">
+              <motion.a
+                href="/api/oauth/upstox/authorize"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                className="group flex w-full items-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:border-violet-500/40 hover:bg-white/[0.08]"
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 text-[10px] font-bold text-white shadow">U</span>
+                Connect with Upstox
+                <ArrowRight className="ml-auto h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
+              </motion.a>
+
+              <div className="flex gap-2">
+                {["Zerodha", "Angel One", "Dhan"].map((b) => (
+                  <div key={b} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] py-2 text-[11px] text-white/25">
+                    {b}
+                    <span className="rounded bg-white/[0.06] px-1 py-0.5 text-[9px] text-white/20">Soon</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           <p className="mt-5 text-center text-xs text-white/30">
@@ -264,7 +300,7 @@ export default function SignInForm() {
               ← Back to home
             </Link>
           </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   )
