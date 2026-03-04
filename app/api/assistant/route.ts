@@ -98,7 +98,8 @@ Portfolio Summary (live data):
     .eq("user_id", user.id)
     .single()
   const prefs = (settingsRow?.preferences as Record<string, string>) || {}
-  const preferredLlm = prefs.preferred_llm || "auto"
+  const preferredLlm = prefs.preferred_llm || ""
+  const aiModePref = (prefs.ai_mode as string) || "platform"
   const resolvedOpenai    = prefs.openai_key    || process.env.OPENAI_API_KEY    || ""
   const resolvedAnthropic = prefs.anthropic_key || process.env.ANTHROPIC_API_KEY || ""
   const resolvedGemini    = prefs.gemini_key    || process.env.GOOGLE_GEMINI_API_KEY || ""
@@ -114,7 +115,8 @@ Portfolio Summary (live data):
     if (modelId.startsWith("deepseek-")) return "deepseek"
     return null
   }
-  const preferredProvider = getProvider(preferredLlm)
+  // Only treat `preferred_llm` as an override when user has BYOK enabled.
+  const preferredProvider = aiModePref === "byok" ? getProvider(preferredLlm) : null
   const orderedProviders: LLMProvider[] = preferredProvider
     ? [preferredProvider, ...allProviders.filter((p) => p !== preferredProvider)]
     : allProviders
@@ -129,7 +131,7 @@ Portfolio Summary (live data):
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedOpenai}` },
           body: JSON.stringify({
-            model: preferredProvider === "openai" ? preferredLlm : "gpt-4o",
+            model: preferredProvider === "openai" ? preferredLlm : "gpt-5.1-chat-latest",
             messages: [
               { role: "system", content: fullSystemPrompt },
               ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),

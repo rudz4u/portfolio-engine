@@ -336,32 +336,32 @@ export default function SettingsPage() {
     else toast({ title: "Send failed", description: data.error, variant: "destructive" })
   }
 
-  /* ── Curated LLM options for BYOK (shortlist of high-quality models) ── */
+  /* ── Curated BYOK shortlist grouped by capability: reasoning/research, tooling, and affordability ── */
   const llmOptions: Record<string, { value: string; label: string }[]> =
     aiMode === "platform"
       ? { "": [{ value: "brokerai", label: "BrokerAI (managed routing, recommended)" }] }
       : {
-          "OpenAI": [
-            { value: "gpt-5.2", label: "GPT-5.2 — top-tier general reasoning & agents" },
-            { value: "gpt-5.1-chat-latest", label: "GPT-5.1 Chat — strong conversation & code" },
-            { value: "gpt-4o", label: "GPT-4o — fast, low-latency assistant" },
-            { value: "gpt-4.1", label: "GPT-4.1 — high-quality language understanding" },
+          "Reasoning & Deep Research": [
+            { value: "gpt-5.2-chat-latest", label: "GPT-5.2 Chat — strongest general reasoning, planning, agents" },
+            { value: "claude-opus-4-6", label: "Claude Opus 4.6 — careful, aligned reasoning for high-stakes text" },
+            { value: "gemini-3.1-pro", label: "Gemini 3.1 Pro — Google’s high-end reasoning & retrieval" },
+            { value: "deepseek-research-1", label: "DeepSeek Research — tuned for retrieval-augmented analysis" },
+          ],
+          "Tooling & Agent-Ready (function-calling)": [
+            { value: "gpt-5.2-chat-latest", label: "GPT-5.2 Chat — best agent/tool orchestration" },
+            { value: "claude-opus-4-6", label: "Claude Opus 4.6 — supports tool use & long context" },
+            { value: "gemini-computer-use", label: "Gemini Computer-Use — automates UI/tool tasks (if available)" },
+            { value: "deepseek-chat-latest", label: "DeepSeek Chat — integrates well with search/tooling APIs" },
+          ],
+          "Balanced (price/perf)": [
+            { value: "gpt-5.1-chat-latest", label: "GPT-5.1 Chat — strong mix of capability and cost" },
+            { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash — good price/perf for reasoning & scale" },
+            { value: "qwen-3.5-plus", label: "Qwen 3.5 Plus — long-context multilingual, affordable" },
+          ],
+          "Cost-efficient": [
+            { value: "gpt-5-mini", label: "GPT-5 Mini — fast, low-cost for shorter reasoning tasks" },
             { value: "gpt-3.5-turbo-16k", label: "GPT-3.5 Turbo (16k) — budget-friendly with larger context" },
-          ],
-          "Anthropic": [
-            { value: "claude-opus-4-6", label: "Claude Opus 4.6 — Anthropic's most capable assistant" },
-            { value: "claude-sonnet-4-6", label: "Claude Sonnet — lower-cost fast Claude family option" },
-          ],
-          "Google Gemini": [
-            { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro — Google’s strongest reasoning model (preview)" },
-            { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash — excellent price/perf for many tasks" },
-          ],
-          "Multimodal / Audio / Image": [
-            { value: "dall-e-3", label: "DALL·E 3 — image generation (best for rich prompts)" },
-            { value: "gpt-audio", label: "GPT Audio — speech generation / TTS" },
-          ],
-          "Other": [
-            { value: "gpt-5-mini", label: "GPT-5 mini — fast & cost-effective variant" },
+            { value: "qwen3-max", label: "Qwen3 Max — cost-oriented higher-capacity text model" },
           ],
         }
 
