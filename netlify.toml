@@ -28,8 +28,9 @@
   UPSTOX_REDIRECT_URI = "https://brokerai.rudz.in/api/oauth/upstox/callback"
   # NEXT_PUBLIC_* vars are intentionally embedded in client JS by Next.js.
   # SUPABASE_PROJECT_ID is part of the public Supabase URL.
+  # The Supabase anon key is public by design — security comes from RLS policies.
   # Tell Netlify's secrets scanner to skip these expected keys.
-  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_URL,SUPABASE_PROJECT_ID"
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_URL,SUPABASE_PROJECT_ID,NEXT_PUBLIC_SUPABASE_ANON_KEY"
 
 # ── Functions ────────────────────────────────────────────────────────────────
 
