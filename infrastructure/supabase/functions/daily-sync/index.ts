@@ -174,7 +174,7 @@ async function sendBrevoEmail(
       "api-key": brevoKey,
     },
     body: JSON.stringify({
-      sender: { name: "InvestBuddy AI", email: "noreply@investbuddyai.com" },
+      sender: { name: "InvestBuddy AI", email: "noreply@brokerai.rudz.in" },
       to: [{ email: toEmail, name: toName }],
       subject,
       htmlContent,
