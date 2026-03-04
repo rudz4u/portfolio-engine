@@ -19,6 +19,12 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Purge CDN cache after every deploy — prevents stale HTML on custom domains
+# Requires NETLIFY_API_TOKEN env var set in Netlify dashboard
+# (Create at: https://app.netlify.com/user/applications#personal-access-tokens)
+[[plugins]]
+  package = "./netlify/plugins/purge-cdn-cache"
+
 # Extend timeout for data-heavy API routes (default 10s; Upstox sync needs ~15s)
 [functions."*"]
   timeout = 30
