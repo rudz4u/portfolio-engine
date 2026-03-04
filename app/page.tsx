@@ -512,7 +512,7 @@ export default function HomePage() {
                         <Star key={j} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                       ))}
                     </div>
-                    <p className="text-sm text-foreground/80 leading-relaxed mb-4">"{t.quote}"</p>
+                    <p className="text-sm text-foreground/80 leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
                     <p className="text-xs text-muted-foreground">{t.author}</p>
                   </motion.div>
                 ))}
