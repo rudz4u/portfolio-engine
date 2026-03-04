@@ -1,77 +1,53 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# netlify.toml — Portfolio Engine (Next.js 15 on Netlify)
+#
+# The OpenNext adapter is auto-detected by Netlify for Next.js projects.
+# Do NOT add @netlify/plugin-nextjs here — Netlify provisions the latest
+# adapter automatically on every build. Pinning it opts you out of updates.
+#
+# Caching is managed entirely by the adapter:
+#   • Static assets (_next/static/**) → immutable, 1-year CDN + browser cache
+#   • SSR/ISR pages → adapter-controlled CDN cache with atomic-deploy invalidation
+#   • Dynamic responses → not cached by default
+#
+# Skew protection (NETLIFY_NEXT_SKEW_PROTECTION) ensures that in-flight
+# visitors see assets from their deployment, not a newer one. This prevents
+# 404s for JS/CSS bundles after a deploy goes live.
+# ─────────────────────────────────────────────────────────────────────────────
+
 [build]
-  command = "npm run build"
-  publish = ".next"
+  command   = "npm run build"
+  publish   = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
-  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,SUPABASE_PROJECT_ID,SUPABASE_SERVICE_ROLE_KEY"
-  # Disable Next.js plugin durable cache — prevents stale HTML with 404 chunk refs
-  # on direct URL navigation after a deploy. Per Netlify docs, the plugin v5.5+
-  # automatically stores Next.js pages in a 1-year durable cache; atomic-deploy
-  # invalidation can miss cookie/header vary buckets, breaking direct-URL loads.
-  NETLIFY_NEXT_NO_DURABLE_CACHE = "true"
-  # Upstox app credentials (OAuth flow)
-  # UPSTOX_CLIENT_SECRET must be set in Netlify dashboard (not committed to git)
-  UPSTOX_CLIENT_ID = "d462ce65-de8f-4daa-b543-f8e8ae8dc722"
-  # This MUST match the redirect URI registered in the Upstox developer portal exactly.
+  # Skew protection — prevents stale JS/CSS 404s on custom domains after deploys.
+  # Each page load carries a deployment ID; subsequent client navigations are
+  # routed to the matching deployment until the next full page reload.
+  NETLIFY_NEXT_SKEW_PROTECTION = "true"
+  # Upstox OAuth credentials (UPSTOX_CLIENT_SECRET set in Netlify dashboard)
+  UPSTOX_CLIENT_ID    = "d462ce65-de8f-4daa-b543-f8e8ae8dc722"
   UPSTOX_REDIRECT_URI = "https://brokerai.rudz.in/api/oauth/upstox/callback"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# ── Functions ────────────────────────────────────────────────────────────────
 
-# Purge CDN cache after every deploy — prevents stale HTML on custom domains
-# Requires NETLIFY_API_TOKEN env var set in Netlify dashboard
-# (Create at: https://app.netlify.com/user/applications#personal-access-tokens)
-[[plugins]]
-  package = "./netlify/plugins/purge-cdn-cache"
+# Default timeout for all serverless functions (Upstox sync needs ~15s)
+[functions]
+  node_bundler = "esbuild"
 
-# Extend timeout for data-heavy API routes (default 10s; Upstox sync needs ~15s)
 [functions."*"]
   timeout = 30
 
-# Scheduled function — daily portfolio sync Mon–Fri 4:30 AM UTC (10 AM IST)
-# Requires SUPABASE_SERVICE_ROLE_KEY env var set in Netlify dashboard
+# Scheduled function — daily portfolio sync (Mon–Fri 4:30 AM UTC / 10 AM IST)
+# Requires SUPABASE_SERVICE_ROLE_KEY set in Netlify dashboard
 [functions."daily-sync"]
   timeout = 60
 
-# Rule 1: All routes default — no CDN edge caching for HTML pages
-# (This must come FIRST so more specific rules below can override it)
+# ── Security headers ────────────────────────────────────────────────────────
+
 [[headers]]
   for = "/*"
   [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-    Netlify-CDN-Cache-Control = "no-store"
     X-Content-Type-Options = "nosniff"
-
-# Rule 2: Versioned static assets — cache forever in both browser and CDN
-# These rules come AFTER /* so they override it for static asset paths
-[[headers]]
-  for = "/_next/static/chunks/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-    Netlify-CDN-Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/_next/static/css/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-    Netlify-CDN-Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/_next/static/media/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-    Netlify-CDN-Cache-Control = "public, max-age=31536000, immutable"
-
-# Rule 3: Build manifests — never cache (override the chunks/* rule)
-[[headers]]
-  for = "/_next/static/*/_buildManifest.js"
-  [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-    Netlify-CDN-Cache-Control = "no-store"
-
-[[headers]]
-  for = "/_next/static/*/_ssgManifest.js"
-  [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-    Netlify-CDN-Cache-Control = "no-store"
+    X-Frame-Options        = "DENY"
+    Referrer-Policy        = "strict-origin-when-cross-origin"

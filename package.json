@@ -36,7 +36,6 @@
   },
   "devDependencies": {
     "@netlify/functions": "^2.8.2",
-    "@netlify/plugin-nextjs": "^5.8.0",
     "@next/bundle-analyzer": "^16.1.6",
     "@types/node": "^20.17.0",
     "@types/react": "^18.3.28",

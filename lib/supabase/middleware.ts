@@ -54,13 +54,5 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Prevent Netlify Edge / Durable Cache from caching HTML responses.
-  // The @netlify/plugin-nextjs overrides netlify.toml header rules for SSR/ISR
-  // pages, so we must set these headers at the application level to ensure
-  // deploy-time cache invalidation works correctly for ALL domains (including
-  // custom domains like brokerai.rudz.in).
-  supabaseResponse.headers.set("Cache-Control", "private, no-store, must-revalidate")
-  supabaseResponse.headers.set("Netlify-CDN-Cache-Control", "no-store")
-
   return supabaseResponse
 }
