@@ -238,7 +238,7 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
               ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
               { role: "user", content: message },
             ],
-            max_tokens: 2048,
+            max_completion_tokens: 2048,
             temperature: 0.7,
           }),
         })
