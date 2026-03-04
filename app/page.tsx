@@ -9,7 +9,7 @@ import {
   TrendingUp, Shield, Bot, BarChart3, ArrowRight, CheckCircle2,
   Zap, Activity, Brain, Search, Lock, Plug, ShieldCheck,
   LineChart, Sparkles, ChevronRight, Star, Users,
-  Globe, AlertCircle, Loader2,
+  Globe, AlertCircle, Loader2, Terminal, Cpu, ChevronUp,
 } from "lucide-react"
 import {
   fadeUp, fadeIn, scaleIn, slideLeft, slideRight, staggerMed, staggerContainer, viewport,
@@ -30,12 +30,104 @@ const jsonLd = {
 }
 
 const SIGNAL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  emerald: { bg: "bg-emerald-400/10", border: "border-emerald-400/30", text: "text-emerald-400" },
-  green:   { bg: "bg-green-400/10",   border: "border-green-400/30",   text: "text-green-400" },
-  amber:   { bg: "bg-amber-400/10",   border: "border-amber-400/30",   text: "text-amber-400" },
-  orange:  { bg: "bg-orange-400/10",  border: "border-orange-400/30",  text: "text-orange-400" },
-  red:     { bg: "bg-red-400/10",     border: "border-red-400/30",     text: "text-red-400" },
-  muted:   { bg: "bg-muted",          border: "border-border",         text: "text-muted-foreground" },
+  emerald: { bg: "bg-emerald-400/10", border: "border-emerald-400/40", text: "text-emerald-400" },
+  green:   { bg: "bg-green-400/10",   border: "border-green-400/40",   text: "text-green-400" },
+  amber:   { bg: "bg-amber-400/10",   border: "border-amber-400/40",   text: "text-amber-400" },
+  orange:  { bg: "bg-orange-400/10",  border: "border-orange-400/40",  text: "text-orange-400" },
+  red:     { bg: "bg-red-400/10",     border: "border-red-400/40",     text: "text-red-400" },
+  muted:   { bg: "bg-white/[0.04]",   border: "border-border",         text: "text-muted-foreground" },
+}
+
+/* ── Typewriter hook ── */
+function useTypewriter(phrases: string[], speed = 60, pause = 2200) {
+  const [charIdx, setCharIdx] = useState(0)
+  const [phraseIdx, setPhraseIdx] = useState(0)
+  const [deleting, setDeleting] = useState(false)
+  useEffect(() => {
+    const current = phrases[phraseIdx]
+    let t: ReturnType<typeof setTimeout>
+    if (!deleting && charIdx < current.length) {
+      t = setTimeout(() => setCharIdx(i => i + 1), speed)
+    } else if (!deleting && charIdx === current.length) {
+      t = setTimeout(() => setDeleting(true), pause)
+    } else if (deleting && charIdx > 0) {
+      t = setTimeout(() => setCharIdx(i => i - 1), speed / 2)
+    } else {
+      setDeleting(false)
+      setPhraseIdx(i => (i + 1) % phrases.length)
+    }
+    return () => clearTimeout(t)
+  }, [charIdx, deleting, phraseIdx, phrases, speed, pause])
+  return phrases[phraseIdx].substring(0, charIdx)
+}
+
+/* ── Cyber grid background ── */
+function CyberBackground() {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden>
+      <div className="absolute inset-0 cyber-grid opacity-70" />
+      <motion.div
+        animate={{ scale: [1, 1.15, 1], opacity: [0.12, 0.22, 0.12] }}
+        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-[-15%] left-[15%] w-[700px] h-[700px] rounded-full"
+        style={{ background: "radial-gradient(ellipse, hsl(263 70% 60% / 0.18), transparent 65%)" }}
+      />
+      <motion.div
+        animate={{ scale: [1, 1.1, 1], opacity: [0.08, 0.15, 0.08] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+        className="absolute bottom-[-10%] right-[5%] w-[550px] h-[550px] rounded-full"
+        style={{ background: "radial-gradient(ellipse, hsl(210 80% 55% / 0.15), transparent 65%)" }}
+      />
+      <motion.div
+        animate={{ scale: [1, 1.2, 1], opacity: [0.05, 0.1, 0.05] }}
+        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+        className="absolute top-[45%] right-[30%] w-[300px] h-[300px] rounded-full"
+        style={{ background: "radial-gradient(ellipse, hsl(142 69% 44% / 0.1), transparent 65%)" }}
+      />
+    </div>
+  )
+}
+
+/* ── Broker marquee ── */
+const BROKERS = [
+  { name: "Upstox",          status: "LIVE",   color: "from-violet-600 to-purple-500",  acronym: "UX", live: true },
+  { name: "Zerodha",         status: "Q2 2026", color: "from-teal-600 to-emerald-500",  acronym: "ZD", live: false },
+  { name: "Angel One",       status: "Q3 2026", color: "from-orange-600 to-amber-500",  acronym: "AO", live: false },
+  { name: "Dhan",            status: "Q3 2026", color: "from-blue-600 to-sky-500",      acronym: "DN", live: false },
+  { name: "ICICI Direct",    status: "Q4 2026", color: "from-orange-700 to-red-500",   acronym: "IC", live: false },
+  { name: "HDFC Securities", status: "2027",    color: "from-blue-700 to-indigo-500",  acronym: "HD", live: false },
+  { name: "Motilal Oswal",   status: "2027",    color: "from-slate-600 to-slate-500",  acronym: "MO", live: false },
+  { name: "Kotak Securities",status: "2027",    color: "from-red-700 to-rose-500",     acronym: "KO", live: false },
+]
+function BrokerMarquee() {
+  const doubled = [...BROKERS, ...BROKERS]
+  return (
+    <section className="py-14 border-t border-border/40" aria-label="Supported brokers">
+      <div className="max-w-6xl mx-auto px-4">
+        <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-8">
+          <p className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-widest mb-2">SUPPORTED TRADING PLATFORMS</p>
+          <h2 className="text-xl sm:text-2xl font-bold">One Dashboard · <span className="gradient-text">Every Broker</span></h2>
+        </motion.div>
+        <div className="marquee-container">
+          <div className="marquee-track gap-3 py-1">
+            {doubled.map((broker, i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-3 glass rounded-xl border border-border/60 mx-1.5 shrink-0 group hover:border-primary/40 transition-all duration-300 cursor-default">
+                <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${broker.color} flex items-center justify-center text-white text-xs font-bold shadow-lg group-hover:scale-110 group-hover:shadow-xl transition-transform duration-300`}>
+                  {broker.acronym}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold whitespace-nowrap">{broker.name}</div>
+                  <div className={`text-[10px] font-mono ${broker.live ? "text-emerald-400" : "text-muted-foreground/50"}`}>
+                    {broker.live ? "● LIVE NOW" : broker.status}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
 }
 
 function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
@@ -55,34 +147,51 @@ function ScoreGauge({ score, color = "violet" }: { score: number; color?: string
   const springVal = useSpring(circ, { stiffness: 50, damping: 18 })
   const dash = useTransform(springVal, (v: number) => `${v} ${circ}`)
   useEffect(() => { if (inView) springVal.set(circ - (score / 100) * circ) }, [inView, springVal, circ, score])
-  const colorMap: Record<string, string> = {
-    violet: "#8b5cf6", emerald: "#10b981", amber: "#f59e0b", blue: "#3b82f6", red: "#ef4444",
+  const colorMap: Record<string, { stroke: string; glow: string }> = {
+    violet:  { stroke: "#8b5cf6", glow: "#8b5cf640" },
+    emerald: { stroke: "#10b981", glow: "#10b98140" },
+    green:   { stroke: "#22c55e", glow: "#22c55e40" },
+    amber:   { stroke: "#f59e0b", glow: "#f59e0b40" },
+    blue:    { stroke: "#3b82f6", glow: "#3b82f640" },
+    red:     { stroke: "#ef4444", glow: "#ef444440" },
   }
-  const stroke = colorMap[color] ?? colorMap.violet
+  const { stroke, glow } = colorMap[color] ?? colorMap.violet
   return (
     <div ref={wrapRef} className="relative w-28 h-28 mx-auto">
       <svg width="112" height="112" viewBox="0 0 112 112" fill="none" className="-rotate-90">
-        <circle cx="56" cy="56" r={R} stroke="hsl(220 30% 14%)" strokeWidth="10" fill="none" />
+        <circle cx="56" cy="56" r={R} stroke="hsl(220 30% 12%)" strokeWidth="10" fill="none" />
+        {/* glow layer */}
+        <circle cx="56" cy="56" r={R} stroke={glow} strokeWidth="14" fill="none" strokeLinecap="round"
+          strokeDasharray={`${(score / 100) * circ} ${circ}`} style={{ filter: `blur(6px)` }} />
         <motion.circle cx="56" cy="56" r={R} stroke={stroke} strokeWidth="10" fill="none"
           strokeLinecap="round"
-          style={{ strokeDasharray: dash as unknown as string, filter: `drop-shadow(0 0 6px ${stroke}80)` }} />
+          style={{ strokeDasharray: dash as unknown as string, filter: `drop-shadow(0 0 8px ${stroke}cc)` }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold font-mono tabular-nums" style={{ color: stroke }}>{score}</span>
-        <span className="text-[10px] text-muted-foreground">/ 100</span>
+        <span className="text-2xl font-bold font-mono tabular-nums" style={{ color: stroke, textShadow: `0 0 16px ${stroke}80` }}>{score}</span>
+        <span className="text-[10px] text-muted-foreground font-mono">/ 100</span>
       </div>
     </div>
   )
 }
 
-function QuickScoreTool() {
+function QuantTerminal() {
   const [symbol, setSymbol] = useState("")
   const [loading, setLoading] = useState(false)
+  const [scanPct, setScanPct] = useState(0)
   const [result, setResult] = useState<null | {
     found: boolean; symbol?: string; name?: string; exchange?: string
     composite_score?: number | null; signal?: string; signal_color?: string
     note?: string; message?: string; suggestions?: string[]
   }>(null)
+
+  useEffect(() => {
+    if (!loading) { setScanPct(0); return }
+    const iv = setInterval(() => setScanPct(p => Math.min(p + 4, 95)), 80)
+    return () => clearInterval(iv)
+  }, [loading])
+
+  const SCAN_MSGS = ["QUERYING NSE UNIVERSE...", "COMPUTING MOMENTUM SIGNALS...", "RUNNING VALUATION MODEL...", "AGGREGATING ADVISORY DATA...", "GENERATING COMPOSITE SCORE..."]
 
   async function analyse(e: React.FormEvent) {
     e.preventDefault()
@@ -90,137 +199,193 @@ function QuickScoreTool() {
     setLoading(true); setResult(null)
     try {
       const res = await fetch(`/api/public/score-preview?symbol=${encodeURIComponent(symbol.trim().toUpperCase())}`)
+      if (!res.ok) throw new Error("API error")
       setResult(await res.json())
-    } catch { setResult({ found: false, message: "Network error — please try again." }) }
-    setLoading(false)
+    } catch { setResult({ found: false, message: "CONNECTION ERROR — service unreachable. Try again." }) }
+    setLoading(false); setScanPct(100)
   }
 
   const colors = result?.signal_color ? (SIGNAL_COLORS[result.signal_color] ?? SIGNAL_COLORS.muted) : SIGNAL_COLORS.muted
+  const scoreColor = result?.signal_color === "emerald" ? "emerald" : result?.signal_color === "green" ? "green" : result?.signal_color === "amber" ? "amber" : result?.signal_color === "red" ? "red" : "violet"
 
   return (
-    <section className="py-20 relative" aria-label="Quick quant score preview tool">
+    <section className="py-20 relative" aria-label="Quant score terminal">
       <div aria-hidden className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-blue-500/5 rounded-full blur-[80px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[250px] bg-emerald-500/4 rounded-full blur-[80px]" />
       </div>
       <div className="max-w-3xl mx-auto px-4">
         <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-full px-3.5 py-1.5 text-xs font-medium mb-5">
-            <Sparkles className="h-3 w-3" /> Try it — no account needed
+          <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded-full px-4 py-1.5 text-xs font-mono mb-5">
+            <Terminal className="h-3 w-3" /> LIVE QUANT SCANNER · NO LOGIN REQUIRED
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold mb-3">
-            Get a <span className="gradient-text">Quant Score</span> for Any NSE Stock
+            Instant <span className="gradient-text">Quant Score</span> — Any NSE Stock
           </h2>
           <p className="text-muted-foreground text-sm max-w-lg mx-auto">
-            Enter an NSE symbol to see a live composite score combining momentum, valuation, and advisory signals.
+            Type any NSE ticker to get a composite score built from momentum, valuation, and advisory signals.
           </p>
         </motion.div>
 
         <motion.div variants={scaleIn} initial="hidden" whileInView="show" viewport={viewport}
-          className="glass rounded-2xl p-6 sm:p-8 border border-border/60">
-          <form onSubmit={analyse} className="flex gap-3 mb-6" aria-label="Stock symbol lookup">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <motion.input whileFocus={{ boxShadow: "0 0 0 2px hsl(263 70% 63% / 0.35)" }}
-                type="text" value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                placeholder="e.g. RELIANCE, INFY, HDFCBANK" maxLength={20} aria-label="NSE stock symbol"
-                className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-border rounded-xl text-sm placeholder:text-muted-foreground/50 focus:outline-none transition-shadow" />
-            </div>
-            <motion.button type="submit" disabled={loading || !symbol.trim()} whileTap={{ scale: 0.96 }}
-              className="btn-gradient px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 flex items-center gap-2 shrink-0">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-              {loading ? "Analysing…" : "Analyse"}
-            </motion.button>
-          </form>
+          className="terminal-card scanline-overlay rounded-2xl overflow-hidden shadow-2xl">
+          {/* Terminal header bar */}
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-emerald-400/10 bg-black/40">
+            <span className="h-3 w-3 rounded-full bg-red-500/70" />
+            <span className="h-3 w-3 rounded-full bg-amber-500/70" />
+            <span className="h-3 w-3 rounded-full bg-emerald-500/70" />
+            <span className="ml-3 text-[10px] font-mono text-emerald-400/40 tracking-widest uppercase">investbuddy · quant-scanner · v1.0</span>
+            <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
+              className="ml-auto text-[10px] font-mono text-emerald-400/70">● ONLINE</motion.span>
+          </div>
 
-          <AnimatePresence mode="wait">
-            {result && result.found && result.composite_score != null && (
-              <motion.div key="score-result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <div className="flex flex-col sm:flex-row gap-6 items-center mb-6">
-                  <ScoreGauge score={result.composite_score}
-                    color={result.signal_color === "emerald" ? "emerald" : result.signal_color === "amber" ? "amber" : result.signal_color === "red" ? "red" : "violet"} />
-                  <div className="flex-1 text-center sm:text-left">
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{result.exchange} · {result.name}</div>
-                    <div className="text-2xl font-bold mb-2">{result.symbol}</div>
-                    <motion.span initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: "spring", stiffness: 300, delay: 0.3 }}
-                      className={`inline-block text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border ${colors.bg} ${colors.border} ${colors.text}`}>
-                      {result.signal}
-                    </motion.span>
-                  </div>
+          <div className="p-5 sm:p-7">
+            {/* Command input */}
+            <form onSubmit={analyse} className="flex items-center gap-3 mb-4">
+              <div className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-400/20 bg-black/30 focus-within:border-emerald-400/50 transition-colors group">
+                <span className="text-emerald-400/50 font-mono text-sm select-none">&gt;_</span>
+                <input type="text" value={symbol} onChange={e => setSymbol(e.target.value.toUpperCase())}
+                  placeholder="ENTER NSE SYMBOL..." maxLength={20} aria-label="NSE stock symbol"
+                  className="flex-1 bg-transparent text-emerald-300 placeholder:text-emerald-400/25 font-mono text-sm outline-none" />
+                {symbol && !loading && <span className="cursor-blink text-emerald-400 font-mono text-sm">&#9646;</span>}
+              </div>
+              <motion.button type="submit" disabled={loading || !symbol.trim()}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                className="px-5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 font-mono text-sm font-bold disabled:opacity-40 flex items-center gap-2 hover:bg-emerald-500/25 transition-all shrink-0 shadow-lg">
+                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                {loading ? "SCANNING" : "RUN"}
+              </motion.button>
+            </form>
+
+            {/* Scan progress bar */}
+            {loading && (
+              <div className="mb-5">
+                <div className="h-0.5 bg-emerald-400/10 rounded-full overflow-hidden mb-1.5">
+                  <motion.div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                    style={{ width: `${scanPct}%` }} transition={{ duration: 0.08 }} />
                 </div>
-                <div className="space-y-2.5 mb-5">
-                  {["Momentum Score", "Valuation Score", "Position Score", "Advisory Score"].map((label) => (
-                    <div key={label} className="flex items-center justify-between py-2.5 px-3 bg-white/[0.025] rounded-lg border border-white/[0.04]">
-                      <span className="text-xs text-muted-foreground blur-[2px] select-none">{label}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-16 bg-white/[0.06] rounded-full blur-[1px]" />
-                        <Lock className="h-3 w-3 text-muted-foreground/40" />
+                <p className="text-[10px] font-mono text-emerald-400/40">
+                  {SCAN_MSGS[Math.floor(scanPct / 22)] ?? "FINALISING..."}
+                </p>
+              </div>
+            )}
+
+            <AnimatePresence mode="wait">
+              {/* Score result */}
+              {result && result.found && result.composite_score != null && (
+                <motion.div key="score" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <div className="border border-emerald-400/10 rounded-xl p-4 bg-black/20 mb-4">
+                    <div className="text-[10px] font-mono text-emerald-400/40 mb-3">&gt;&gt; ANALYSIS COMPLETE · {new Date().toLocaleTimeString("en-IN")}</div>
+                    <div className="flex flex-col sm:flex-row gap-6 items-center">
+                      <ScoreGauge score={result.composite_score}
+                        color={scoreColor === "emerald" ? "emerald" : scoreColor === "amber" ? "amber" : scoreColor === "red" ? "red" : "violet"} />
+                      <div className="flex-1 text-center sm:text-left font-mono">
+                        <div className="text-[10px] text-emerald-400/40 uppercase tracking-widest mb-1">{result.exchange} · {result.name}</div>
+                        <div className="text-2xl font-bold text-emerald-200 mb-3">{result.symbol}</div>
+                        <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 300, delay: 0.3 }}
+                          className={`inline-block text-xs font-bold uppercase tracking-widest px-3.5 py-1.5 rounded-lg border shadow-lg ${colors.bg} ${colors.border} ${colors.text}`}>
+                          ◈ {result.signal}
+                        </motion.div>
                       </div>
                     </div>
-                  ))}
-                </div>
-                <Link href="/signin?redirect=/recommendations"
-                  className="flex items-center justify-center gap-2 w-full py-3 btn-gradient rounded-xl text-sm font-semibold glow">
-                  Sign up to unlock full breakdown <ArrowRight className="h-4 w-4" />
-                </Link>
-              </motion.div>
-            )}
-            {result && result.found && result.composite_score == null && (
-              <motion.div key="pending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center py-4">
-                <div className="text-amber-400 text-sm font-medium mb-2">{result.symbol} — Score Pending</div>
-                <p className="text-xs text-muted-foreground mb-4">{result.note}</p>
-                <Link href="/signin" className="inline-flex items-center gap-2 btn-gradient px-5 py-2.5 rounded-xl text-sm font-semibold">
-                  Sign up to generate score <ArrowRight className="h-4 w-4" />
-                </Link>
-              </motion.div>
-            )}
-            {result && !result.found && (
-              <motion.div key="not-found" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center py-4">
-                <AlertCircle className="h-8 w-8 text-amber-400 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground mb-1">{result.message}</p>
-                {result.suggestions && (
-                  <div className="flex gap-2 justify-center mt-2 flex-wrap">
-                    {result.suggestions.map((s) => (
-                      <button key={s} onClick={() => { setSymbol(s); setResult(null) }}
-                        className="text-xs text-primary underline underline-offset-2">{s}</button>
+                  </div>
+                  <div className="space-y-1.5 mb-5">
+                    {[["MOMENTUM SCORE", "RSI · MACD · EMA cross"], ["VALUATION MODEL", "P/E · sector relative"], ["POSITION SIZING", "ATR · Beta · lot size"], ["ADVISORY AGGREGATE", "17+ SEBI advisors"]].map(([label, sub]) => (
+                      <div key={label} className="flex items-center justify-between py-2 px-3 rounded-lg border border-emerald-400/8 bg-black/20">
+                        <div>
+                          <div className="text-[10px] font-mono text-emerald-400/20 blur-[2px] select-none">{label}</div>
+                          <div className="text-[9px] font-mono text-emerald-400/15 blur-[1.5px] select-none">{sub}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-1 w-14 rounded-full bg-emerald-400/8 overflow-hidden">
+                            <div className="h-full rounded-full bg-emerald-400/15 blur-[1px]" style={{ width: `${50 + Math.random() * 40}%` }} />
+                          </div>
+                          <Lock className="h-3 w-3 text-emerald-400/20" />
+                        </div>
+                      </div>
                     ))}
                   </div>
-                )}
-                <Link href="/signin" className="inline-flex items-center gap-2 mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  Sign up to request this stock <ChevronRight className="h-3 w-3" />
-                </Link>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <Link href="/signin?redirect=/recommendations"
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 font-mono text-sm font-bold hover:bg-emerald-500/25 transition-all">
+                    UNLOCK FULL BREAKDOWN <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </motion.div>
+              )}
+              {/* Pending */}
+              {result && result.found && result.composite_score == null && (
+                <motion.div key="pending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="border border-amber-400/20 rounded-xl p-5 bg-black/20 text-center">
+                  <div className="text-[10px] font-mono text-amber-400/50 mb-2">&gt;&gt; SYMBOL FOUND · SCORE PENDING GENERATION</div>
+                  <p className="text-amber-400 font-mono text-sm mb-1">{result.symbol}</p>
+                  <p className="text-xs text-emerald-400/40 font-mono mb-4">{result.note}</p>
+                  <Link href="/signin" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-300 font-mono text-xs font-bold hover:bg-amber-500/25 transition-all">
+                    SIGN UP TO TRIGGER ANALYSIS <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </motion.div>
+              )}
+              {/* Not found */}
+              {result && !result.found && (
+                <motion.div key="nf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="border border-red-400/15 rounded-xl p-5 bg-black/20">
+                  <div className="text-[10px] font-mono text-red-400/40 mb-2">&gt;&gt; SYMBOL NOT FOUND</div>
+                  <p className="text-sm font-mono text-red-300/60 mb-3">{result.message}</p>
+                  {result.suggestions && (
+                    <div className="flex gap-2 flex-wrap">
+                      <span className="text-[10px] font-mono text-emerald-400/40">DID YOU MEAN:</span>
+                      {result.suggestions.map(s => (
+                        <button key={s} onClick={() => { setSymbol(s); setResult(null) }}
+                          className="text-[10px] font-mono text-emerald-400 border border-emerald-400/25 rounded px-2 py-0.5 hover:bg-emerald-400/10 transition-colors">
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          {!result && !loading && (
-            <div className="flex gap-2 flex-wrap">
-              {["RELIANCE", "INFY", "HDFCBANK", "TCS", "IRFC"].map((sym) => (
-                <button key={sym} onClick={() => setSymbol(sym)}
-                  className="text-xs bg-white/[0.04] border border-border hover:border-primary/40 hover:text-primary rounded-lg px-3 py-1.5 transition-all">
-                  {sym}
-                </button>
-              ))}
-            </div>
-          )}
+            {!result && !loading && (
+              <div className="mt-2">
+                <div className="text-[10px] font-mono text-emerald-400/30 mb-2">QUICK SCAN:</div>
+                <div className="flex gap-2 flex-wrap">
+                  {["RELIANCE", "INFY", "HDFCBANK", "TCS", "IRFC", "ADANIENT"].map(sym => (
+                    <button key={sym} onClick={() => setSymbol(sym)}
+                      className="text-[10px] font-mono text-emerald-400/55 border border-emerald-400/15 hover:border-emerald-400/40 hover:text-emerald-300 rounded px-2.5 py-1 transition-all">
+                      {sym}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
     </section>
   )
 }
 
+
 export default function HomePage() {
+  const typewriterText = useTypewriter([
+    "RSI · MACD · Bollinger Bands",
+    "AI Buy/Sell Recommendations",
+    "17+ SEBI Advisory Sources",
+    "Live Upstox Portfolio Sync",
+    "Sector Correlation Analytics",
+  ], 55, 2000)
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      <CyberBackground />
+      <div className="relative min-h-screen bg-background/96 text-foreground overflow-x-hidden z-10">
 
         {/* Navbar */}
         <motion.header variants={fadeIn} initial="hidden" animate="show"
-          className="border-b border-border/50 backdrop-blur-md bg-background/80 sticky top-0 z-50">
+          className="border-b border-border/40 backdrop-blur-xl bg-background/70 sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }} className="flex items-center gap-2.5">
+            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+              transition={{ type: "spring", stiffness: 300 }} className="flex items-center gap-2.5">
               <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-lg glow-sm">
                 <Zap className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
               </div>
@@ -231,8 +396,8 @@ export default function HomePage() {
               <motion.div variants={fadeIn}>
                 <Button variant="ghost" size="sm" asChild><Link href="/signin">Sign In</Link></Button>
               </motion.div>
-              <motion.div variants={fadeIn}>
-                <Button size="sm" className="btn-gradient border-0" asChild>
+              <motion.div variants={fadeIn} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+                <Button size="sm" className="btn-gradient border-0 glow" asChild>
                   <Link href="/signin">Get Started <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Link>
                 </Button>
               </motion.div>
@@ -243,49 +408,64 @@ export default function HomePage() {
         <main>
           {/* Hero */}
           <section className="relative py-24 sm:py-32 overflow-hidden" aria-label="InvestBuddy AI hero">
-            <div aria-hidden className="absolute inset-0 pointer-events-none">
-              <motion.div animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.65, 0.4] }}
-                transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-violet-600/10 rounded-full blur-[100px]" />
-              <motion.div animate={{ scale: [1, 1.12, 1], opacity: [0.3, 0.5, 0.3] }}
-                transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-                className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-blue-500/8 rounded-full blur-[80px]" />
-            </div>
             <div className="relative max-w-4xl mx-auto px-4 text-center">
-              <motion.div variants={fadeUp} initial="hidden" animate="show">
-                <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 text-primary rounded-full px-3.5 py-1.5 text-xs font-medium mb-8">
-                  <Activity className="h-3 w-3" />
-                  Real-time quant signals · Multi-LLM AI · Upstox, Zerodha &amp; more
-                </div>
+              {/* Live badge */}
+              <motion.div variants={fadeUp} initial="hidden" animate="show" className="mb-8">
+                <span className="inline-flex items-center gap-2 bg-primary/10 border border-primary/25 text-primary rounded-full px-4 py-1.5 text-xs font-mono">
+                  <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
+                    className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
+                  LIVE · Real-time quant signals · Multi-LLM AI · Upstox + more
+                </span>
               </motion.div>
+              {/* Headline */}
               <motion.div variants={staggerContainer(0.05, 0.1)} initial="hidden" animate="show">
                 <motion.h1 variants={fadeUp}
-                  className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-[1.08]">
-                  <span className="block">AI-Powered Equity</span>
-                  <span className="block gradient-text">Management</span>
-                  <span className="block text-3xl sm:text-4xl lg:text-5xl text-muted-foreground/70 font-semibold mt-2">for Indian Markets</span>
+                  className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-4 leading-[1.06]">
+                  <span className="block">AI Portfolio</span>
+                  <span className="block gradient-text">Intelligence</span>
+                  <span className="block text-2xl sm:text-3xl lg:text-4xl text-muted-foreground/60 font-semibold mt-2 font-mono">for Indian Equity Markets</span>
                 </motion.h1>
               </motion.div>
-              <motion.p variants={fadeUp} initial="hidden" animate="show" transition={{ delay: 0.25 }}
-                className="text-muted-foreground text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-                Connect your broker, get AI-driven buy/sell signals backed by RSI, MACD, Bollinger Bands,
-                and advisory intelligence. Manage your NSE/BSE portfolio with institutional-grade tools.
-              </motion.p>
-              <motion.div variants={staggerContainer(0.08, 0.35)} initial="hidden" animate="show"
-                className="flex flex-col sm:flex-row gap-3 justify-center">
-                <motion.div variants={fadeUp} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                  <Button size="lg" className="btn-gradient border-0 glow" asChild>
+              {/* Typewriter subtitle */}
+              <motion.div variants={fadeUp} initial="hidden" animate="show" transition={{ delay: 0.4 }}
+                className="h-7 flex items-center justify-center mb-10">
+                <span className="text-sm sm:text-base font-mono text-primary/80">
+                  {typewriterText}<span className="cursor-blink">▌</span>
+                </span>
+              </motion.div>
+              {/* CTA buttons */}
+              <motion.div variants={staggerContainer(0.08, 0.5)} initial="hidden" animate="show"
+                className="flex flex-col sm:flex-row gap-3 justify-center mb-14">
+                <motion.div variants={fadeUp} whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
+                  <Button size="lg" className="btn-gradient border-0 glow text-base px-7" asChild>
                     <Link href="/signin">Start Free — No Card Needed <ArrowRight className="ml-2 h-4 w-4" /></Link>
                   </Button>
                 </motion.div>
-                <motion.div variants={fadeUp} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                  <Button size="lg" variant="outline" className="border-border hover:bg-white/5" asChild>
-                    <Link href="#how-it-works">See How It Works</Link>
+                <motion.div variants={fadeUp} whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
+                  <Button size="lg" variant="outline" className="border-border/60 hover:bg-white/5 hover:border-primary/40 text-base px-7" asChild>
+                    <Link href="#how-it-works">See How It Works <ChevronRight className="ml-1 h-4 w-4" /></Link>
                   </Button>
                 </motion.div>
               </motion.div>
-              <motion.div variants={staggerContainer(0.1, 0.5)} initial="hidden" animate="show"
-                className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-xl mx-auto">
+              {/* Floating mini cards */}
+              <motion.div variants={staggerContainer(0.12, 0.7)} initial="hidden" animate="show"
+                className="grid grid-cols-3 gap-3 max-w-2xl mx-auto mb-12">
+                {[
+                  { label: "Portfolio Value", value: "₹3.67L", sub: "+8.67%", subColor: "text-emerald-400" },
+                  { label: "Today P&L",       value: "+₹1,847", sub: "44 holdings", subColor: "text-emerald-400" },
+                  { label: "Quant Score",     value: "74/100",  sub: "STRONG BUY", subColor: "text-violet-400" },
+                ].map((card, i) => (
+                  <motion.div key={i} variants={fadeUp}
+                    className="glass rounded-xl border border-border/70 px-3 py-3 shadow-xl backdrop-blur-xl text-left">
+                    <div className="text-[9px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-1">{card.label}</div>
+                    <div className="text-base font-bold font-mono gradient-text">{card.value}</div>
+                    <div className={`text-[10px] font-mono ${card.subColor} mt-0.5`}>{card.sub}</div>
+                  </motion.div>
+                ))}
+              </motion.div>
+              {/* Stats row */}
+              <motion.div variants={staggerContainer(0.1, 0.8)} initial="hidden" animate="show"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-xl mx-auto">
                 {[
                   { target: 50, suffix: "+", label: "Stocks tracked" },
                   { target: 6,  suffix: "",  label: "Quant signals" },
@@ -296,14 +476,16 @@ export default function HomePage() {
                     <div className="text-2xl font-bold gradient-text font-mono tabular-nums">
                       <AnimatedCounter target={s.target} suffix={s.suffix} />
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
+                    <div className="text-xs text-muted-foreground/60 mt-0.5 font-mono">{s.label}</div>
                   </motion.div>
                 ))}
               </motion.div>
             </div>
           </section>
 
-          <QuickScoreTool />
+          <QuantTerminal />
+
+          <BrokerMarquee />
 
           {/* How It Works */}
           <section id="how-it-works" className="py-20 border-t border-border/50" aria-label="How InvestBuddy AI works">
@@ -369,7 +551,7 @@ export default function HomePage() {
                   <motion.div key={f.title} variants={fadeUp}
                     whileHover={{ y: -6, boxShadow: "0 20px 48px -8px hsl(263 70% 62% / 0.18)" }}
                     transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                    className="glass rounded-xl p-6 cursor-default">
+                    className="glass rounded-xl p-6 cursor-default glow-border-card">
                     <motion.div whileHover={{ rotate: [-4, 4, -2, 0] }} transition={{ duration: 0.4 }}
                       className={`h-10 w-10 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-4 shadow-lg`}>
                       <f.icon className="h-5 w-5 text-white" />
@@ -447,46 +629,15 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Multi-broker */}
-          <section className="py-16 border-t border-border/50" aria-label="Supported brokers">
-            <div className="max-w-4xl mx-auto px-4 text-center">
-              <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport}>
-                <div className="inline-flex items-center gap-2 bg-amber-400/10 border border-amber-400/20 text-amber-400 rounded-full px-3.5 py-1.5 text-xs font-medium mb-6">
-                  <Globe className="h-3 w-3" /> Multi-broker support — v0.2 roadmap
-                </div>
-                <h2 className="text-xl sm:text-2xl font-bold mb-3">
-                  Beyond Upstox — <span className="gradient-text">Any Broker, One Platform</span>
-                </h2>
-                <p className="text-sm text-muted-foreground max-w-lg mx-auto mb-8">
-                  InvestBuddy AI v0.1 ships with Upstox. We are actively building OAuth for every major Indian broker.
-                </p>
-              </motion.div>
-              <motion.div variants={staggerContainer(0.08)} initial="hidden" whileInView="show" viewport={viewport}
-                className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto">
-                {[
-                  { name: "Upstox",    status: "Live Now", color: "text-emerald-400",        bg: "bg-emerald-400/10 border-emerald-400/25" },
-                  { name: "Zerodha",   status: "Q2 2026",  color: "text-amber-400",           bg: "bg-amber-400/10 border-amber-400/25" },
-                  { name: "Angel One", status: "Q3 2026",  color: "text-muted-foreground",    bg: "bg-white/[0.03] border-border" },
-                  { name: "Dhan",      status: "Q3 2026",  color: "text-muted-foreground",    bg: "bg-white/[0.03] border-border" },
-                ].map((broker) => (
-                  <motion.div key={broker.name} variants={scaleIn} whileHover={{ scale: 1.04 }}
-                    className={`rounded-xl border p-4 text-center ${broker.bg}`}>
-                    <div className="font-semibold text-sm mb-1">{broker.name}</div>
-                    <div className={`text-[11px] ${broker.color}`}>{broker.status}</div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </div>
-          </section>
-
           {/* Trust strip */}
           <motion.section variants={fadeIn} initial="hidden" whileInView="show" viewport={viewport}
             className="py-8 border-t border-border/50">
             <div className="max-w-4xl mx-auto px-4">
-              <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-[11px] text-muted-foreground/60">
-                {["No data sold or shared", "Built on Supabase + Next.js", "GPT-4 · Claude · Gemini routing",
-                  "NSE / BSE live data", "Made for Indian markets", "Human-in-the-loop always", "Free during beta"].map((item, i) => (
-                  <span key={i} className="flex items-center gap-1">{item}</span>
+              <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-[11px] text-muted-foreground/50 font-mono">
+                {["NO DATA SOLD", "SUPABASE + NEXT.JS", "GPT-4o · CLAUDE · GEMINI", "NSE / BSE LIVE", "INDIAN MARKETS", "HUMAN-IN-THE-LOOP", "FREE IN BETA"].map((item, i) => (
+                  <span key={i} className="flex items-center gap-1.5">
+                    <span className="h-1 w-1 rounded-full bg-primary/40" />{item}
+                  </span>
                 ))}
               </div>
             </div>
