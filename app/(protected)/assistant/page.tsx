@@ -10,9 +10,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Bot, Send, User, Loader2, Key, Trash2 } from "lucide-react"
+import { Send, User, Loader2, Key, Trash2, Sparkles } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
+import { MarkdownMessage } from "@/components/ui/markdown-message"
 
 interface Message {
   id: string
@@ -207,7 +208,7 @@ export default function AssistantPage() {
         <CardHeader className="pb-3 border-b border-border/60">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Bot className="h-4 w-4 text-primary" />
+              <Sparkles className="h-4 w-4 text-violet-400" />
               Portfolio Assistant
               <Badge variant="secondary" className="text-[10px]">Beta</Badge>
             </CardTitle>
@@ -234,40 +235,52 @@ export default function AssistantPage() {
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+              className={`flex gap-3 ${
+                msg.role === "user" ? "flex-row-reverse items-end" : "items-start"
+              }`}
             >
+              {/* Avatar */}
               <div
-                className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
+                className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                   msg.role === "assistant"
-                    ? "bg-gradient-to-br from-violet-500 to-blue-500 text-white"
-                    : "bg-secondary"
+                    ? "bg-gradient-to-br from-violet-500 to-blue-600 text-white glow-sm"
+                    : "bg-secondary text-foreground/70"
                 }`}
               >
                 {msg.role === "assistant" ? (
-                  <Bot className="h-4 w-4" />
+                  <Sparkles className="h-3.5 w-3.5" />
                 ) : (
-                  <User className="h-4 w-4" />
+                  <User className="h-3.5 w-3.5" />
                 )}
               </div>
-              <div
-                className={`max-w-[75%] rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/80 text-foreground"
-                }`}
-              >
-                {msg.content}
-              </div>
+
+              {/* Bubble */}
+              {msg.role === "user" ? (
+                <div className="max-w-[72%] rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed bg-gradient-to-br from-violet-600 to-blue-600 text-white shadow-md">
+                  {msg.content}
+                </div>
+              ) : (
+                <div className="flex-1 min-w-0 rounded-xl rounded-tl-sm px-4 py-3 bg-secondary/40 border border-violet-500/10 shadow-sm">
+                  <MarkdownMessage content={msg.content} />
+                  <p className="text-[10px] text-muted-foreground/40 mt-2 text-right">
+                    {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              )}
             </div>
           ))}
           {loading && (
-            <div className="flex gap-3">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 text-white flex items-center justify-center shrink-0">
-                <Bot className="h-4 w-4" />
+            <div className="flex gap-3 items-start">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5 glow-sm">
+                <Sparkles className="h-3.5 w-3.5 animate-pulse" />
               </div>
-              <div className="bg-secondary/80 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Thinking…
+              <div className="flex-1 rounded-xl rounded-tl-sm px-4 py-3.5 bg-secondary/40 border border-violet-500/10">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:0ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:150ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:300ms]" />
+                  <span className="ml-1 text-xs text-muted-foreground/60">Analysing…</span>
+                </div>
               </div>
             </div>
           )}
