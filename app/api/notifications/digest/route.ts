@@ -13,26 +13,42 @@ async function sendBrevoEmail(
   htmlContent: string,
   apiKey: string
 ): Promise<BrevoResult> {
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "api-key": apiKey,
-    },
-    body: JSON.stringify({
-      sender: { name: "InvestBuddy AI", email: "noreply@investbuddyai.com" },
-      to: [{ email: toEmail, name: toName }],
-      subject,
-      htmlContent,
-    }),
-  })
-
-  const data = await res.json()
-  if (!res.ok) {
-    return { error: data.message || `Brevo error ${res.status}` }
+  let res: Response
+  try {
+    res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+      },
+      body: JSON.stringify({
+        sender: {
+          name: process.env.BREVO_SENDER_NAME || "InvestBuddy AI",
+          email: process.env.BREVO_SENDER_EMAIL || "noreply@investbuddyai.com",
+        },
+        to: [{ email: toEmail, name: toName }],
+        subject,
+        htmlContent,
+      }),
+    })
+  } catch (err) {
+    return { error: `Network error reaching Brevo: ${err instanceof Error ? err.message : String(err)}` }
   }
-  return { messageId: data.messageId }
+
+  // Brevo sometimes returns HTML on 5xx — don't assume JSON
+  let data: Record<string, unknown> = {}
+  try {
+    data = await res.json()
+  } catch {
+    return { error: `Brevo returned non-JSON response (HTTP ${res.status}). Check your BREVO_API_KEY env var.` }
+  }
+
+  if (!res.ok) {
+    const msg = (data.message as string) || (data.error as string) || `Brevo HTTP ${res.status}`
+    return { error: `Brevo rejected email: ${msg}` }
+  }
+  return { messageId: data.messageId as string | undefined }
 }
 
 function buildDigestHtml(summary: {
@@ -151,7 +167,51 @@ function buildDigestHtml(summary: {
 </html>`
 }
 
+export async function GET() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { data: settingsRow } = await supabase
+    .from("user_settings").select("preferences").eq("user_id", user.id).single()
+  const prefs = (settingsRow?.preferences as Record<string, string> | null) || {}
+
+  const brevoKey = prefs.brevo_key || process.env.BREVO_API_KEY || ""
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "noreply@investbuddyai.com"
+  const senderName  = process.env.BREVO_SENDER_NAME  || "InvestBuddy AI"
+
+  const emailList = (prefs.notification_emails || "").split(",").map((e: string) => e.trim()).filter(Boolean)
+  const recipientEmail = emailList[0] || user.email || ""
+
+  return NextResponse.json({
+    status: "ok",
+    diagnostics: {
+      brevo_key_source:   prefs.brevo_key ? "user_settings" : process.env.BREVO_API_KEY ? "env_var" : "MISSING",
+      brevo_key_set:      !!brevoKey,
+      sender_email:       senderEmail,
+      sender_name:        senderName,
+      recipient_email:    recipientEmail,
+      notification_emails_configured: emailList.length > 0,
+      tip: !brevoKey
+        ? "Set BREVO_API_KEY in Netlify env vars, or add your key in Settings → API Keys."
+        : `Sender domain '${senderEmail.split("@")[1]}' must be verified in Brevo → Senders, Domains & Dedicated IPs → Domains. Or set BREVO_SENDER_EMAIL env var to an already-verified sender.`,
+    },
+  })
+}
+
 export async function POST(request: Request) {
+  try {
+    return await handleDigest(request)
+  } catch (err) {
+    console.error("[digest] Unhandled error:", err)
+    return NextResponse.json(
+      { error: `Internal error: ${err instanceof Error ? err.message : String(err)}` },
+      { status: 500 }
+    )
+  }
+}
+
+async function handleDigest(request: Request) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -298,7 +358,10 @@ export async function POST(request: Request) {
   const result = await sendBrevoEmail(toEmail, toName, subject, html, brevoKey)
 
   if (result.error) {
-    return NextResponse.json({ error: result.error }, { status: 502 })
+    return NextResponse.json(
+      { error: result.error, hint: "Check that BREVO_SENDER_EMAIL is a verified sender domain in your Brevo account, and your BREVO_API_KEY is valid." },
+      { status: 400 }
+    )
   }
 
   // Log test send for rate-limiting (best-effort, non-critical)
