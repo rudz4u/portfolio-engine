@@ -2,10 +2,14 @@
 -- Replace <YOUR_SERVICE_ROLE_KEY> with the value from:
 --   Supabase Dashboard → Project Settings → API → service_role key
 
--- First remove old job if it exists
+-- Step 1: Enable pg_net extension (required for net.http_post)
+-- If this errors, enable it via: Dashboard → Database → Extensions → search "pg_net" → Enable
+create extension if not exists pg_net;
+
+-- Step 2: Remove old job if it exists
 select cron.unschedule('daily-sync');
 
--- Schedule daily sync + email at 4:30 AM UTC (10:00 AM IST) Mon-Fri
+-- Step 3: Schedule daily sync + email at 4:30 AM UTC (10:00 AM IST) Mon-Fri
 select
   cron.schedule(
     'daily-sync',
