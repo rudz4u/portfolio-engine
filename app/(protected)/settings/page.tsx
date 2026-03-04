@@ -336,41 +336,32 @@ export default function SettingsPage() {
     else toast({ title: "Send failed", description: data.error, variant: "destructive" })
   }
 
-  /* ── LLM options per mode (grouped by provider, sourced from live docs Mar 2026) ── */
+  /* ── Curated LLM options for BYOK (shortlist of high-quality models) ── */
   const llmOptions: Record<string, { value: string; label: string }[]> =
     aiMode === "platform"
-      ? { "": [{ value: "brokerai", label: "BrokerAI (recommended)" }] }
+      ? { "": [{ value: "brokerai", label: "BrokerAI (managed routing, recommended)" }] }
       : {
           "OpenAI": [
-            { value: "gpt-5.2",      label: "GPT-5.2 — best model, coding & agents" },
-            { value: "gpt-5.2-pro",  label: "GPT-5.2 Pro — smarter & more precise" },
-            { value: "gpt-5",        label: "GPT-5 — intelligent reasoning" },
-            { value: "gpt-5-mini",   label: "GPT-5 mini — fast, cost-efficient" },
-            { value: "gpt-5-nano",   label: "GPT-5 nano — fastest & cheapest" },
-            { value: "o3",           label: "o3 — complex reasoning" },
-            { value: "o4-mini",      label: "o4-mini — fast reasoning" },
-            { value: "gpt-4.1",      label: "GPT-4.1 — smartest non-reasoning" },
-            { value: "gpt-4o",       label: "GPT-4o — fast & intelligent" },
-            { value: "gpt-4o-mini",  label: "GPT-4o mini — affordable" },
+            { value: "gpt-5.2", label: "GPT-5.2 — top-tier general reasoning & agents" },
+            { value: "gpt-5.1-chat-latest", label: "GPT-5.1 Chat — strong conversation & code" },
+            { value: "gpt-4o", label: "GPT-4o — fast, low-latency assistant" },
+            { value: "gpt-4.1", label: "GPT-4.1 — high-quality language understanding" },
+            { value: "gpt-3.5-turbo-16k", label: "GPT-3.5 Turbo (16k) — budget-friendly with larger context" },
           ],
           "Anthropic": [
-            { value: "claude-opus-4-6",            label: "Claude Opus 4.6 — most capable" },
-            { value: "claude-sonnet-4-6",          label: "Claude Sonnet 4.6 — speed + intelligence" },
-            { value: "claude-haiku-4-5",           label: "Claude Haiku 4.5 — fastest" },
-            { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet — legacy fast" },
-            { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet — legacy" },
-            { value: "claude-3-5-haiku-20241022",  label: "Claude 3.5 Haiku — legacy cheapest" },
+            { value: "claude-opus-4-6", label: "Claude Opus 4.6 — Anthropic's most capable assistant" },
+            { value: "claude-sonnet-4-6", label: "Claude Sonnet — lower-cost fast Claude family option" },
           ],
-          "Google": [
-            { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro Preview — most advanced" },
-            { value: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview — frontier speed" },
-            { value: "gemini-2.5-pro",         label: "Gemini 2.5 Pro — deep reasoning" },
-            { value: "gemini-2.5-flash",        label: "Gemini 2.5 Flash — best price-perf" },
-            { value: "gemini-2.5-flash-lite",   label: "Gemini 2.5 Flash-Lite — budget" },
+          "Google Gemini": [
+            { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro — Google’s strongest reasoning model (preview)" },
+            { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash — excellent price/perf for many tasks" },
           ],
-          "DeepSeek": [
-            { value: "deepseek-chat",     label: "DeepSeek V3.2 — 128K context" },
-            { value: "deepseek-reasoner", label: "DeepSeek V3.2 Reasoner — thinking mode" },
+          "Multimodal / Audio / Image": [
+            { value: "dall-e-3", label: "DALL·E 3 — image generation (best for rich prompts)" },
+            { value: "gpt-audio", label: "GPT Audio — speech generation / TTS" },
+          ],
+          "Other": [
+            { value: "gpt-5-mini", label: "GPT-5 mini — fast & cost-effective variant" },
           ],
         }
 
