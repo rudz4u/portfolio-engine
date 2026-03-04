@@ -24,16 +24,39 @@ interface ScoredHolding {
   momentum_score: number
   valuation_score: number
   position_score: number
+  advisory_score: number
   rsi_approx: number
   technical_signal: "oversold" | "neutral" | "overbought"
   macd_trend: "bullish" | "bearish" | "neutral"
   segment: string
 }
 
+type ConsensusSignal = "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL"
+
+interface AdvisoryConsensus {
+  trading_symbol: string
+  buy_count: number
+  sell_count: number
+  hold_count: number
+  neutral_count: number
+  total_sources: number
+  weighted_score: number
+  advisory_score: number
+  consensus_signal: ConsensusSignal
+}
+
 interface Summary {
   avgScore: number
   bySignal: { BUY: number; HOLD: number; SELL: number; WATCH: number }
   total: number
+}
+
+const CONSENSUS_STYLES: Record<ConsensusSignal, string> = {
+  STRONG_BUY: "bg-emerald-400/15 text-emerald-400 border-emerald-400/30",
+  BUY:        "bg-emerald-400/10 text-emerald-300 border-emerald-400/20",
+  HOLD:       "bg-blue-400/15 text-blue-400 border-blue-400/30",
+  SELL:       "bg-red-400/10 text-red-300 border-red-400/20",
+  STRONG_SELL:"bg-red-400/15 text-red-400 border-red-400/30",
 }
 
 const SIGNAL_STYLES: Record<string, string> = {
@@ -67,16 +90,26 @@ export default function RecommendationsPage() {
   const [expandedResearch, setExpandedResearch] = useState<string | null>(null)
   const [researchData, setResearchData] = useState<Record<string, { answer: string | null; results: {title: string; url: string; snippet?: string}[] } | null>>({})
   const [researchLoading, setResearchLoading] = useState<string | null>(null)
+  const [consensusMap, setConsensusMap] = useState<Record<string, AdvisoryConsensus>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/analysis/score")
-      if (!res.ok) throw new Error("Failed to compute scores")
-      const json = await res.json()
+      const [scoreRes, consensusRes] = await Promise.all([
+        fetch("/api/analysis/score"),
+        fetch("/api/advisory/consensus"),
+      ])
+      if (!scoreRes.ok) throw new Error("Failed to compute scores")
+      const json = await scoreRes.json()
       setData(json)
       setLastRefresh(new Date())
+      if (consensusRes.ok) {
+        const cjson = await consensusRes.json()
+        const map: Record<string, AdvisoryConsensus> = {}
+        for (const c of cjson.consensus ?? []) map[c.trading_symbol] = c
+        setConsensusMap(map)
+      }
     } catch (err) {
       setError("Failed to load recommendations. Make sure you have holdings synced.")
     } finally {
@@ -245,22 +278,34 @@ export default function RecommendationsPage() {
                 </div>
 
                 {/* Score breakdown */}
-                <div className="mt-3 pt-3 border-t grid grid-cols-4 gap-3">
+                <div className="mt-3 pt-3 border-t grid grid-cols-5 gap-3">
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">Total Score</div>
                     <div className="text-lg font-bold">{h.score}</div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">Momentum</div>
-                    <ScoreBar value={h.momentum_score} max={40} color="bg-blue-500" />
+                    <ScoreBar value={h.momentum_score} max={30} color="bg-blue-500" />
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">Valuation</div>
-                    <ScoreBar value={h.valuation_score} max={30} color="bg-purple-500" />
+                    <ScoreBar value={h.valuation_score} max={25} color="bg-purple-500" />
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">Sizing</div>
-                    <ScoreBar value={h.position_score} max={30} color="bg-green-500" />
+                    <ScoreBar value={h.position_score} max={20} color="bg-green-500" />
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Advisory</div>
+                    <ScoreBar
+                      value={h.advisory_score ?? 12}
+                      max={25}
+                      color={
+                        (h.advisory_score ?? 12) >= 18 ? "bg-emerald-500" :
+                        (h.advisory_score ?? 12) >= 12 ? "bg-amber-500" :
+                        "bg-red-500"
+                      }
+                    />
                   </div>
                 </div>
 
@@ -280,7 +325,30 @@ export default function RecommendationsPage() {
                   }`}>
                     MACD {h.macd_trend}
                   </span>
+                  {/* Advisory consensus badge */}
+                  {consensusMap[h.trading_symbol] && (
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      CONSENSUS_STYLES[consensusMap[h.trading_symbol].consensus_signal]
+                    }`}>
+                      <BarChart2 className="w-2.5 h-2.5" />
+                      {consensusMap[h.trading_symbol].consensus_signal.replace("_", "\u00A0")}&nbsp;·&nbsp;
+                      {consensusMap[h.trading_symbol].total_sources} advisors
+                    </span>
+                  )}
                 </div>
+
+                {/* Advisory consensus breakdown (when data is available) */}
+                {consensusMap[h.trading_symbol] && (() => {
+                  const c = consensusMap[h.trading_symbol]
+                  return (
+                    <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
+                      <span className="text-emerald-400">▲ {c.buy_count} Buy</span>
+                      <span>◆ {c.hold_count} Hold</span>
+                      <span className="text-red-400">▼ {c.sell_count} Sell</span>
+                      <span className="ml-1 opacity-60">Consensus {c.weighted_score.toFixed(0)}/100</span>
+                    </div>
+                  )
+                })()}
 
                 {/* Weight + qty */}
                 <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">

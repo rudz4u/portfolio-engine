@@ -46,6 +46,21 @@
 [functions."daily-sync"]
   timeout = 60
 
+# Advisory Intelligence — 4 scheduled scans per day Mon–Fri
+# Each scan: scrape advisors → extract via LLM → compute consensus → update scores
+# Requires SUPABASE_SERVICE_ROLE_KEY, TAVILY_API_KEY, GEMINI_API_KEY (or OPENAI_API_KEY)
+[functions."advisory-scan-morning"]
+  timeout = 120
+
+[functions."advisory-scan-midday"]
+  timeout = 120
+
+[functions."advisory-scan-afternoon"]
+  timeout = 120
+
+[functions."advisory-scan-evening"]
+  timeout = 120
+
 # ── Security headers ────────────────────────────────────────────────────────
 
 [[headers]]

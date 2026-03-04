@@ -48,6 +48,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch holdings" }, { status: 500 })
   }
 
+  // Map to HoldingInput — join advisory_consensus for today's advisory scores
+  // Fetch today's consensus for all symbols in this portfolio
+  const todaySymbols = holdings.map((h) => (h.trading_symbol as string) || h.instrument_key)
+  const today = new Date().toISOString().slice(0, 10)
+
+  const { data: consensusRows } = await supabase
+    .from("advisory_consensus")
+    .select("trading_symbol, advisory_score")
+    .in("trading_symbol", todaySymbols)
+    .eq("consensus_date", today)
+
+  const advisoryMap = new Map<string, number>(
+    (consensusRows ?? []).map((r) => [r.trading_symbol as string, r.advisory_score as number])
+  )
+
   // Map to HoldingInput
   const inputs: HoldingInput[] = holdings.map((h) => {
     const raw = (h.raw as Record<string, number>) || {}
@@ -66,6 +81,7 @@ export async function GET(request: NextRequest) {
       day_change: raw.day_change,
       day_change_percentage: raw.day_change_percentage,
       segment: (h.segment as string) || "Others",
+      advisory_score: advisoryMap.get(symbol),  // undefined → scoring engine uses fallback 12
     }
   })
 
@@ -85,6 +101,7 @@ export async function GET(request: NextRequest) {
       momentum_score: s.momentum_score,
       valuation_score: s.valuation_score,
       position_score: s.position_score,
+      advisory_score: s.advisory_score,
       computed_at: new Date().toISOString(),
     },
   }))
