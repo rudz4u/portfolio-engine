@@ -33,19 +33,14 @@ const navItems = [
   { href: "/settings",         label: "Settings",         icon: Settings },
 ]
 
-export function Sidebar() {
-  const pathname  = usePathname()
-  const router    = useRouter()
-  const [mobileOpen, setMobileOpen] = useState(false)
+interface SidebarContentProps {
+  pathname: string
+  onNavClick: () => void
+  onSignOut: () => void
+}
 
-  async function handleSignOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/signin")
-    router.refresh()
-  }
-
-  const SidebarContent = () => (
+function SidebarContent({ pathname, onNavClick, onSignOut }: SidebarContentProps) {
+  return (
     <aside className="flex flex-col h-full w-64 bg-sidebar border-r border-sidebar-border">
       {/* ── Logo ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
@@ -67,7 +62,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setMobileOpen(false)}
+              onClick={onNavClick}
               className={cn(
                 "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                 active
@@ -93,7 +88,7 @@ export function Sidebar() {
       {/* ── Sign out ──────────────────────────────────────────────────── */}
       <div className="px-3 py-4 border-t border-sidebar-border">
         <button
-          onClick={handleSignOut}
+          onClick={onSignOut}
           className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors duration-150"
         >
           <LogOut className="h-4 w-4 shrink-0" />
@@ -102,6 +97,19 @@ export function Sidebar() {
       </div>
     </aside>
   )
+}
+
+export function Sidebar() {
+  const pathname  = usePathname()
+  const router    = useRouter()
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/signin")
+    router.refresh()
+  }
 
   return (
     <>
@@ -124,7 +132,7 @@ export function Sidebar() {
 
       {/* ── Desktop sidebar ───────────────────────────────────────────── */}
       <div className="hidden lg:flex">
-        <SidebarContent />
+        <SidebarContent pathname={pathname} onNavClick={() => {}} onSignOut={handleSignOut} />
       </div>
 
       {/* ── Mobile sidebar ────────────────────────────────────────────── */}
@@ -134,7 +142,7 @@ export function Sidebar() {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <SidebarContent />
+        <SidebarContent pathname={pathname} onNavClick={() => setMobileOpen(false)} onSignOut={handleSignOut} />
       </div>
 
       {/* ── Mobile overlay ────────────────────────────────────────────── */}
@@ -147,4 +155,3 @@ export function Sidebar() {
     </>
   )
 }
-

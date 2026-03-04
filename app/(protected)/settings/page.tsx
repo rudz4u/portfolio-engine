@@ -52,8 +52,7 @@ function Toggle({
 
 export default function SettingsPage() {
   const { toast } = useToast()
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const supabase = createClient()
+  const supabase = createClient() // used in async handlers below
   const searchParams = useSearchParams()
 
   /* ── upstox ── */

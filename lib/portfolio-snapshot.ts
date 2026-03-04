@@ -18,7 +18,6 @@ export interface SnapshotInput {
 }
 
 export async function recordPortfolioSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: SupabaseClient<any>,
   input: SnapshotInput
 ): Promise<void> {

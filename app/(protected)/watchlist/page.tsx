@@ -384,7 +384,7 @@ export default function WatchlistPage() {
     } finally { setLoadingItems(false) }
   }, [])
 
-  useEffect(() => { loadAll() }, [])
+  useEffect(() => { loadAll() }, [loadAll])
   useEffect(() => { if (activeId) loadItems(activeId) }, [activeId, loadItems])
 
   const activeList   = watchlists.find((l) => l.id === activeId)

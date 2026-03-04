@@ -273,7 +273,7 @@ export function SectorCorrelationHeatmap({ segments }: Props) {
                 <p className="text-xs text-white/40 leading-relaxed">
                   Many of your sectors tend to{" "}
                   <span className="text-amber-400 font-medium">move in the same direction</span>.
-                  {" "}If markets fall broadly, most of your portfolio may be affected at once. Consider diversifying into sectors that don't track each other closely.
+                  {" "}If markets fall broadly, most of your portfolio may be affected at once. Consider diversifying into sectors that don&apos;t track each other closely.
                 </p>
               ) : counts["independent"] >= Math.floor(insights.length / 2) ? (
                 <p className="text-xs text-white/40 leading-relaxed">

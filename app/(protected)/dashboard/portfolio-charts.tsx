@@ -71,7 +71,6 @@ function shortSymbol(h: HoldingForChart): string {
   return raw.length > 10 ? raw.slice(0, 10) : raw
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, pct }: any) => {
   if (pct < 4) return null
   const RADIAN = Math.PI / 180

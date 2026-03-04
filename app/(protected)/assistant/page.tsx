@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import {
   Card,
   CardContent,
@@ -38,16 +38,8 @@ export default function AssistantPage() {
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    loadHistory()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
-
-  async function loadHistory() {
+  // Defined before the useEffect that calls it to satisfy React Compiler analysis
+  const loadHistory = useCallback(async () => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -95,7 +87,13 @@ export default function AssistantPage() {
       ])
     }
     setHistoryLoaded(true)
-  }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { void loadHistory() }, [loadHistory])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
 
   async function clearChat() {
     setClearingChat(true)
