@@ -72,6 +72,7 @@ export default function SettingsPage() {
   const [anthropicKey, setAnthropicKey] = useState("")
   const [geminiKey, setGeminiKey] = useState("")
   const [deepseekKey, setDeepseekKey] = useState("")
+  const [qwenKey,     setQwenKey]     = useState("")
   const [tavilyKey, setTavilyKey] = useState("")
   const [brevoKey,  setBrevoKey]  = useState("")
   const [showKeys, setShowKeys] = useState(false)
@@ -80,6 +81,7 @@ export default function SettingsPage() {
     anthropic_key_set: false,
     gemini_key_set: false,
     deepseek_key_set: false,
+    qwen_key_set: false,
     tavily_key_set: false,
     brevo_key_set: false,
   })
@@ -173,6 +175,7 @@ export default function SettingsPage() {
       anthropic_key_set: !!data.anthropic_key_set,
       gemini_key_set: !!data.gemini_key_set,
       deepseek_key_set: !!data.deepseek_key_set,
+      qwen_key_set: !!data.qwen_key_set,
       tavily_key_set: !!data.tavily_key_set,
       brevo_key_set: !!data.brevo_key_set,
     })
@@ -277,6 +280,7 @@ export default function SettingsPage() {
     if (anthropicKey) body.anthropic_key = anthropicKey
     if (geminiKey)    body.gemini_key    = geminiKey
     if (deepseekKey)  body.deepseek_key  = deepseekKey
+    if (qwenKey)      body.qwen_key      = qwenKey
     if (tavilyKey)    body.tavily_key    = tavilyKey
     if (brevoKey)     body.brevo_key     = brevoKey
     const res = await fetch("/api/settings", {
@@ -287,7 +291,7 @@ export default function SettingsPage() {
     setSavingKeys(false)
     if (res.ok) {
       toast({ title: "AI settings saved" })
-      setOpenaiKey(""); setAnthropicKey(""); setGeminiKey(""); setDeepseekKey(""); setTavilyKey(""); setBrevoKey("")
+      setOpenaiKey(""); setAnthropicKey(""); setGeminiKey(""); setDeepseekKey(""); setQwenKey(""); setTavilyKey(""); setBrevoKey("")
       loadSettings()
     } else {
       toast({ title: "Failed to save AI settings", variant: "destructive" })
@@ -336,32 +340,28 @@ export default function SettingsPage() {
     else toast({ title: "Send failed", description: data.error, variant: "destructive" })
   }
 
-  /* ── Curated BYOK shortlist grouped by capability: reasoning/research, tooling, and affordability ── */
+  /* ── Curated BYOK shortlist: reasoning-first, tool-aware, investment-grade ── */
+  // All model IDs match the provider's actual API model identifiers.
   const llmOptions: Record<string, { value: string; label: string }[]> =
     aiMode === "platform"
       ? { "": [{ value: "brokerai", label: "BrokerAI (managed routing, recommended)" }] }
       : {
           "Reasoning & Deep Research": [
-            { value: "gpt-5.2-chat-latest", label: "GPT-5.2 Chat — strongest general reasoning, planning, agents" },
-            { value: "claude-opus-4-6", label: "Claude Opus 4.6 — careful, aligned reasoning for high-stakes text" },
-            { value: "gemini-3.1-pro", label: "Gemini 3.1 Pro — Google’s high-end reasoning & retrieval" },
-            { value: "deepseek-research-1", label: "DeepSeek Research — tuned for retrieval-augmented analysis" },
+            { value: "gpt-4.1",           label: "GPT-4.1 — OpenAI flagship: top reasoning, tool-use & stable API" },
+            { value: "claude-opus-4-6",   label: "Claude Opus 4.6 — Anthropic’s best: deep, careful reasoning" },
+            { value: "gemini-2.5-pro",    label: "Gemini 2.5 Pro — Google’s top reasoning + 1M context window" },
+            { value: "deepseek-reasoner", label: "DeepSeek R1 — chain-of-thought reasoning at very low cost" },
           ],
-          "Tooling & Agent-Ready (function-calling)": [
-            { value: "gpt-5.2-chat-latest", label: "GPT-5.2 Chat — best agent/tool orchestration" },
-            { value: "claude-opus-4-6", label: "Claude Opus 4.6 — supports tool use & long context" },
-            { value: "gemini-computer-use", label: "Gemini Computer-Use — automates UI/tool tasks (if available)" },
-            { value: "deepseek-chat-latest", label: "DeepSeek Chat — integrates well with search/tooling APIs" },
-          ],
-          "Balanced (price/perf)": [
-            { value: "gpt-5.1-chat-latest", label: "GPT-5.1 Chat — strong mix of capability and cost" },
-            { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash — good price/perf for reasoning & scale" },
-            { value: "qwen-3.5-plus", label: "Qwen 3.5 Plus — long-context multilingual, affordable" },
+          "Chat + Tool-Use (balanced)": [
+            { value: "gpt-5.2-chat-latest", label: "GPT-5.2 Chat — latest OpenAI: fast, agent & tool ready" },
+            { value: "claude-sonnet-4-6",   label: "Claude Sonnet 4.6 — fast Anthropic with 200K context" },
+            { value: "gemini-2.5-flash",    label: "Gemini 2.5 Flash — great price/perf, strong reasoning" },
+            { value: "deepseek-chat",        label: "DeepSeek Chat V3 — strong analysis, OpenAI-compatible endpoint" },
           ],
           "Cost-efficient": [
-            { value: "gpt-5-mini", label: "GPT-5 Mini — fast, low-cost for shorter reasoning tasks" },
-            { value: "gpt-3.5-turbo-16k", label: "GPT-3.5 Turbo (16k) — budget-friendly with larger context" },
-            { value: "qwen3-max", label: "Qwen3 Max — cost-oriented higher-capacity text model" },
+            { value: "gpt-4.1-mini",     label: "GPT-4.1 Mini — compact OpenAI, tool-capable, affordable" },
+            { value: "claude-haiku-4-5", label: "Claude Haiku 4.5 — fastest Claude for quick queries" },
+            { value: "qwen-plus",        label: "Qwen Plus (Alibaba) — 1M context, multilingual, very affordable" },
           ],
         }
 
@@ -522,6 +522,7 @@ export default function SettingsPage() {
                   { label: "Anthropic", key: "anthropic_key_set" as const, clearKey: "anthropic_key" },
                   { label: "Gemini", key: "gemini_key_set" as const, clearKey: "gemini_key" },
                   { label: "DeepSeek", key: "deepseek_key_set" as const, clearKey: "deepseek_key" },
+                  { label: "Qwen", key: "qwen_key_set" as const, clearKey: "qwen_key" },
                   { label: "Tavily", key: "tavily_key_set" as const, clearKey: "tavily_key" },
                   { label: "Brevo", key: "brevo_key_set" as const, clearKey: "brevo_key" },
                 ]).map(({ label, key, clearKey }) => (
@@ -541,6 +542,7 @@ export default function SettingsPage() {
                 { label: "Anthropic API Key", placeholder: "sk-ant-...", value: anthropicKey, set: setAnthropicKey, flagKey: "anthropic_key_set" as const },
                 { label: "Google Gemini API Key", placeholder: "AIza...", value: geminiKey, set: setGeminiKey, flagKey: "gemini_key_set" as const },
                 { label: "DeepSeek API Key", placeholder: "sk-...", value: deepseekKey, set: setDeepseekKey, flagKey: "deepseek_key_set" as const },
+                { label: "Qwen (Alibaba) API Key", placeholder: "sk-...", value: qwenKey, set: setQwenKey, flagKey: "qwen_key_set" as const },
                 { label: "Tavily API Key (news research)", placeholder: "tvly-...", value: tavilyKey, set: setTavilyKey, flagKey: "tavily_key_set" as const },
                 { label: "Brevo API Key (email digest)", placeholder: "xkeysib-...", value: brevoKey, set: setBrevoKey, flagKey: "brevo_key_set" as const },
               ]).map(({ label, placeholder, value, set, flagKey }) => (

@@ -2,11 +2,74 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { scoreHoldings, portfolioSummary, type HoldingInput } from "@/lib/quant/scoring"
 
-const SYSTEM_PROMPT = `You are an expert AI equity portfolio assistant for BrokerAI. 
+const SYSTEM_PROMPT = `You are an expert AI equity portfolio assistant for BrokerAI.
 You help users analyze their Indian stock portfolio, understand market trends, and make informed investment decisions.
 You have deep knowledge of NSE/BSE markets, fundamental analysis, technical indicators (RSI, MACD, ATR, Bollinger Bands), and portfolio management.
 You speak concisely, citing numbers from the portfolio context when available. Always note that insights are not financial advice.
 When asked for a morning briefing, provide: 1) Portfolio P&L snapshot, 2) Top BUY/SELL signals, 3) Sector concentration flags, 4) One key action item.`
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function getProvider(modelId: string): "openai" | "anthropic" | "gemini" | "deepseek" | "qwen" | null {
+  if (modelId.startsWith("gpt-") || modelId === "o3" || modelId.startsWith("o4-")) return "openai"
+  if (modelId.startsWith("claude-")) return "anthropic"
+  if (modelId.startsWith("gemini-")) return "gemini"
+  if (modelId.startsWith("deepseek-")) return "deepseek"
+  if (modelId.startsWith("qwen-")) return "qwen"
+  return null
+}
+
+const DEFAULT_MODELS = {
+  openai:    "gpt-4.1",
+  anthropic: "claude-opus-4-6",
+  gemini:    "gemini-2.5-flash",
+  deepseek:  "deepseek-chat",
+  qwen:      "qwen-plus",
+}
+
+function needsWebSearch(msg: string): boolean {
+  const lower = msg.toLowerCase()
+  return (
+    lower.includes("today") ||
+    lower.includes("latest") ||
+    lower.includes("news") ||
+    lower.includes("current") ||
+    lower.includes("market") ||
+    lower.includes("nifty") ||
+    lower.includes("sensex") ||
+    lower.includes("price") ||
+    lower.includes("result") ||
+    lower.includes("earnings") ||
+    lower.includes("ipo")
+  )
+}
+
+async function tavilySearch(query: string, apiKey: string): Promise<string> {
+  try {
+    const res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query,
+        search_depth: "advanced",
+        max_results: 5,
+        include_answer: true,
+      }),
+    })
+    if (!res.ok) return ""
+    const data = await res.json()
+    const snippets: string = (data.results as { title: string; content: string; url: string }[])
+      .slice(0, 5)
+      .map((r) => `[${r.title}] ${r.content.slice(0, 300)}`)
+      .join("\n")
+    return data.answer ? `${data.answer}\n\nSources:\n${snippets}` : snippets
+  } catch {
+    return ""
+  }
+}
+
+// ── Main handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -20,18 +83,16 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
   const message: string = body.message
-  // history = prior turns the client sends for multi-turn context (max 20 kept)
   const rawHistory: { role: string; content: string }[] = Array.isArray(body.history)
     ? body.history.filter((m: { role: string; content: string }) => m.content?.trim())
     : []
-  // Keep at most 10 pairs (20 messages) so we don't blow token budgets
   const history = rawHistory.slice(-20)
 
   if (!message || typeof message !== "string") {
     return NextResponse.json({ error: "Message is required" }, { status: 400 })
   }
 
-  // Fetch portfolio context + run quant scoring
+  // ── 1. Fetch portfolio + holdings + quant scoring ──────────────────────────
   const { data: portfolios } = await supabase
     .from("portfolios")
     .select("id")
@@ -74,24 +135,50 @@ export async function POST(request: NextRequest) {
       const totalPnL = inputs.reduce((s, h) => s + h.unrealized_pl, 0)
       const pnlPct = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0
 
+      // Sector breakdown
+      const sectorMap: Record<string, number> = {}
+      for (const h of inputs) {
+        const seg = h.segment ?? "Others"
+        sectorMap[seg] = (sectorMap[seg] || 0) + h.invested_amount
+      }
+      const sectorBreakdown = Object.entries(sectorMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([sector, amt]) => `${sector}: ₹${amt.toLocaleString("en-IN", { maximumFractionDigits: 0 })} (${((amt / totalInvested) * 100).toFixed(1)}%)`)
+        .join(", ")
+
       portfolioContext = `
 
 Portfolio Summary (live data):
 - Total Invested: ₹${totalInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
 - Total P&L: ₹${totalPnL.toLocaleString("en-IN", { maximumFractionDigits: 0 })} (${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%)
-- Holdings: ${inputs.length} stocks
+- Holdings: ${inputs.length} stocks across ${Object.keys(sectorMap).length} sectors
 - Portfolio Score: ${summary.avgScore}/100
+- Sector allocation: ${sectorBreakdown}
 - BUY signals: ${buySignals.join(", ") || "None"}
 - SELL signals: ${sellSignals.join(", ") || "None"}
 - RSI oversold (potential bounce): ${oversoldStocks.join(", ") || "None"}
 - RSI overbought (caution): ${overboughtStocks.join(", ") || "None"}
-- Top 10 by invested: ${scored.slice(0, 10).map((s) => `${s.trading_symbol}(${s.signal},score:${s.score},pnl:${s.pnl_pct.toFixed(1)}%,RSI≈${s.rsi_approx},MACD:${s.macd_trend})`).join(", ")}`
+- Top 15 holdings: ${scored.slice(0, 15).map((s) => `${s.trading_symbol}(signal:${s.signal},score:${s.score},pnl:${s.pnl_pct.toFixed(1)}%,RSI≈${s.rsi_approx},MACD:${s.macd_trend})`).join(" | ")}`
     }
   }
 
-  const fullSystemPrompt = SYSTEM_PROMPT + portfolioContext
+  // ── 2. Fetch recent order history ─────────────────────────────────────────
+  const { data: recentOrders } = await supabase
+    .from("orders")
+    .select("instrument_key, order_type, transaction_type, quantity, price, status, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(15)
 
-  // Resolve user-saved LLM keys (user prefs override env vars)
+  let ordersContext = ""
+  if (recentOrders && recentOrders.length > 0) {
+    ordersContext = `
+
+Recent Orders (last ${recentOrders.length}):
+${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument_key} @ ₹${o.price} [${o.status}] ${new Date(o.created_at as string).toLocaleDateString("en-IN")}`).join("\n")}`
+  }
+
+  // ── 3. Resolve LLM keys & build provider priority list ───────────────────
   const { data: settingsRow } = await supabase
     .from("user_settings")
     .select("preferences")
@@ -104,51 +191,69 @@ Portfolio Summary (live data):
   const resolvedAnthropic = prefs.anthropic_key || process.env.ANTHROPIC_API_KEY || ""
   const resolvedGemini    = prefs.gemini_key    || process.env.GOOGLE_GEMINI_API_KEY || ""
   const resolvedDeepseek  = prefs.deepseek_key  || process.env.DEEPSEEK_API_KEY  || ""
+  const resolvedQwen      = prefs.qwen_key      || process.env.QWEN_API_KEY      || ""
+  const resolvedTavily    = prefs.tavily_key    || process.env.TAVILY_API_KEY    || ""
 
-  // Build ordered attempt list based on preferred_llm (model ID → provider)
-  type LLMProvider = "openai" | "anthropic" | "gemini" | "deepseek"
-  const allProviders: LLMProvider[] = ["openai", "anthropic", "gemini", "deepseek"]
-  function getProvider(modelId: string): LLMProvider | null {
-    if (modelId.startsWith("gpt-") || modelId === "o3" || modelId.startsWith("o4-")) return "openai"
-    if (modelId.startsWith("claude-")) return "anthropic"
-    if (modelId.startsWith("gemini-")) return "gemini"
-    if (modelId.startsWith("deepseek-")) return "deepseek"
-    return null
-  }
-  // Only treat `preferred_llm` as an override when user has BYOK enabled.
+  type LLMProvider = "openai" | "anthropic" | "gemini" | "deepseek" | "qwen"
+  const allProviders: LLMProvider[] = ["openai", "anthropic", "gemini", "deepseek", "qwen"]
+
   const preferredProvider = aiModePref === "byok" ? getProvider(preferredLlm) : null
   const orderedProviders: LLMProvider[] = preferredProvider
-    ? [preferredProvider, ...allProviders.filter((p) => p !== preferredProvider)]
+    ? [preferredProvider as LLMProvider, ...allProviders.filter((p) => p !== preferredProvider)]
     : allProviders
 
+  // ── 4. Tavily web search (if query is market/news related) ────────────────
+  let webSearchContext = ""
+  let usedWebSearch = false
+  if (resolvedTavily && needsWebSearch(message)) {
+    const searchResult = await tavilySearch(message, resolvedTavily)
+    if (searchResult) {
+      webSearchContext = `\n\nWeb Search Results (real-time):\n${searchResult}`
+      usedWebSearch = true
+    }
+  }
+
+  // ── 5. Build system prompt ────────────────────────────────────────────────
+  const fullSystemPrompt = SYSTEM_PROMPT + portfolioContext + ordersContext + webSearchContext
+
+  // ── 6. Try providers in order ─────────────────────────────────────────────
   let reply = ""
+  let usedProvider = ""
+  let usedModel = ""
 
   for (const provider of orderedProviders) {
     if (reply) break
+
     if (provider === "openai" && resolvedOpenai) {
       try {
+        const model = preferredProvider === "openai" ? preferredLlm : DEFAULT_MODELS.openai
         const res = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedOpenai}` },
           body: JSON.stringify({
-            model: preferredProvider === "openai" ? preferredLlm : "gpt-5.1-chat-latest",
+            model,
             messages: [
               { role: "system", content: fullSystemPrompt },
               ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
               { role: "user", content: message },
             ],
-            max_tokens: 800,
+            max_tokens: 2048,
             temperature: 0.7,
           }),
         })
         if (res.ok) {
           const data = await res.json()
           reply = data.choices?.[0]?.message?.content || ""
+          if (reply) { usedProvider = "openai"; usedModel = model }
+        } else {
+          console.error("OpenAI error", res.status, await res.text())
         }
-      } catch { console.error("OpenAI error") }
+      } catch (e) { console.error("OpenAI error", e) }
     }
+
     if (provider === "anthropic" && resolvedAnthropic) {
       try {
+        const model = preferredProvider === "anthropic" ? preferredLlm : DEFAULT_MODELS.anthropic
         const res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
@@ -157,8 +262,8 @@ Portfolio Summary (live data):
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
-            model: preferredProvider === "anthropic" ? preferredLlm : "claude-sonnet-4-6",
-            max_tokens: 800,
+            model,
+            max_tokens: 2048,
             system: fullSystemPrompt,
             messages: [
               ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
@@ -169,74 +274,105 @@ Portfolio Summary (live data):
         if (res.ok) {
           const data = await res.json()
           reply = data.content?.[0]?.text || ""
+          if (reply) { usedProvider = "anthropic"; usedModel = model }
+        } else {
+          console.error("Anthropic error", res.status, await res.text())
         }
-      } catch { console.error("Anthropic error") }
+      } catch (e) { console.error("Anthropic error", e) }
     }
-  }
 
-  // Try Google Gemini
-  if (!reply && resolvedGemini) {
-    try {
-      const geminiModel = preferredProvider === "gemini" ? preferredLlm : "gemini-2.5-flash"
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${resolvedGemini}`,
-        {
+    if (provider === "gemini" && resolvedGemini) {
+      try {
+        const model = preferredProvider === "gemini" ? preferredLlm : DEFAULT_MODELS.gemini
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${resolvedGemini}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: fullSystemPrompt }] },
+              contents: [
+                ...history.map((m) => ({
+                  role: m.role === "assistant" ? "model" : "user",
+                  parts: [{ text: m.content }],
+                })),
+                { role: "user", parts: [{ text: message }] },
+              ],
+              generationConfig: { maxOutputTokens: 2048, temperature: 0.7 },
+            }),
+          }
+        )
+        if (res.ok) {
+          const data = await res.json()
+          reply = data.candidates?.[0]?.content?.parts?.[0]?.text || ""
+          if (reply) { usedProvider = "gemini"; usedModel = model }
+        } else {
+          console.error("Gemini error", res.status, await res.text())
+        }
+      } catch (e) { console.error("Gemini error", e) }
+    }
+
+    if (provider === "deepseek" && resolvedDeepseek) {
+      try {
+        const model = preferredProvider === "deepseek" ? preferredLlm : DEFAULT_MODELS.deepseek
+        const res = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedDeepseek}` },
           body: JSON.stringify({
-            // Gemini: system prompt prepended to first user turn; "assistant" → "model"
-            system_instruction: { parts: [{ text: fullSystemPrompt }] },
-            contents: [
-              ...history.map((m) => ({
-                role: m.role === "assistant" ? "model" : "user",
-                parts: [{ text: m.content }],
-              })),
-              { role: "user", parts: [{ text: message }] },
+            model,
+            messages: [
+              { role: "system", content: fullSystemPrompt },
+              ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+              { role: "user", content: message },
             ],
+            max_tokens: 2048,
+            temperature: 0.7,
           }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          reply = data.choices?.[0]?.message?.content || ""
+          if (reply) { usedProvider = "deepseek"; usedModel = model }
+        } else {
+          console.error("DeepSeek error", res.status, await res.text())
         }
-      )
-      if (res.ok) {
-        const data = await res.json()
-        reply = data.candidates?.[0]?.content?.parts?.[0]?.text || ""
-      }
-    } catch {
-      console.error("Gemini error")
+      } catch (e) { console.error("DeepSeek error", e) }
+    }
+
+    if (provider === "qwen" && resolvedQwen) {
+      try {
+        const model = preferredProvider === "qwen" ? preferredLlm : DEFAULT_MODELS.qwen
+        const res = await fetch("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedQwen}` },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: fullSystemPrompt },
+              ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+              { role: "user", content: message },
+            ],
+            max_tokens: 2048,
+            temperature: 0.7,
+          }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          reply = data.choices?.[0]?.message?.content || ""
+          if (reply) { usedProvider = "qwen"; usedModel = model }
+        } else {
+          console.error("Qwen error", res.status, await res.text())
+        }
+      } catch (e) { console.error("Qwen error", e) }
     }
   }
 
-  // Try DeepSeek (OpenAI-compatible endpoint)
-  if (!reply && resolvedDeepseek) {
-    try {
-      const res = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${resolvedDeepseek}` },
-        body: JSON.stringify({
-          model: preferredProvider === "deepseek" ? preferredLlm : "deepseek-chat",
-          messages: [
-            { role: "system", content: fullSystemPrompt },
-            ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-            { role: "user", content: message },
-          ],
-          max_tokens: 800,
-          temperature: 0.7,
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        reply = data.choices?.[0]?.message?.content || ""
-      }
-    } catch {
-      console.error("DeepSeek error")
-    }
-  }
-
-  // Intelligent fallback
+  // ── 7. Fallback ───────────────────────────────────────────────────────────
   if (!reply) {
     reply = generateFallbackReply(message)
   }
 
-  // Save to chat history
+  // ── 8. Save to chat history ───────────────────────────────────────────────
   await supabase.from("chat_history").insert({
     user_id: user.id,
     message,
@@ -244,14 +380,14 @@ Portfolio Summary (live data):
     created_at: new Date().toISOString(),
   })
 
-  return NextResponse.json({ reply })
+  return NextResponse.json({ reply, used_web_search: usedWebSearch, provider: usedProvider, model: usedModel })
 }
 
 function generateFallbackReply(message: string): string {
   const lower = message.toLowerCase()
 
   if (lower.includes("portfolio") && lower.includes("perform")) {
-    return "To analyze your portfolio performance, I look at your holdings' P&L, sector allocation, and compare against benchmarks like Nifty 50. Configure an AI API key (OpenAI, Anthropic, or Gemini) in your environment variables for detailed AI-powered analysis."
+    return "To analyze your portfolio performance, I look at your holdings' P&L, sector allocation, and compare against benchmarks like Nifty 50. Configure an AI API key (OpenAI, Anthropic, Gemini, DeepSeek, or Qwen) in Settings for detailed AI-powered analysis."
   }
   if (lower.includes("buy") || lower.includes("recommend")) {
     return "For stock recommendations, I analyze fundamentals, technicals, and your existing portfolio concentration. Please note this is not financial advice. Add an AI API key for personalized recommendations."
@@ -263,5 +399,5 @@ function generateFallbackReply(message: string): string {
     return "Sector diversification is key to managing risk. Ideally no single sector should exceed 25-30% of your portfolio value. Check your dashboard for a breakdown of your current sector allocation."
   }
 
-  return "I'm your AI portfolio assistant. I can help with portfolio analysis, stock fundamentals, risk assessment, and investment strategies. For full AI capabilities, configure an API key (OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_GEMINI_API_KEY) in your environment settings."
+  return "I'm your AI portfolio assistant. I can help with portfolio analysis, stock fundamentals, risk assessment, and investment strategies. For full AI capabilities, configure an API key in Settings (OpenAI, Anthropic, Gemini, DeepSeek, or Qwen)."
 }
