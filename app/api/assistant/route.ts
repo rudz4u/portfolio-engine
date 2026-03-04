@@ -220,6 +220,7 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
   let reply = ""
   let usedProvider = ""
   let usedModel = ""
+  const providerErrors: string[] = []
 
   for (const provider of orderedProviders) {
     if (reply) break
@@ -246,9 +247,12 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
           reply = data.choices?.[0]?.message?.content || ""
           if (reply) { usedProvider = "openai"; usedModel = model }
         } else {
-          console.error("OpenAI error", res.status, await res.text())
+          const errText = await res.text()
+          const errMsg = `OpenAI (${model}): ${res.status} — ${errText.slice(0, 200)}`
+          console.error(errMsg)
+          providerErrors.push(errMsg)
         }
-      } catch (e) { console.error("OpenAI error", e) }
+      } catch (e) { const m = `OpenAI exception: ${e}`; console.error(m); providerErrors.push(m) }
     }
 
     if (provider === "anthropic" && resolvedAnthropic) {
@@ -276,9 +280,12 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
           reply = data.content?.[0]?.text || ""
           if (reply) { usedProvider = "anthropic"; usedModel = model }
         } else {
-          console.error("Anthropic error", res.status, await res.text())
+          const errText = await res.text()
+          const errMsg = `Anthropic (${model}): ${res.status} — ${errText.slice(0, 200)}`
+          console.error(errMsg)
+          providerErrors.push(errMsg)
         }
-      } catch (e) { console.error("Anthropic error", e) }
+      } catch (e) { const m = `Anthropic exception: ${e}`; console.error(m); providerErrors.push(m) }
     }
 
     if (provider === "gemini" && resolvedGemini) {
@@ -307,9 +314,12 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
           reply = data.candidates?.[0]?.content?.parts?.[0]?.text || ""
           if (reply) { usedProvider = "gemini"; usedModel = model }
         } else {
-          console.error("Gemini error", res.status, await res.text())
+          const errText = await res.text()
+          const errMsg = `Gemini (${model}): ${res.status} — ${errText.slice(0, 200)}`
+          console.error(errMsg)
+          providerErrors.push(errMsg)
         }
-      } catch (e) { console.error("Gemini error", e) }
+      } catch (e) { const m = `Gemini exception: ${e}`; console.error(m); providerErrors.push(m) }
     }
 
     if (provider === "deepseek" && resolvedDeepseek) {
@@ -334,9 +344,12 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
           reply = data.choices?.[0]?.message?.content || ""
           if (reply) { usedProvider = "deepseek"; usedModel = model }
         } else {
-          console.error("DeepSeek error", res.status, await res.text())
+          const errText = await res.text()
+          const errMsg = `DeepSeek (${model}): ${res.status} — ${errText.slice(0, 200)}`
+          console.error(errMsg)
+          providerErrors.push(errMsg)
         }
-      } catch (e) { console.error("DeepSeek error", e) }
+      } catch (e) { const m = `DeepSeek exception: ${e}`; console.error(m); providerErrors.push(m) }
     }
 
     if (provider === "qwen" && resolvedQwen) {
@@ -361,15 +374,24 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
           reply = data.choices?.[0]?.message?.content || ""
           if (reply) { usedProvider = "qwen"; usedModel = model }
         } else {
-          console.error("Qwen error", res.status, await res.text())
+          const errText = await res.text()
+          const errMsg = `Qwen (${model}): ${res.status} — ${errText.slice(0, 200)}`
+          console.error(errMsg)
+          providerErrors.push(errMsg)
         }
-      } catch (e) { console.error("Qwen error", e) }
+      } catch (e) { const m = `Qwen exception: ${e}`; console.error(m); providerErrors.push(m) }
     }
   }
 
   // ── 7. Fallback ───────────────────────────────────────────────────────────
   if (!reply) {
-    reply = generateFallbackReply(message)
+    if (providerErrors.length > 0) {
+      // All providers returned errors — tell the user which ones and why
+      reply = `⚠️ All AI providers failed to respond. Please verify your API keys in Settings.\n\n${providerErrors.map((e) => `• ${e}`).join("\n")}`
+    } else {
+      // No keys configured at all — give a helpful static hint
+      reply = generateFallbackReply(message)
+    }
   }
 
   // ── 8. Save to chat history ───────────────────────────────────────────────
@@ -380,7 +402,13 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
     created_at: new Date().toISOString(),
   })
 
-  return NextResponse.json({ reply, used_web_search: usedWebSearch, provider: usedProvider, model: usedModel })
+  return NextResponse.json({
+    reply,
+    used_web_search: usedWebSearch,
+    provider: usedProvider,
+    model: usedModel,
+    ...(providerErrors.length > 0 && !usedProvider ? { provider_errors: providerErrors } : {}),
+  })
 }
 
 function generateFallbackReply(message: string): string {

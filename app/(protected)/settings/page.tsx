@@ -347,18 +347,21 @@ export default function SettingsPage() {
       ? { "": [{ value: "brokerai", label: "BrokerAI (managed routing, recommended)" }] }
       : {
           "Reasoning & Deep Research": [
-            { value: "gpt-4.1",           label: "GPT-4.1 — OpenAI flagship: top reasoning, tool-use & stable API" },
+            { value: "gpt-5.1",           label: "GPT-5.1 — OpenAI: flagship reasoning+coding, 400K ctx, configurable effort" },
+            { value: "gpt-4.1",           label: "GPT-4.1 — OpenAI: strong tool-use & stable API" },
             { value: "claude-opus-4-6",   label: "Claude Opus 4.6 — Anthropic’s best: deep, careful reasoning" },
             { value: "gemini-2.5-pro",    label: "Gemini 2.5 Pro — Google’s top reasoning + 1M context window" },
             { value: "deepseek-reasoner", label: "DeepSeek R1 — chain-of-thought reasoning at very low cost" },
           ],
           "Chat + Tool-Use (balanced)": [
-            { value: "gpt-5.2-chat-latest", label: "GPT-5.2 Chat — latest OpenAI: fast, agent & tool ready" },
+            { value: "gpt-5.2-chat-latest", label: "GPT-5.2 Chat — latest ChatGPT model, fast & agent ready ($1.75/$14 per 1M)" },
+            { value: "gpt-5.1-chat-latest", label: "GPT-5.1 Chat — previous ChatGPT model, function calling ($1.25/$10 per 1M)" },
             { value: "claude-sonnet-4-6",   label: "Claude Sonnet 4.6 — fast Anthropic with 200K context" },
             { value: "gemini-2.5-flash",    label: "Gemini 2.5 Flash — great price/perf, strong reasoning" },
-            { value: "deepseek-chat",        label: "DeepSeek Chat V3 — strong analysis, OpenAI-compatible endpoint" },
+            { value: "deepseek-chat",       label: "DeepSeek Chat V3 — strong analysis, OpenAI-compatible endpoint" },
           ],
           "Cost-efficient": [
+            { value: "gpt-5-mini",       label: "GPT-5 mini — 400K context, reasoning-capable, $0.25/$2 per 1M" },
             { value: "gpt-4.1-mini",     label: "GPT-4.1 Mini — compact OpenAI, tool-capable, affordable" },
             { value: "claude-haiku-4-5", label: "Claude Haiku 4.5 — fastest Claude for quick queries" },
             { value: "qwen-plus",        label: "Qwen Plus (Alibaba) — 1M context, multilingual, very affordable" },
