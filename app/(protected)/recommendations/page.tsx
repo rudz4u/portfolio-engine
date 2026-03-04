@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { TrendingUp, TrendingDown, RefreshCw, BarChart2, ExternalLink, Newspaper, ChevronDown, ChevronUp } from "lucide-react"
+import { TrendingUp, TrendingDown, RefreshCw, BarChart2, ExternalLink, Newspaper, ChevronDown, ChevronUp, Zap } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -91,6 +91,9 @@ export default function RecommendationsPage() {
   const [researchData, setResearchData] = useState<Record<string, { answer: string | null; results: {title: string; url: string; snippet?: string}[] } | null>>({})
   const [researchLoading, setResearchLoading] = useState<string | null>(null)
   const [consensusMap, setConsensusMap] = useState<Record<string, AdvisoryConsensus>>({})
+  const [scanUsage, setScanUsage] = useState<{ remaining: number; used: number; max: number } | null>(null)
+  const [scanning, setScanning] = useState(false)
+  const [scanMsg, setScanMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -117,6 +120,42 @@ export default function RecommendationsPage() {
     }
   }, [])
 
+  /** Load the daily scan trigger usage (how many of 4 have been used today) */
+  const loadScanUsage = useCallback(async () => {
+    try {
+      const res = await fetch("/api/advisory/trigger")
+      if (res.ok) setScanUsage(await res.json())
+    } catch { /* non-critical */ }
+  }, [])
+
+  /** Manually trigger the advisory scan pipeline */
+  const triggerScan = useCallback(async () => {
+    if (scanning || (scanUsage && scanUsage.remaining <= 0)) return
+    setScanning(true)
+    setScanMsg(null)
+    try {
+      const res = await fetch("/api/advisory/trigger", { method: "POST" })
+      const json = await res.json()
+      if (res.status === 429) {
+        setScanMsg({ ok: false, text: "Daily limit of 4 manual scans reached." })
+      } else if (!res.ok || !json.ok) {
+        setScanMsg({ ok: false, text: json.error || "Scan failed." })
+      } else {
+        setScanMsg({
+          ok: true,
+          text: `Scan complete — ${json.scan?.recs_resolved ?? 0} recommendations resolved across ${json.scan?.sources_scraped ?? 0} sources.`,
+        })
+        setScanUsage({ remaining: json.remaining, used: json.used, max: json.max })
+        // Reload scores to reflect new advisory data
+        await load()
+      }
+    } catch {
+      setScanMsg({ ok: false, text: "Network error during scan." })
+    } finally {
+      setScanning(false)
+    }
+  }, [scanning, scanUsage, load])
+
   const loadResearch = useCallback(async (symbol: string) => {
     if (expandedResearch === symbol) { setExpandedResearch(null); return }
     setExpandedResearch(symbol)
@@ -135,24 +174,57 @@ export default function RecommendationsPage() {
 
   useEffect(() => {
     load()
-  }, [load])
+    loadScanUsage()
+  }, [load, loadScanUsage])
 
   const filtered = data?.scored.filter((h) => filter === "All" || h.signal === filter) ?? []
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Recommendations</h1>
           <p className="text-muted-foreground text-sm mt-1">
             AI-powered signals computed from your portfolio data
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          {loading ? "Computing..." : "Refresh"}
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Manual advisory scan trigger — max 4x per day */}
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={triggerScan}
+              disabled={scanning || (scanUsage !== null && scanUsage.remaining <= 0)}
+              title={scanUsage ? `${scanUsage.remaining} of ${scanUsage.max} manual scans remaining today` : "Scan advisory sources"}
+            >
+              <Zap className={`w-4 h-4 mr-2 ${scanning ? "animate-pulse text-amber-400" : "text-amber-400"}`} />
+              {scanning ? "Scanning…" : "Scan Advisors"}
+              {scanUsage !== null && (
+                <span className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  scanUsage.remaining === 0
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-amber-400/20 text-amber-400"
+                }`}>
+                  {scanUsage.remaining}/{scanUsage.max}
+                </span>
+              )}
+            </Button>
+            {/* Scan result feedback */}
+            {scanMsg && (
+              <span className={`text-[10px] max-w-[220px] text-right leading-tight ${
+                scanMsg.ok ? "text-emerald-400" : "text-destructive"
+              }`}>
+                {scanMsg.text}
+              </span>
+            )}
+          </div>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Computing…" : "Refresh"}
+          </Button>
+        </div>
       </div>
 
       {/* Summary cards */}
