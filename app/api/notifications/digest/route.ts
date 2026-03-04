@@ -46,6 +46,10 @@ async function sendBrevoEmail(
 
   if (!res.ok) {
     const msg = (data.message as string) || (data.error as string) || `Brevo HTTP ${res.status}`
+    const isKeyError = msg.toLowerCase().includes("key not found") || msg.toLowerCase().includes("unauthorized") || res.status === 401
+    if (isKeyError) {
+      return { error: `Invalid Brevo API key. Go to Brevo → Account → API Keys and copy your key, then set BREVO_API_KEY in Netlify env vars (or paste it in Settings → API Keys). Brevo said: ${msg}` }
+    }
     return { error: `Brevo rejected email: ${msg}` }
   }
   return { messageId: data.messageId as string | undefined }
