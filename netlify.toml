@@ -22,12 +22,14 @@
 [build.environment]
   NODE_VERSION = "20"
   # Skew protection — prevents stale JS/CSS 404s on custom domains after deploys.
-  # Each page load carries a deployment ID; subsequent client navigations are
-  # routed to the matching deployment until the next full page reload.
   NETLIFY_NEXT_SKEW_PROTECTION = "true"
   # Upstox OAuth credentials (UPSTOX_CLIENT_SECRET set in Netlify dashboard)
   UPSTOX_CLIENT_ID    = "d462ce65-de8f-4daa-b543-f8e8ae8dc722"
   UPSTOX_REDIRECT_URI = "https://brokerai.rudz.in/api/oauth/upstox/callback"
+  # NEXT_PUBLIC_* vars are intentionally embedded in client JS by Next.js.
+  # SUPABASE_PROJECT_ID is part of the public Supabase URL.
+  # Tell Netlify's secrets scanner to skip these expected keys.
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_URL,SUPABASE_PROJECT_ID"
 
 # ── Functions ────────────────────────────────────────────────────────────────
 
