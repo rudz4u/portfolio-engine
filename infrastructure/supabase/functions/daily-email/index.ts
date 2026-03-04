@@ -21,7 +21,7 @@ async function sendEmail(
       "api-key": apiKey,
     },
     body: JSON.stringify({
-      sender: { name: "InvestBuddy AI", email: "noreply@brokerai.rudz.in" },
+      sender: { name: "InvestBuddy AI", email: "noreply@investbuddyai.com" },
       to: [{ email: toEmail, name: toName }],
       subject,
       htmlContent,
