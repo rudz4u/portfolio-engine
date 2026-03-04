@@ -19,6 +19,19 @@ function getProvider(modelId: string): "openai" | "anthropic" | "gemini" | "deep
   return null
 }
 
+/**
+ * Returns true for OpenAI reasoning / GPT-5+ models that only accept
+ * temperature=1 (the default) and reject any other value.
+ * These models use reasoning.effort instead of temperature.
+ */
+function isOpenAIReasoningModel(model: string): boolean {
+  // o-series: o1, o1-*, o3, o3-*, o4-*
+  if (/^o[134](-|$)/.test(model) || model === "o1" || model === "o3") return true
+  // GPT-5 family: gpt-5, gpt-5-*, gpt-5.x, gpt-5.x-*
+  if (/^gpt-5/.test(model)) return true
+  return false
+}
+
 const DEFAULT_MODELS = {
   openai:    "gpt-4.1",
   anthropic: "claude-opus-4-6",
@@ -239,7 +252,9 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
               { role: "user", content: message },
             ],
             max_completion_tokens: 2048,
-            temperature: 0.7,
+            // GPT-5+ and o-series reasoning models only accept temperature=1 (default).
+            // Omit the parameter entirely so the API uses its default.
+            ...(isOpenAIReasoningModel(model) ? {} : { temperature: 0.7 }),
           }),
         })
         if (res.ok) {
