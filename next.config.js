@@ -14,36 +14,28 @@ const nextConfig = {
     optimizePackageImports: ["recharts", "lucide-react", "@radix-ui/react-icons"],
   },
   async headers() {
-    // Prevent Netlify durable cache from storing stale HTML for authenticated pages.
-    // Per https://docs.netlify.com/build/caching/caching-overview/ the Next.js plugin
-    // v5.5+ auto-enables durable cache with 1-year TTL. Atomic-deploy invalidation
-    // can miss variation buckets, causing broken JS chunk references on direct URL loads.
-    // Setting no-store here overrides the plugin and forces Netlify to never cache
-    // these SSR pages in the durable cache or edge cache.
-    const protectedRoutes = [
-      "/dashboard",
-      "/portfolio",
-      "/settings",
-      "/assistant",
-      "/recommendations",
-      "/sandbox",
-      "/analytics",
-      "/watchlist",
-      "/trade",
+    // Prevent Netlify Edge / Durable Cache from caching ANY HTML page.
+    // The @netlify/plugin-nextjs v5.5+ overrides netlify.toml header rules for
+    // SSR/ISR pages — it sets long-lived CDN cache TTLs internally. After a
+    // deploy, atomic-deploy invalidation can miss variation buckets for custom
+    // domains (e.g. brokerai.rudz.in), causing stale HTML that references old
+    // JS/CSS chunk hashes which no longer exist (resulting in 404 / MIME errors).
+    // This catch-all forces Netlify to never serve cached HTML on any domain.
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-store, must-revalidate",
+          },
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "no-store",
+          },
+        ],
+      },
     ]
-    return protectedRoutes.map((path) => ({
-      source: path,
-      headers: [
-        {
-          key: "Cache-Control",
-          value: "private, no-store, must-revalidate",
-        },
-        {
-          key: "Netlify-CDN-Cache-Control",
-          value: "no-store",
-        },
-      ],
-    }))
   },
 }
 
