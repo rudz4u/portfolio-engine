@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
-import PortfolioTable from "./portfolio-table"
+import PortfolioTable from "@/app/(protected)/portfolio/portfolio-table"
 import { PortfolioSwitcher } from "@/components/portfolio-switcher"
 
 export default async function PortfolioPage({
