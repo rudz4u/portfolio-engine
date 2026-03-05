@@ -15,6 +15,7 @@ import {
   Zap,
   BarChart2,
   Bookmark,
+  Upload,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -27,6 +28,7 @@ import { motion, AnimatePresence } from "framer-motion"
 const navItems = [
   { href: "/dashboard",        label: "Dashboard",        icon: LayoutDashboard },
   { href: "/portfolio",        label: "Portfolio",        icon: Briefcase },
+  { href: "/portfolio/import", label: "Import Holdings",  icon: Upload },
   { href: "/analytics",        label: "Analytics",        icon: BarChart2 },
   { href: "/watchlist",        label: "Watchlist",        icon: Bookmark },
   { href: "/recommendations",  label: "Recommendations",  icon: Star },
@@ -62,7 +64,11 @@ function SidebarContent({ pathname, onNavClick, onSignOut }: SidebarContentProps
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const Icon   = item.icon
-          const active = pathname === item.href || pathname.startsWith(item.href + "/")
+          // Exact match OR prefix match that doesn't collide with a more specific nav item
+          const active = pathname === item.href || (
+            pathname.startsWith(item.href + "/") &&
+            !navItems.some((o) => o.href !== item.href && o.href.startsWith(item.href + "/") && pathname.startsWith(o.href))
+          )
           return (
             <Link
               key={item.href}
