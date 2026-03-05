@@ -94,6 +94,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No valid holdings found after mapping. Check your column mapping." }, { status: 400 })
     }
 
+    // ── Enrich holdings from instruments DB (fills missing company names, symbols, P&L) ──
+    const isins = holdings.map((h) => h.isin).filter(Boolean) as string[]
+    if (isins.length > 0) {
+      const { data: instrRows } = await admin
+        .from("instruments")
+        .select("isin, name, trading_symbol, segment")
+        .in("isin", isins)
+
+      if (instrRows && instrRows.length > 0) {
+        const isinMap = new Map(instrRows.map((r) => [r.isin as string, r]))
+        for (const h of holdings) {
+          if (!h.isin) continue
+          const instr = isinMap.get(h.isin)
+          if (!instr) continue
+          // Fill missing company name from master data
+          if (!h.company_name && instr.name) h.company_name = instr.name
+          // Fill missing trading symbol
+          if (!h.trading_symbol && instr.trading_symbol) h.trading_symbol = instr.trading_symbol
+        }
+      }
+    }
+
+    // ── Derive missing numeric fields ──
+    for (const h of holdings) {
+      const qty = h.quantity ?? 0
+      const avg = h.avg_price ?? 0
+      const ltp = h.ltp ?? 0
+
+      // Invested amount = avg_price × quantity (if not provided by broker export)
+      if (!h.invested_amount && avg > 0 && qty > 0) {
+        h.invested_amount = avg * qty
+      }
+      // Unrealized P&L = (LTP − avg_price) × quantity
+      if (!h.unrealized_pl && ltp > 0 && avg > 0 && qty > 0) {
+        h.unrealized_pl = (ltp - avg) * qty
+      }
+    }
+
     // ── Ensure user row exists (portfolios FK → users.id) ──
     await admin
       .from("users")

@@ -166,23 +166,16 @@ function csvSplitLine(line: string): string[] {
 // ── PDF parsing ───────────────────────────────────────────────────────────────
 
 export async function parsePdf(buffer: Buffer): Promise<ParsedFile> {
-  // pdf-parse v2 uses a class-based API. Import it as an external package so
-  // Next.js does not bundle it (see serverExternalPackages in next.config.js).
+  // pdf-parse v1 uses a simple async function API — no canvas/DOMMatrix required.
+  // Kept as serverExternalPackage so Next.js doesn't bundle its self-test fixture.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PDFParse } = require("pdf-parse") as {
-    PDFParse: new (opts: object) => { getText(opts?: object): Promise<{ text: string }> }
-  }
-  // stopAtErrors:false  — continue even if font programs throw (e.g. "Dotmatrix is not defined")
-  // disableFontFace:true — skip font-face evaluation; we only need the text stream
-  const parser = new PDFParse({ data: buffer, stopAtErrors: false, disableFontFace: true })
+  const pdfParse = require("pdf-parse") as (buf: Buffer, opts?: object) => Promise<{ text: string }>
   let text: string
   try {
-    const result = await parser.getText()
+    const result = await pdfParse(buffer)
     text = result.text
-  } catch (fontErr) {
-    // If pdf-parse still throws (e.g. unresolvable font reference), fall back to
-    // returning the raw error so the user sees a clean message rather than a stack trace.
-    const msg = fontErr instanceof Error ? fontErr.message : String(fontErr)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
     throw new Error(`PDF could not be parsed: ${msg}. Try exporting as Excel (.xlsx) instead.`)
   }
 
