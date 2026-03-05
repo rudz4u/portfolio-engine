@@ -280,6 +280,12 @@ export function autoMapColumns(
     }
   }
 
+  // Apply format-specific AI Fill defaults.
+  // These override any fuzzy matches for fields that should always use live/derived data.
+  for (const field of format.defaultAiFill ?? []) {
+    mapping[field] = AI_FILL_SENTINEL
+  }
+
   return mapping
 }
 

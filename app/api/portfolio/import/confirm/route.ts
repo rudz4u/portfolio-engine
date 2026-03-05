@@ -17,6 +17,15 @@ import { parseXlsx, parseCsv, parsePdf, applyMapping, AI_FILL_SENTINEL } from "@
 import { recordPortfolioSnapshot } from "@/lib/portfolio-snapshot"
 import { classifySegment } from "@/lib/import/sector-classifier"
 
+/**
+ * Known ISIN → correct NSE trading symbol overrides.
+ * Some broker exports use wrong/abbreviated scrip names as trading symbols.
+ * These corrections ensure the right Upstox instrument key is built.
+ */
+const ISIN_SYMBOL_OVERRIDES: Record<string, string> = {
+  "INE053F01010": "IRFC",  // Upstox XLSX reports this as "IndianRailway-Eq"
+}
+
 export const maxDuration = 60
 export const dynamic = "force-dynamic"
 
@@ -123,6 +132,16 @@ export async function POST(request: NextRequest) {
           if (!h.trading_symbol && instr.trading_symbol) h.trading_symbol = instr.trading_symbol
           // Carry forward the proper Upstox instrument_key (NSE_EQ|SYMBOL format)
           if (instr.instrument_key) h.instrument_key = instr.instrument_key
+        }
+
+        // Apply hardcoded ISIN corrections AFTER DB enrichment — these override
+        // bad trading symbols that brokers may store (e.g. "IndianRailway-Eq" → "IRFC")
+        for (const h of holdings) {
+          const correctSym = h.isin ? ISIN_SYMBOL_OVERRIDES[h.isin] : undefined
+          if (correctSym) {
+            h.trading_symbol = correctSym
+            h.instrument_key = `NSE_EQ|${correctSym}`
+          }
         }
       }
     }

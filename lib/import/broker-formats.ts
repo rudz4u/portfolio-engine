@@ -27,6 +27,12 @@ export interface BrokerFormat {
   exportSteps: string[]
   /** Supported file types. */
   fileTypes: ("xlsx" | "csv" | "pdf")[]
+  /**
+   * Fields to force-set to AI Fill in the mapping UI regardless of header matching.
+   * Use for fields the broker export doesn't include or whose values shouldn't be
+   * taken from the file (e.g. LTP should always be fetched live).
+   */
+  defaultAiFill?: string[]
   /** URL to the broker's official logo image. */
   logoUrl?: string
 }
@@ -38,21 +44,22 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
     headerRow: 9,
     sheetName: "HOLDING",
     columnMap: {
+      // Only 3 fields are reliably mapped from the Upstox XLSX:
       isin: ["ISIN"],
-      company_name: ["Scrip Name"],
       quantity: ["Current Qty"],
-      avg_price: ["Rate"],            // "Rate" in Upstox report = average cost price
-      invested_amount: ["Valuation"], // "Valuation" = qty × avg_price
+      avg_price: ["Rate"],       // "Rate" = average cost price (not LTP)
+      // Everything else is AI-filled (see defaultAiFill below)
     },
+    defaultAiFill: ["company_name", "trading_symbol", "ltp", "invested_amount", "unrealized_pl"],
     exportGuideUrl: "https://account.upstox.com/reports/holding/all",
     exportSteps: [
       "Log in to your Upstox account at upstox.com",
       "Go to Account → Reports → Holdings",
       "Select the date for the report",
-      'Click the download icon and choose "Excel" format',
+      'Click the download icon and choose "Excel" format — PDF is not supported',
       "Upload the downloaded .xlsx file here",
     ],
-    fileTypes: ["xlsx", "pdf"],
+    fileTypes: ["xlsx"],  // PDF parsing not supported for Upstox — XLSX only
     logoUrl: "https://assets.upstox.com/website/images/upstox-new-logo.svg",
   },
 

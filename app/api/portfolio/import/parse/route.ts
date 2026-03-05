@@ -54,6 +54,15 @@ export async function POST(request: NextRequest) {
   const fileName = file.name.toLowerCase()
   const ext = fileName.split(".").pop() || ""
 
+  // Validate that this broker supports the uploaded file type
+  if (format.fileTypes.length > 0 && !format.fileTypes.includes(ext as "xlsx" | "csv" | "pdf")) {
+    const allowed = format.fileTypes.map((t) => `.${t}`).join(" or ")
+    return NextResponse.json(
+      { error: `${format.label} holdings reports must be uploaded as ${allowed}. Please export as Excel (.xlsx) from your broker and try again.` },
+      { status: 400 }
+    )
+  }
+
   try {
     const buffer = Buffer.from(await file.arrayBuffer())
     let parsed

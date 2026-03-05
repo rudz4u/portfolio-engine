@@ -34,6 +34,14 @@ function cleanNseSymbol(sym: string): string {
   return sym.split("-")[0].trim().toUpperCase()
 }
 
+/**
+ * Known ISIN → correct NSE trading symbol overrides.
+ * Broker exports sometimes store wrong scrip names; these ensure the right key is built.
+ */
+const ISIN_SYMBOL_OVERRIDES: Record<string, string> = {
+  "INE053F01010": "IRFC",  // Upstox XLSX reports this as "IndianRailway-Eq"
+}
+
 async function fetchUpstoxLtp(
   instrumentKeys: string[],
   token: string,
@@ -159,6 +167,13 @@ export async function GET(request: NextRequest) {
 
       for (const h of isinHoldings) {
         const isin = h.instrument_key as string
+
+        // Hardcoded override takes absolute priority
+        if (ISIN_SYMBOL_OVERRIDES[isin]) {
+          isinToKey.set(isin, `NSE_EQ|${ISIN_SYMBOL_OVERRIDES[isin]}`)
+          continue
+        }
+
         const master = instrByIsin.get(isin)
 
         if (master?.instrument_key && (master.instrument_key as string).includes("|")) {
