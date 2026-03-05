@@ -10,6 +10,7 @@ import {
 import { formatCurrency } from "@/lib/utils"
 import PortfolioTable from "@/app/(protected)/portfolio/portfolio-table"
 import { PortfolioSwitcher } from "@/components/portfolio-switcher"
+import { ImportHoldingsDialog } from "@/components/import-holdings-dialog"
 
 export default async function PortfolioPage({
   searchParams,
@@ -88,13 +89,36 @@ export default async function PortfolioPage({
             )}
           </p>
         </div>
-        {portfolio && (
-          <PortfolioSwitcher
-            portfolios={switcherPortfolios}
-            currentId={portfolio.id}
+        <div className="flex items-center gap-2 flex-wrap">
+          {portfolio && (
+            <PortfolioSwitcher
+              portfolios={switcherPortfolios}
+              currentId={portfolio.id}
+            />
+          )}
+          <ImportHoldingsDialog
+            portfolioId={portfolio?.id}
+            label={portfolio ? "Import / Update" : "Import Holdings"}
           />
-        )}
+        </div>
       </div>
+
+      {/* Empty state */}
+      {!portfolio && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <span className="text-3xl">📊</span>
+            </div>
+            <h2 className="text-xl font-semibold">No portfolio yet</h2>
+            <p className="text-muted-foreground max-w-sm text-sm">
+              Import your holdings report from Upstox or any supported broker
+              to set up your portfolio in seconds.
+            </p>
+            <ImportHoldingsDialog label="Import Holdings Report" variant="default" />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

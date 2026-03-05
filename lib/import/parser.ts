@@ -166,12 +166,15 @@ function csvSplitLine(line: string): string[] {
 // ── PDF parsing ───────────────────────────────────────────────────────────────
 
 export async function parsePdf(buffer: Buffer): Promise<ParsedFile> {
-  // Import from lib directly to bypass pdf-parse's self-test runner, which tries
-  // to read a local test PDF file and always fails in serverless environments.
+  // pdf-parse v2 uses a class-based API. Import it as an external package so
+  // Next.js does not bundle it (see serverExternalPackages in next.config.js).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (buf: Buffer, options?: object) => Promise<{ text: string; numpages: number }>
-  const data = await pdfParse(buffer)
-  const text: string = data.text
+  const { PDFParse } = require("pdf-parse") as {
+    PDFParse: new (opts: { data: Buffer }) => { getText(opts?: object): Promise<{ text: string }> }
+  }
+  const parser = new PDFParse({ data: buffer })
+  const result = await parser.getText()
+  const text: string = result.text
 
   // Try to extract tabular data from PDF text
   const lines: string[] = text.split("\n").map((l: string) => l.trim()).filter(Boolean)

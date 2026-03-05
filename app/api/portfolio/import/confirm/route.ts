@@ -99,7 +99,95 @@ export async function POST(request: NextRequest) {
       .from("users")
       .upsert({ id: user.id, email: user.email }, { onConflict: "id" })
 
-    // ── Create portfolio row ──
+    // ── Upsert instruments (shared by both create and update paths) ──
+    const instruments = holdings
+      .filter((h) => h.isin)
+      .map((h) => ({
+        instrument_key: h.isin || h.trading_symbol || h.company_name,
+        trading_symbol: h.trading_symbol || h.company_name,
+        name: h.company_name,
+        isin: h.isin,
+        exchange: "",
+        segment: "",
+        metadata: {},
+      }))
+
+    if (instruments.length > 0) {
+      const { error: instrError } = await admin
+        .from("instruments")
+        .upsert(instruments, { onConflict: "instrument_key" })
+      if (instrError) {
+        console.error("[import/confirm] instruments upsert error:", instrError.message)
+      }
+    }
+
+    if (updatePortfolioId) {
+      // ── Update existing portfolio ──
+      // Verify the portfolio belongs to this user
+      const { data: existingPortfolio } = await supabase
+        .from("portfolios")
+        .select("id")
+        .eq("id", updatePortfolioId)
+        .eq("user_id", user.id)
+        .single()
+
+      if (!existingPortfolio) {
+        return NextResponse.json({ error: "Portfolio not found or access denied" }, { status: 404 })
+      }
+
+      // Replace all existing holdings
+      await admin.from("holdings").delete().eq("portfolio_id", updatePortfolioId)
+
+      const holdingsPayload = holdings.map((h) => ({
+        portfolio_id: updatePortfolioId,
+        instrument_key: h.isin || h.trading_symbol || h.company_name,
+        trading_symbol: h.trading_symbol || h.company_name,
+        company_name: h.company_name,
+        quantity: h.quantity,
+        avg_price: h.avg_price,
+        invested_amount: h.invested_amount,
+        ltp: h.ltp,
+        unrealized_pl: h.unrealized_pl,
+        segment: null,
+        raw: null,
+      }))
+
+      const { error: holdingsError } = await admin.from("holdings").insert(holdingsPayload)
+      if (holdingsError) {
+        console.error("[import/confirm] holdings insert error:", holdingsError.message)
+        return NextResponse.json({ error: "Failed to save holdings: " + holdingsError.message }, { status: 500 })
+      }
+
+      await admin
+        .from("portfolios")
+        .update({
+          fetched_at: new Date().toISOString(),
+          meta: {
+            broker: brokerId,
+            file_name: file.name,
+            imported_at: new Date().toISOString(),
+            total_holdings: holdings.length,
+          },
+        })
+        .eq("id", updatePortfolioId)
+
+      await recordPortfolioSnapshot(admin, {
+        portfolioId: updatePortfolioId,
+        userId: user.id,
+        holdings: holdingsPayload,
+      })
+
+      console.log(`[import] Updated ${holdings.length} holdings for user ${user.id} in portfolio ${updatePortfolioId}`)
+
+      return NextResponse.json({
+        status: "updated",
+        portfolioId: updatePortfolioId,
+        count: holdings.length,
+        message: `${holdings.length} holdings updated from ${format.label}`,
+      })
+    }
+
+    // ── Create new portfolio ──
     const source = `${brokerId}_import`
     const { data: portfolio, error: portfolioError } = await admin
       .from("portfolios")
@@ -122,28 +210,6 @@ export async function POST(request: NextRequest) {
     if (portfolioError || !portfolio) {
       console.error("[import/confirm] Failed to create portfolio:", portfolioError)
       return NextResponse.json({ error: "Failed to create portfolio" }, { status: 500 })
-    }
-
-    // ── Upsert instruments for holdings with ISINs ──
-    const instruments = holdings
-      .filter((h) => h.isin)
-      .map((h) => ({
-        instrument_key: h.isin || h.trading_symbol || h.company_name,
-        trading_symbol: h.trading_symbol || h.company_name,
-        name: h.company_name,
-        isin: h.isin,
-        exchange: "",
-        segment: "",
-        metadata: {},
-      }))
-
-    if (instruments.length > 0) {
-      const { error: instrError } = await admin
-        .from("instruments")
-        .upsert(instruments, { onConflict: "instrument_key" })
-      if (instrError) {
-        console.error("[import/confirm] instruments upsert error:", instrError.message)
-      }
     }
 
     // ── Insert holdings ──

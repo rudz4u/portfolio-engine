@@ -15,7 +15,7 @@ import {
   Zap,
   BarChart2,
   Bookmark,
-  Upload,
+  HelpCircle,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -24,26 +24,27 @@ import { createClient } from "@/lib/supabase/client"
 import { BetaBadge } from "@/components/beta-badge"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
+import { SpotlightTutorial } from "@/components/spotlight-tutorial"
 
 const navItems = [
-  { href: "/dashboard",        label: "Dashboard",        icon: LayoutDashboard },
-  { href: "/portfolio",        label: "Portfolio",        icon: Briefcase },
-  { href: "/portfolio/import", label: "Import Holdings",  icon: Upload },
-  { href: "/analytics",        label: "Analytics",        icon: BarChart2 },
-  { href: "/watchlist",        label: "Watchlist",        icon: Bookmark },
-  { href: "/recommendations",  label: "Recommendations",  icon: Star },
-  { href: "/trade",            label: "Trade",            icon: TrendingUp },
-  { href: "/assistant",        label: "AI Assistant",     icon: Bot },
-  { href: "/settings",         label: "Settings",         icon: Settings },
+  { href: "/dashboard",       label: "Dashboard",       icon: LayoutDashboard, tourId: "tour-dashboard" },
+  { href: "/portfolio",       label: "Portfolio",       icon: Briefcase,       tourId: "tour-portfolio" },
+  { href: "/analytics",       label: "Analytics",       icon: BarChart2,       tourId: "tour-analytics" },
+  { href: "/watchlist",       label: "Watchlist",       icon: Bookmark,        tourId: "tour-watchlist" },
+  { href: "/recommendations", label: "Recommendations", icon: Star,            tourId: "tour-recommendations" },
+  { href: "/trade",           label: "Trade",           icon: TrendingUp,      tourId: "tour-trade" },
+  { href: "/assistant",       label: "AI Assistant",    icon: Bot,             tourId: "tour-assistant" },
+  { href: "/settings",        label: "Settings",        icon: Settings,        tourId: "tour-settings" },
 ]
 
 interface SidebarContentProps {
   pathname: string
   onNavClick: () => void
   onSignOut: () => void
+  onTakeTour: () => void
 }
 
-function SidebarContent({ pathname, onNavClick, onSignOut }: SidebarContentProps) {
+function SidebarContent({ pathname, onNavClick, onSignOut, onTakeTour }: SidebarContentProps) {
   return (
     <aside className="flex flex-col h-full w-64 bg-sidebar border-r border-sidebar-border">
       {/* ── Logo ──────────────────────────────────────────────────────── */}
@@ -74,6 +75,7 @@ function SidebarContent({ pathname, onNavClick, onSignOut }: SidebarContentProps
               key={item.href}
               href={item.href}
               onClick={onNavClick}
+              data-tutorial={item.tourId}
               className={cn(
                 "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                 active
@@ -100,8 +102,15 @@ function SidebarContent({ pathname, onNavClick, onSignOut }: SidebarContentProps
         })}
       </nav>
 
-      {/* ── Sign out ──────────────────────────────────────────────────── */}
-      <div className="px-3 py-4 border-t border-sidebar-border">
+      {/* ── Take Tour + Sign out ─────────────────────────────────────────── */}
+      <div className="px-3 py-4 border-t border-sidebar-border space-y-0.5">
+        <button
+          onClick={onTakeTour}
+          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors duration-150"
+        >
+          <HelpCircle className="h-4 w-4 shrink-0" />
+          Take a Tour
+        </button>
         <button
           onClick={onSignOut}
           className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors duration-150"
@@ -118,6 +127,7 @@ export function Sidebar() {
   const pathname  = usePathname()
   const router    = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [showTour, setShowTour] = useState(false)
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -147,7 +157,7 @@ export function Sidebar() {
 
       {/* ── Desktop sidebar ───────────────────────────────────────────── */}
       <div className="hidden lg:flex">
-        <SidebarContent pathname={pathname} onNavClick={() => {}} onSignOut={handleSignOut} />
+        <SidebarContent pathname={pathname} onNavClick={() => {}} onSignOut={handleSignOut} onTakeTour={() => setShowTour(true)} />
       </div>
 
       {/* ── Mobile sidebar ────────────────────────────────────────────── */}
@@ -161,7 +171,7 @@ export function Sidebar() {
             transition={{ type: "spring", stiffness: 320, damping: 32 }}
             className="fixed inset-y-0 left-0 z-50 lg:hidden"
           >
-            <SidebarContent pathname={pathname} onNavClick={() => setMobileOpen(false)} onSignOut={handleSignOut} />
+            <SidebarContent pathname={pathname} onNavClick={() => setMobileOpen(false)} onSignOut={handleSignOut} onTakeTour={() => setShowTour(true)} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -180,6 +190,11 @@ export function Sidebar() {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Spotlight tutorial ────────────────────────────────────────── */}
+      {showTour && (
+        <SpotlightTutorial onComplete={() => setShowTour(false)} />
+      )}
     </>
   )
 }

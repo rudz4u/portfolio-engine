@@ -60,7 +60,13 @@ const INTERNAL_FIELDS = [
 
 /* ─── Main Component ───────────────────────────────────────────────────────── */
 
-export default function ImportWizard() {
+export default function ImportWizard({
+  portfolioId,
+  onSuccess,
+}: {
+  portfolioId?: string
+  onSuccess?: () => void
+} = {}) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -86,34 +92,21 @@ export default function ImportWizard() {
   }
 
   // ── File upload + parse ──
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const f = e.target.files?.[0]
-      if (!f) return
+  const processFile = useCallback(
+    async (f: File) => {
       setFile(f)
       setError(null)
       setParsing(true)
-
       try {
-        const formData = new FormData()
-        formData.append("file", f)
-        formData.append("broker", broker?.id || "other")
-
-        const res = await fetch("/api/portfolio/import/parse", {
-          method: "POST",
-          body: formData,
-        })
+        const fd = new FormData()
+        fd.append("file", f)
+        fd.append("broker", broker?.id || "other")
+        const res = await fetch("/api/portfolio/import/parse", { method: "POST", body: fd })
         const data = await res.json()
-
-        if (!res.ok) {
-          setError(data.error || "Failed to parse file")
-          setParsing(false)
-          return
-        }
-
+        if (!res.ok) { setError(data.error || "Failed to parse file"); setParsing(false); return }
         setParseResult(data)
         setMapping(data.mapping || {})
-        setPortfolioName(`${broker?.label || "Imported"} Portfolio`)
+        setPortfolioName((prev) => prev || `${broker?.label || "Imported"} Portfolio`)
         setParsing(false)
         setStep("mapping")
       } catch {
@@ -122,6 +115,14 @@ export default function ImportWizard() {
       }
     },
     [broker]
+  )
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const f = e.target.files?.[0]
+      if (f) processFile(f)
+    },
+    [processFile]
   )
 
   // ── Confirm import ──
@@ -136,6 +137,7 @@ export default function ImportWizard() {
       formData.append("broker", broker.id)
       formData.append("mapping", JSON.stringify(mapping))
       formData.append("portfolioName", portfolioName)
+      if (portfolioId) formData.append("updatePortfolioId", portfolioId)
 
       const res = await fetch("/api/portfolio/import/confirm", {
         method: "POST",
@@ -235,6 +237,7 @@ export default function ImportWizard() {
             parsing={parsing}
             fileInputRef={fileInputRef}
             onFileChange={handleFileChange}
+            onFileDrop={processFile}
             onBack={goBack}
           />
         )}
@@ -247,6 +250,7 @@ export default function ImportWizard() {
             setMapping={setMapping}
             portfolioName={portfolioName}
             setPortfolioName={setPortfolioName}
+            isUpdate={!!portfolioId}
             importing={importing}
             onConfirm={handleConfirmImport}
             onBack={goBack}
@@ -257,7 +261,14 @@ export default function ImportWizard() {
           <StepDone
             key="confirm"
             result={importResult}
-            onViewPortfolio={() => router.push(`/portfolio?pid=${importResult.portfolioId}`)}
+            onViewPortfolio={() => {
+              if (onSuccess) {
+                router.refresh()
+                onSuccess()
+              } else {
+                router.push(`/portfolio?pid=${importResult.portfolioId}`)
+              }
+            }}
             onImportAnother={() => {
               setStep("broker")
               setBroker(null)
@@ -302,8 +313,12 @@ function StepBrokerSelect({ onSelect }: { onSelect: (b: BrokerFormat) => void })
                   "text-center cursor-pointer"
                 )}
               >
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500/20 to-blue-500/20 flex items-center justify-center">
-                  <FileSpreadsheet className="h-5 w-5 text-primary" />
+                <div className="h-10 w-20 rounded-lg bg-muted/40 flex items-center justify-center px-1 overflow-hidden">
+                  {b.logoUrl ? (
+                    <img src={b.logoUrl} alt={b.label} className="h-6 w-auto max-w-[68px] object-contain" />
+                  ) : (
+                    <FileSpreadsheet className="h-5 w-5 text-primary" />
+                  )}
                 </div>
                 <span className="text-sm font-medium">{b.label}</span>
               </button>
@@ -323,6 +338,7 @@ function StepUpload({
   parsing,
   fileInputRef,
   onFileChange,
+  onFileDrop,
   onBack,
 }: {
   broker: BrokerFormat
@@ -330,8 +346,10 @@ function StepUpload({
   parsing: boolean
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onFileDrop: (f: File) => void
   onBack: () => void
 }) {
+  const [isDragging, setIsDragging] = useState(false)
   const acceptTypes = broker.fileTypes.map((t) => `.${t}`).join(",")
 
   return (
@@ -389,15 +407,28 @@ function StepUpload({
             className="hidden"
           />
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={parsing}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => !parsing && fileInputRef.current?.click()}
+            onKeyDown={(e) => e.key === "Enter" && !parsing && fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); if (!parsing) setIsDragging(true) }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault()
+              setIsDragging(false)
+              if (parsing) return
+              const f = e.dataTransfer.files?.[0]
+              if (f) onFileDrop(f)
+            }}
             className={cn(
               "w-full flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed",
-              "transition-all duration-150 cursor-pointer",
+              "transition-all duration-150 cursor-pointer select-none",
               parsing
                 ? "border-primary/30 bg-primary/5"
-                : "border-border hover:border-primary/50 hover:bg-primary/5"
+                : isDragging
+                  ? "border-primary bg-primary/10 scale-[1.01]"
+                  : "border-border hover:border-primary/50 hover:bg-primary/5"
             )}
           >
             {parsing ? (
@@ -426,7 +457,7 @@ function StepUpload({
                 </div>
               </>
             )}
-          </button>
+          </div>
 
           <div className="flex justify-between mt-4">
             <Button variant="ghost" onClick={onBack}>
@@ -448,6 +479,7 @@ function StepMapping({
   setMapping,
   portfolioName,
   setPortfolioName,
+  isUpdate,
   importing,
   onConfirm,
   onBack,
@@ -457,6 +489,7 @@ function StepMapping({
   setMapping: (m: Record<string, string>) => void
   portfolioName: string
   setPortfolioName: (n: string) => void
+  isUpdate: boolean
   importing: boolean
   onConfirm: () => void
   onBack: () => void
@@ -508,17 +541,26 @@ function StepMapping({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Portfolio name */}
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium w-36 shrink-0">Portfolio Name</label>
-            <input
-              type="text"
-              value={portfolioName}
-              onChange={(e) => setPortfolioName(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-              placeholder="My Portfolio"
-            />
-          </div>
+          {/* Portfolio name / update indicator */}
+          {isUpdate ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium w-36 shrink-0 text-muted-foreground">Mode</span>
+              <span className="text-sm px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 text-primary font-medium">
+                Updating existing portfolio
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium w-36 shrink-0">Portfolio Name</label>
+              <input
+                type="text"
+                value={portfolioName}
+                onChange={(e) => setPortfolioName(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg border bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder="My Portfolio"
+              />
+            </div>
+          )}
 
           <div className="h-px bg-border" />
 
@@ -646,9 +688,11 @@ function StepDone({
           <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center">
             <Check className="h-8 w-8 text-green-500" />
           </div>
-          <h2 className="text-xl font-bold">Import Successful!</h2>
+          <h2 className="text-xl font-bold">
+            {result.status === "updated" ? "Portfolio Updated!" : "Import Successful!"}
+          </h2>
           <p className="text-muted-foreground text-center max-w-md">
-            {result.message}. Your portfolio is ready to view.
+            {result.message}.
           </p>
           <div className="flex gap-3 mt-2">
             <Button onClick={onViewPortfolio}>

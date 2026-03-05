@@ -27,6 +27,8 @@ export interface BrokerFormat {
   exportSteps: string[]
   /** Supported file types. */
   fileTypes: ("xlsx" | "csv" | "pdf")[]
+  /** URL to the broker's official logo image. */
+  logoUrl?: string
 }
 
 export const BROKER_FORMATS: Record<string, BrokerFormat> = {
@@ -50,6 +52,7 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
       "Upload the downloaded .xlsx file here",
     ],
     fileTypes: ["xlsx", "pdf"],
+    logoUrl: "https://assets.upstox.com/website/images/upstox-new-logo.svg",
   },
 
   zerodha: {
@@ -76,6 +79,7 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
       "Upload the downloaded .xlsx file here",
     ],
     fileTypes: ["xlsx"],
+    logoUrl: "https://zerodha.com/static/images/logo.svg",
   },
 
   groww: {
@@ -102,6 +106,7 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
       "Upload the downloaded file here",
     ],
     fileTypes: ["xlsx", "csv", "pdf"],
+    logoUrl: "https://resources.groww.in/web-assets/img/website-logo/groww_logo.webp",
   },
 
   angelone: {
@@ -128,6 +133,7 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
       "Upload the downloaded .xlsx file here",
     ],
     fileTypes: ["xlsx", "pdf"],
+    logoUrl: "https://w3assets.angelone.in/wp-content/uploads/2024/04/IPL_COMPOSITE-LOGO_ANGELONE_HORIZONTAL_WHITE_VERSION-192x100-1.png",
   },
 
   sharekhan: {
@@ -154,6 +160,7 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
       "Upload the downloaded file here",
     ],
     fileTypes: ["xlsx", "pdf"],
+    logoUrl: "https://www.sharekhan.com/CmsApp/MediaGalary/images/sharekhan_logo-202207131537046949004.svg",
   },
 
   dhan: {
@@ -180,6 +187,7 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
       "Upload the downloaded file here",
     ],
     fileTypes: ["xlsx", "csv"],
+    logoUrl: "https://dhan.co/_next/static/media/Dhanlogo.8a85768d.svg",
   },
 
   icici_direct: {
@@ -206,6 +214,7 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
       "Upload the downloaded file here",
     ],
     fileTypes: ["xlsx", "pdf"],
+    logoUrl: "https://www.icicidirect.com/Content/images/ICICI-logo-white.svg",
   },
 
   motilal_oswal: {
@@ -232,6 +241,7 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
       "Upload the downloaded file here",
     ],
     fileTypes: ["xlsx"],
+    logoUrl: "https://www.motilaloswal.com/media_16de0a321de10a0a08e55668008fbcaa32ec9c982.svg",
   },
 
   other: {

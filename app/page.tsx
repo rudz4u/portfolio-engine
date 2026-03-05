@@ -90,14 +90,16 @@ function CyberBackground() {
 
 /* ── Broker marquee ── */
 const BROKERS = [
-  { name: "Upstox",          status: "LIVE",   color: "from-violet-600 to-purple-500",  acronym: "UX", live: true },
-  { name: "Zerodha",         status: "Q2 2026", color: "from-teal-600 to-emerald-500",  acronym: "ZD", live: false },
-  { name: "Angel One",       status: "Q3 2026", color: "from-orange-600 to-amber-500",  acronym: "AO", live: false },
-  { name: "Dhan",            status: "Q3 2026", color: "from-blue-600 to-sky-500",      acronym: "DN", live: false },
-  { name: "ICICI Direct",    status: "Q4 2026", color: "from-orange-700 to-red-500",   acronym: "IC", live: false },
-  { name: "HDFC Securities", status: "2027",    color: "from-blue-700 to-indigo-500",  acronym: "HD", live: false },
-  { name: "Motilal Oswal",   status: "2027",    color: "from-slate-600 to-slate-500",  acronym: "MO", live: false },
-  { name: "Kotak Securities",status: "2027",    color: "from-red-700 to-rose-500",     acronym: "KO", live: false },
+  { name: "Upstox",          status: "LIVE",    bg: "#5D2BE9", letter: "U", live: true,  logoUrl: "https://assets.upstox.com/website/images/upstox-new-logo.svg" },
+  { name: "Zerodha",         status: "Q2 2026", bg: "#387ed1", letter: "Z", live: false, logoUrl: "https://zerodha.com/static/images/logo.svg" },
+  { name: "Angel One",       status: "Q3 2026", bg: "#E55A00", letter: "A", live: false, logoUrl: "https://w3assets.angelone.in/wp-content/uploads/2024/04/IPL_COMPOSITE-LOGO_ANGELONE_HORIZONTAL_WHITE_VERSION-192x100-1.png" },
+  { name: "Groww",           status: "Q3 2026", bg: "#00D09C", letter: "G", live: false, logoUrl: "https://resources.groww.in/web-assets/img/website-logo/groww_logo.webp" },
+  { name: "Dhan",            status: "Q3 2026", bg: "#0052D4", letter: "D", live: false, logoUrl: "https://dhan.co/_next/static/media/Dhanlogo.8a85768d.svg" },
+  { name: "ICICI Direct",    status: "Q4 2026", bg: "#B5451B", letter: "I", live: false, logoUrl: "https://www.icicidirect.com/Content/images/ICICI-logo-white.svg" },
+  { name: "Sharekhan",       status: "Q4 2026", bg: "#E30613", letter: "S", live: false, logoUrl: "https://www.sharekhan.com/CmsApp/MediaGalary/images/sharekhan_logo-202207131537046949004.svg" },
+  { name: "HDFC Securities", status: "2027",    bg: "#004C8F", letter: "H", live: false, logoUrl: "" },
+  { name: "Motilal Oswal",   status: "2027",    bg: "#C7021A", letter: "M", live: false, logoUrl: "https://www.motilaloswal.com/media_16de0a321de10a0a08e55668008fbcaa32ec9c982.svg" },
+  { name: "Kotak Securities",status: "2027",    bg: "#CA0015", letter: "K", live: false, logoUrl: "" },
 ]
 function BrokerMarquee() {
   const doubled = [...BROKERS, ...BROKERS]
@@ -112,8 +114,15 @@ function BrokerMarquee() {
           <div className="marquee-track gap-3 py-1">
             {doubled.map((broker, i) => (
               <div key={i} className="flex items-center gap-3 px-5 py-3 glass rounded-xl border border-border/60 mx-1.5 shrink-0 group hover:border-primary/40 transition-all duration-300 cursor-default">
-                <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${broker.color} flex items-center justify-center text-white text-xs font-bold shadow-lg group-hover:scale-110 group-hover:shadow-xl transition-transform duration-300`}>
-                  {broker.acronym}
+                <div
+                  className="h-10 w-24 rounded-xl flex items-center justify-center px-2 shadow-lg group-hover:scale-105 group-hover:shadow-xl transition-transform duration-300 overflow-hidden shrink-0"
+                  style={{ backgroundColor: broker.bg }}
+                >
+                  {broker.logoUrl ? (
+                    <img src={broker.logoUrl} alt={broker.name} className="h-7 w-auto max-w-[80px] object-contain" />
+                  ) : (
+                    <span className="text-white text-lg font-bold">{broker.letter}</span>
+                  )}
                 </div>
                 <div>
                   <div className="text-sm font-semibold whitespace-nowrap">{broker.name}</div>

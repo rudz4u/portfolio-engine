@@ -9,6 +9,13 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [checked, setChecked] = useState(false)
 
   useEffect(() => {
+    // Fast-path: if already done (stored locally), skip the API call entirely.
+    // This prevents the wizard from re-triggering on every page navigation.
+    if (typeof window !== "undefined" && localStorage.getItem("buddy_onboarding_done") === "true") {
+      setChecked(true)
+      return
+    }
+
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
@@ -16,6 +23,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         if (prefs.onboarding_completed !== "true") {
           // Small delay so dashboard content loads first
           setTimeout(() => setShow(true), 800)
+        } else {
+          // Cache so we skip the fetch next time
+          localStorage.setItem("buddy_onboarding_done", "true")
         }
       })
       .catch(() => { /* silently ignore — don't block the app */ })
@@ -28,7 +38,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       {checked && (
         <AnimatePresence>
           {show && (
-            <OnboardingWizard onComplete={() => setShow(false)} />
+            <OnboardingWizard onComplete={() => {
+              localStorage.setItem("buddy_onboarding_done", "true")
+              setShow(false)
+            }} />
           )}
         </AnimatePresence>
       )}
