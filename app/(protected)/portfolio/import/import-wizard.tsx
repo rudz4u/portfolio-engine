@@ -20,6 +20,13 @@ import { Button } from "@/components/ui/button"
 import { cn, formatCurrency, formatNumber } from "@/lib/utils"
 import { BROKER_LIST, type BrokerFormat } from "@/lib/import/broker-formats"
 
+/** Sentinel value used when the user selects "✨ AI Fill" in column mapping.
+ *  Must match AI_FILL_SENTINEL in lib/import/parser.ts */
+const AI_FILL_SENTINEL = "__ai_fill__"
+
+/** Fields where server-side AI enrichment can fill missing values */
+const AI_FILLABLE_FIELDS = new Set(["company_name", "trading_symbol", "ltp", "invested_amount", "unrealized_pl"])
+
 /* ─── Types ────────────────────────────────────────────────────────────────── */
 
 interface ParseResponse {
@@ -504,6 +511,7 @@ function StepMapping({
   const hasQuantity = !!mapping.quantity
   const hasIdentifier = !!(mapping.company_name || mapping.isin || mapping.trading_symbol)
   const canImport = hasQuantity && hasIdentifier
+  const hasAiFill = Object.values(mapping).some((v) => v === AI_FILL_SENTINEL)
 
   return (
     <motion.div
@@ -583,6 +591,9 @@ function StepMapping({
                     )}
                   >
                     <option value="">— Skip —</option>
+                    {AI_FILLABLE_FIELDS.has(field.key) && (
+                      <option value={AI_FILL_SENTINEL}>✨ AI Fill</option>
+                    )}
                     {headers.map((h) => (
                       <option key={h} value={h}>
                         {h}
@@ -591,6 +602,11 @@ function StepMapping({
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 </div>
+                {mapping[field.key] === AI_FILL_SENTINEL && (
+                  <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
+                    AI
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -653,6 +669,11 @@ function StepMapping({
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Importing...
+            </>
+          ) : hasAiFill ? (
+            <>
+              ✨ Import with AI Enrichment
+              <ArrowRight className="h-4 w-4 ml-2" />
             </>
           ) : (
             <>

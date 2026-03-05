@@ -13,8 +13,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { BROKER_FORMATS } from "@/lib/import/broker-formats"
-import { parseXlsx, parseCsv, parsePdf, applyMapping } from "@/lib/import/parser"
+import { parseXlsx, parseCsv, parsePdf, applyMapping, AI_FILL_SENTINEL } from "@/lib/import/parser"
 import { recordPortfolioSnapshot } from "@/lib/portfolio-snapshot"
+import { classifySegment } from "@/lib/import/sector-classifier"
 
 export const maxDuration = 60
 export const dynamic = "force-dynamic"
@@ -117,6 +118,41 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Derive missing numeric fields ──
+    // If user chose "✨ AI Fill" for LTP, fetch live prices via internal endpoint
+    const needsLtp = columnMapping.ltp === AI_FILL_SENTINEL
+    if (needsLtp) {
+      const symbolsPayload = holdings
+        .map((h) => ({ trading_symbol: h.trading_symbol || h.company_name, isin: h.isin }))
+        .filter((s) => s.trading_symbol)
+      if (symbolsPayload.length > 0) {
+        try {
+          // Call our own LTP endpoint server-side (absolute URL required in Next.js API routes)
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://investbuddyai.com"
+          const ltpRes = await fetch(`${baseUrl}/api/instruments/ltp`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // Forward the cookie so the endpoint can auth the user
+              cookie: request.headers.get("cookie") || "",
+            },
+            body: JSON.stringify({ symbols: symbolsPayload }),
+            signal: AbortSignal.timeout(25000),
+          })
+          if (ltpRes.ok) {
+            const { prices } = (await ltpRes.json()) as { prices: Record<string, number> }
+            for (const h of holdings) {
+              const sym = (h.trading_symbol || h.company_name).toUpperCase()
+              if (prices[sym] !== undefined && prices[sym] > 0) {
+                h.ltp = prices[sym]
+              }
+            }
+          }
+        } catch (ltpErr) {
+          console.warn("[import/confirm] LTP fetch failed (non-fatal):", ltpErr)
+        }
+      }
+    }
+
     for (const h of holdings) {
       const qty = h.quantity ?? 0
       const avg = h.avg_price ?? 0
@@ -173,22 +209,40 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Portfolio not found or access denied" }, { status: 404 })
       }
 
+      // ── Preserve existing segments before replacing holdings ──
+      const { data: existingHoldings } = await admin
+        .from("holdings")
+        .select("instrument_key, segment")
+        .eq("portfolio_id", updatePortfolioId)
+
+      // Build a map of instrument_key → existing segment (skip nulls / unclassified "Others")
+      const segmentMap: Record<string, string> = {}
+      for (const eh of existingHoldings ?? []) {
+        if (eh.instrument_key && eh.segment && eh.segment !== "Others") {
+          segmentMap[eh.instrument_key] = eh.segment
+        }
+      }
+
       // Replace all existing holdings
       await admin.from("holdings").delete().eq("portfolio_id", updatePortfolioId)
 
-      const holdingsPayload = holdings.map((h) => ({
-        portfolio_id: updatePortfolioId,
-        instrument_key: h.isin || h.trading_symbol || h.company_name,
-        trading_symbol: h.trading_symbol || h.company_name,
-        company_name: h.company_name,
-        quantity: h.quantity,
-        avg_price: h.avg_price,
-        invested_amount: h.invested_amount,
-        ltp: h.ltp,
-        unrealized_pl: h.unrealized_pl,
-        segment: null,
-        raw: null,
-      }))
+      const holdingsPayload = holdings.map((h) => {
+        const key = h.isin || h.trading_symbol || h.company_name
+        const segment = segmentMap[key] || classifySegment(h.company_name)
+        return {
+          portfolio_id: updatePortfolioId,
+          instrument_key: key,
+          trading_symbol: h.trading_symbol || h.company_name,
+          company_name: h.company_name,
+          quantity: h.quantity,
+          avg_price: h.avg_price,
+          invested_amount: h.invested_amount,
+          ltp: h.ltp,
+          unrealized_pl: h.unrealized_pl,
+          segment,
+          raw: null,
+        }
+      })
 
       const { error: holdingsError } = await admin.from("holdings").insert(holdingsPayload)
       if (holdingsError) {
@@ -261,7 +315,7 @@ export async function POST(request: NextRequest) {
       invested_amount: h.invested_amount,
       ltp: h.ltp,
       unrealized_pl: h.unrealized_pl,
-      segment: null,
+      segment: classifySegment(h.company_name),
       raw: null,
     }))
 

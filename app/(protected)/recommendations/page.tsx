@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 
 interface ScoredHolding {
   instrument_key: string
@@ -43,6 +44,13 @@ interface AdvisoryConsensus {
   weighted_score: number
   advisory_score: number
   consensus_signal: ConsensusSignal
+}
+
+interface SourceSignal {
+  source_name: string
+  signal: string
+  target_price: number | null
+  tier: number
 }
 
 interface Summary {
@@ -91,6 +99,7 @@ export default function RecommendationsPage() {
   const [researchData, setResearchData] = useState<Record<string, { answer: string | null; results: {title: string; url: string; snippet?: string}[] } | null>>({})
   const [researchLoading, setResearchLoading] = useState<string | null>(null)
   const [consensusMap, setConsensusMap] = useState<Record<string, AdvisoryConsensus>>({})
+  const [sourceBreakdown, setSourceBreakdown] = useState<Record<string, SourceSignal[]>>({})
   const [scanUsage, setScanUsage] = useState<{ remaining: number; used: number; max: number } | null>(null)
   const [scanning, setScanning] = useState(false)
   const [scanMsg, setScanMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -112,6 +121,7 @@ export default function RecommendationsPage() {
         const map: Record<string, AdvisoryConsensus> = {}
         for (const c of cjson.consensus ?? []) map[c.trading_symbol] = c
         setConsensusMap(map)
+        setSourceBreakdown(cjson.sourceBreakdown ?? {})
       }
     } catch (err) {
       setError("Failed to load recommendations. Make sure you have holdings synced.")
@@ -421,6 +431,31 @@ export default function RecommendationsPage() {
                     </div>
                   )
                 })()}
+
+                {/* Per-source advisor chips */}
+                {sourceBreakdown[h.trading_symbol]?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {sourceBreakdown[h.trading_symbol].map((s) => (
+                      <span
+                        key={s.source_name}
+                        className={cn(
+                          "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border",
+                          s.signal === "BUY" || s.signal === "STRONG_BUY"
+                            ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
+                            : s.signal === "SELL" || s.signal === "STRONG_SELL"
+                            ? "bg-red-400/10 text-red-400 border-red-400/30"
+                            : s.signal === "HOLD"
+                            ? "bg-amber-400/10 text-amber-400 border-amber-400/30"
+                            : "bg-muted text-muted-foreground border-border/50"
+                        )}
+                      >
+                        <span className="truncate max-w-[80px]">{s.source_name}</span>
+                        <span className="font-semibold">{s.signal}</span>
+                        {s.target_price ? <span>₹{s.target_price.toLocaleString("en-IN")}</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* Weight + qty */}
                 <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">

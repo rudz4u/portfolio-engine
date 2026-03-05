@@ -55,21 +55,48 @@ export async function GET(request: NextRequest) {
   }
 
   if (symbolFilter.length === 0) {
-    return NextResponse.json({ consensus: [], date: dateParam })
+    return NextResponse.json({ consensus: [], sourceBreakdown: {}, date: dateParam })
   }
 
-  const query = supabase
-    .from("advisory_consensus")
-    .select("*")
-    .eq("consensus_date", dateParam)
-    .in("trading_symbol", symbolFilter)
-    .order("weighted_score", { ascending: false })
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  const { data, error } = await query
+  const [{ data, error }, { data: recs }] = await Promise.all([
+    supabase
+      .from("advisory_consensus")
+      .select("*")
+      .eq("consensus_date", dateParam)
+      .in("trading_symbol", symbolFilter)
+      .order("weighted_score", { ascending: false }),
+    supabase
+      .from("advisory_recommendations")
+      .select("trading_symbol, signal, target_price, advisory_sources(name, tier)")
+      .in("trading_symbol", symbolFilter)
+      .gte("scraped_at", sevenDaysAgo)
+      .order("scraped_at", { ascending: false }),
+  ])
 
   if (error) {
     return NextResponse.json({ error: "DB error" }, { status: 500 })
   }
 
-  return NextResponse.json({ consensus: data ?? [], date: dateParam })
+  // Build per-symbol source breakdown (deduplicated by source name — keep most recent signal)
+  type SourceEntry = { source_name: string; signal: string; target_price: number | null; tier: number }
+  const sourceBreakdown: Record<string, SourceEntry[]> = {}
+  for (const rec of recs ?? []) {
+    const sym = rec.trading_symbol as string
+    // advisory_sources is a foreign-key join returning a single object (Supabase infers array, cast via unknown)
+    const src = (rec.advisory_sources as unknown) as { name: string; tier: number } | null
+    if (!src?.name) continue
+    if (!sourceBreakdown[sym]) sourceBreakdown[sym] = []
+    if (!sourceBreakdown[sym].some((s) => s.source_name === src.name)) {
+      sourceBreakdown[sym].push({
+        source_name: src.name,
+        signal: rec.signal as string,
+        target_price: (rec.target_price as number | null) ?? null,
+        tier: src.tier ?? 0,
+      })
+    }
+  }
+
+  return NextResponse.json({ consensus: data ?? [], sourceBreakdown, date: dateParam })
 }

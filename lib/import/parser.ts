@@ -23,6 +23,9 @@ export interface MappedHolding {
   unrealized_pl: number
 }
 
+/** Sentinel value used when the user selects "✨ AI Fill" in the column mapping UI */
+export const AI_FILL_SENTINEL = "__ai_fill__"
+
 // ── XLSX parsing ──────────────────────────────────────────────────────────────
 
 /** Words that indicate a row is the header row */
@@ -291,21 +294,33 @@ export function applyMapping(
       if (qty <= 0) return null // Skip zero-quantity rows
 
       const avgPrice = parseNum(row[columnMapping.avg_price])
-      const ltp = parseNum(row[columnMapping.ltp])
-      const invested = parseNum(row[columnMapping.invested_amount]) || qty * avgPrice
-      const pnl = parseNum(row[columnMapping.unrealized_pl]) || (ltp > 0 ? qty * ltp - invested : 0)
+      // When user selects AI Fill, treat the field as absent (0/empty) — enrichment fills it server-side
+      const ltpRaw = columnMapping.ltp === AI_FILL_SENTINEL ? 0 : parseNum(row[columnMapping.ltp])
+      const investedRaw = columnMapping.invested_amount === AI_FILL_SENTINEL
+        ? 0
+        : parseNum(row[columnMapping.invested_amount])
+      const pnlRaw = columnMapping.unrealized_pl === AI_FILL_SENTINEL
+        ? 0
+        : parseNum(row[columnMapping.unrealized_pl])
+
+      const invested = investedRaw || qty * avgPrice
+      const pnl = pnlRaw || (ltpRaw > 0 ? qty * ltpRaw - invested : 0)
+
+      // When user selects AI Fill for company_name, fall back to trading_symbol (enriched server-side via ISIN)
+      const nameCol = columnMapping.company_name === AI_FILL_SENTINEL ? undefined : columnMapping.company_name
+      const symCol  = columnMapping.trading_symbol === AI_FILL_SENTINEL ? undefined : columnMapping.trading_symbol
 
       // Clean up scrip name: remove suffixes like "-EQ", "-EQ2/-", etc.
-      const rawName = row[columnMapping.company_name] || row[columnMapping.trading_symbol] || ""
+      const rawName = (nameCol ? row[nameCol] : "") || (symCol ? row[symCol] : "") || ""
       const companyName = rawName.replace(/[-\s]*(EQ\d*|BE|RE\.\d+|RS\d+|SM|IL|BZ)[/\-]*$/i, "").trim() || rawName
 
       return {
         isin: (row[columnMapping.isin] || "").trim(),
         company_name: companyName,
-        trading_symbol: (row[columnMapping.trading_symbol] || rawName).replace(/\s+/g, "").trim(),
+        trading_symbol: ((symCol ? row[symCol] : "") || rawName).replace(/\s+/g, "").trim(),
         quantity: qty,
         avg_price: avgPrice,
-        ltp,
+        ltp: ltpRaw,
         invested_amount: invested,
         unrealized_pl: pnl,
       }
