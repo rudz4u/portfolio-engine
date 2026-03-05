@@ -7,7 +7,7 @@
  *   1. User's personal Upstox OAuth token (user_settings.preferences.upstox_access_token)
  *   2. Server-level UPSTOX_ACCESS_TOKEN env var — covers import-only users with no Upstox account
  *
- * Updates ltp, unrealized_pl, current_value for each holding and returns the updated array.
+ * Updates ltp + unrealized_pl for each holding and returns the updated array.
  */
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createAdminClient } from "@/lib/supabase/server"
@@ -20,6 +20,19 @@ export const dynamic = "force-dynamic"
 const UPSTOX_LTP_URL = "https://api.upstox.com/v3/market-quote/ltp"
 
 // ── Upstox v3 LTP batch fetch ─────────────────────────────────────────────────
+
+/**
+ * Strip broker-export suffixes so the symbol is suitable for NSE_EQ| key construction.
+ * e.g. "BHARTIHEXACOM-EQ5/-" → "BHARTIHEXACOM"
+ *      "ASHOKLEYLAND-RE.1/-" → "ASHOKLEYLAND"
+ *      "WAAREEENERGIES-EQ"   → "WAAREEENERGIES"
+ *
+ * NSE trading symbols are purely alphanumeric — anything from the first hyphen
+ * onward is a broker/series/segment annotation.
+ */
+function cleanNseSymbol(sym: string): string {
+  return sym.split("-")[0].trim().toUpperCase()
+}
 
 async function fetchUpstoxLtp(
   instrumentKeys: string[],
@@ -92,53 +105,81 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ holdings: [], updated: 0 })
   }
 
-  // ── Resolve instrument_keys ────────────────────────────────────────────────
-  // Holdings may carry a proper NSE_EQ|SYMBOL key or a bare ISIN/symbol.
-  // Upstox v3 requires the NSE_EQ|SYMBOL format.
+  // ── Resolve instrument_keys to NSE_EQ|SYMBOL format ─────────────────────
+  //
+  // Holdings may store:
+  //   (a) NSE_EQ|SYMBOL  — already usable, pass through directly
+  //   (b) ISIN (INE.../INF...) — canonical identifier, use to look up the
+  //       proper trading_symbol via the instruments table's `isin` column,
+  //       then construct NSE_EQ|<clean_symbol>
+  //   (c) Broker trading symbol with suffix (e.g. "BHARTIHEXACOM-EQ5/-") —
+  //       strip the suffix with cleanNseSymbol() and construct NSE_EQ|<sym>
+  //
+  // Priority for ISIN holdings:
+  //   1. instruments.instrument_key if it contains "|" (Upstox-seeded master)
+  //   2. instruments.trading_symbol → cleanNseSymbol()  (any row found by ISIN)
+  //   3. holding.trading_symbol     → cleanNseSymbol()  (last resort)
 
+  // (a) Holdings already in proper format
   const properKeys = holdings
     .map((h) => h.instrument_key as string)
     .filter((k) => k && k.includes("|") && !k.startsWith("INE") && !k.startsWith("INF"))
 
+  // (b)+(c) Holdings that need resolution
   const needsResolution = holdings.filter(
     (h) => typeof h.instrument_key === "string" &&
       (h.instrument_key.startsWith("INE") || h.instrument_key.startsWith("INF") || !h.instrument_key.includes("|"))
   )
 
-  // Map: original instrument_key stored in DB → proper NSE_EQ|SYMBOL key
+  // Map: DB instrument_key → resolved NSE_EQ|SYMBOL
   const isinToKey = new Map<string, string>()
 
   if (needsResolution.length > 0) {
-    const isins = needsResolution
-      .map((h) => h.instrument_key as string)
-      .filter((k) => k.startsWith("INE") || k.startsWith("INF"))
-    const tradingSymbols = needsResolution
-      .map((h) => (h.trading_symbol || h.company_name) as string)
-      .filter(Boolean)
+    // Separate into ISIN-style vs bare-symbol holdings
+    const isinHoldings = needsResolution.filter(
+      (h) => (h.instrument_key as string).startsWith("INE") || (h.instrument_key as string).startsWith("INF")
+    )
+    const symHoldings = needsResolution.filter(
+      (h) => !((h.instrument_key as string).startsWith("INE") || (h.instrument_key as string).startsWith("INF"))
+    )
 
-    const qParts: string[] = []
-    if (isins.length > 0) qParts.push(`isin.in.(${isins.join(",")})`)
-    if (tradingSymbols.length > 0) qParts.push(`trading_symbol.in.(${tradingSymbols.join(",")})`)
-
-    if (qParts.length > 0) {
+    // ── ISIN path: query instruments table by the `isin` column ──────────
+    if (isinHoldings.length > 0) {
+      const isins = isinHoldings.map((h) => h.instrument_key as string)
       const { data: instrRows } = await admin
         .from("instruments")
         .select("isin, trading_symbol, instrument_key")
-        .or(qParts.join(","))
+        .in("isin", isins)                           // exact isin column match
 
+      // Build ISIN → { properKey?, cleanSymbol } from master data
+      const instrByIsin = new Map<string, { instrument_key: string; trading_symbol: string }>()
       for (const row of instrRows ?? []) {
-        if (row.isin && row.instrument_key) isinToKey.set(row.isin as string, row.instrument_key as string)
-        if (row.trading_symbol && row.instrument_key) isinToKey.set(row.trading_symbol as string, row.instrument_key as string)
+        if (row.isin) instrByIsin.set(row.isin as string, row as { instrument_key: string; trading_symbol: string })
+      }
+
+      for (const h of isinHoldings) {
+        const isin = h.instrument_key as string
+        const master = instrByIsin.get(isin)
+
+        if (master?.instrument_key && (master.instrument_key as string).includes("|")) {
+          // Best case: instruments table has a proper Upstox key
+          isinToKey.set(isin, master.instrument_key as string)
+        } else if (master?.trading_symbol) {
+          // Good case: instruments has a clean trading_symbol from master data
+          isinToKey.set(isin, `NSE_EQ|${cleanNseSymbol(master.trading_symbol as string)}`)
+        } else {
+          // Fallback: use the holding's trading_symbol/company_name with suffix stripped
+          const rawSym = (h.trading_symbol || h.company_name) as string
+          if (rawSym) isinToKey.set(isin, `NSE_EQ|${cleanNseSymbol(rawSym)}`)
+        }
       }
     }
 
-    // Synthesise NSE_EQ|SYMBOL for anything the DB didn't cover
-    for (const h of needsResolution) {
-      const ik = h.instrument_key as string
-      if (!isinToKey.has(ik)) {
-        const sym = (h.trading_symbol || h.company_name) as string
-        if (sym) isinToKey.set(ik, `NSE_EQ|${sym.toUpperCase()}`)
-      }
+    // ── Symbol path: holding already has a trading symbol, just clean it ──
+    for (const h of symHoldings) {
+      const rawKey = h.instrument_key as string
+      const rawSym = (rawKey || h.trading_symbol || h.company_name) as string
+      if (rawSym) isinToKey.set(rawKey, `NSE_EQ|${cleanNseSymbol(rawSym)}`)
     }
   }
 
@@ -186,11 +227,10 @@ export async function GET(request: NextRequest) {
       const qty = (h.quantity as number) ?? 0
       const avg = (h.avg_price as number) ?? 0
       const unrealized_pl = qty > 0 && avg > 0 ? (ltp - avg) * qty : 0
-      const current_value = qty * ltp
 
       const { data: updatedRow } = await admin
         .from("holdings")
-        .update({ ltp, unrealized_pl, current_value })
+        .update({ ltp, unrealized_pl })
         .eq("id", h.id)
         .select("*")
         .single()

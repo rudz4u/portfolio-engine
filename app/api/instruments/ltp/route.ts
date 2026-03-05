@@ -35,6 +35,11 @@ function setCache(key: string, price: number) {
   priceCache.set(key, { price, at: Date.now() })
 }
 
+// Strip broker-format suffixes like "-EQ5/-", "-RE.1/-", "-EQ" from trading symbols
+function cleanNseSymbol(sym: string): string {
+  return sym.split("-")[0].trim().toUpperCase()
+}
+
 // ── Upstox v3 LTP batch fetch ─────────────────────────────────────────────────
 // instrument_keys must be in "NSE_EQ|SYMBOL" format (pipe-separated).
 // Response keys use ":" separator: "NSE_EQ:SYMBOL".
@@ -108,34 +113,62 @@ export async function POST(request: NextRequest) {
   if (symbolsNeedingKey.length > 0) {
     try {
       const admin = await createAdminClient()
-      const tradingSymbols = symbolsNeedingKey.map((s) => s.trading_symbol.toUpperCase())
+
+      // ── ISIN-based lookup (most reliable) ───────────────────────────────
+      // Query by isin column so import-seeded self-referential rows are handled
       const isins = symbolsNeedingKey.map((s) => s.isin).filter(Boolean) as string[]
-
-      const query = admin
-        .from("instruments")
-        .select("trading_symbol, instrument_key, isin")
-        .limit(MAX_SYMBOLS)
-
       if (isins.length > 0) {
-        query.or(`trading_symbol.in.(${tradingSymbols.join(",")}),isin.in.(${isins.join(",")})`)
-      } else {
-        query.in("trading_symbol", tradingSymbols)
+        const { data: rows } = await admin
+          .from("instruments")
+          .select("trading_symbol, instrument_key, isin")
+          .in("isin", isins)
+          .limit(MAX_SYMBOLS)
+
+        // ISIN → resolved NSE_EQ|SYMBOL
+        const isinKeyMap = new Map<string, string>()
+        for (const row of rows ?? []) {
+          if (!row.isin) continue
+          const ik = row.instrument_key as string
+          isinKeyMap.set(
+            row.isin as string,
+            ik?.includes("|") ? ik : `NSE_EQ|${cleanNseSymbol((row.trading_symbol as string) ?? "")}`,
+          )
+        }
+
+        for (const s of symbolsNeedingKey) {
+          const sym = s.trading_symbol?.toUpperCase().trim()
+          if (sym && s.isin && isinKeyMap.has(s.isin)) {
+            symbolToKey.set(sym, isinKeyMap.get(s.isin)!)
+          }
+        }
       }
 
-      const { data: rows } = await query
-      for (const row of rows ?? []) {
-        const sym = (row.trading_symbol as string)?.toUpperCase()
-        if (sym && row.instrument_key) symbolToKey.set(sym, row.instrument_key as string)
+      // ── Clean-symbol lookup for anything still unresolved ───────────────
+      const stillMissing = symbolsNeedingKey.filter(
+        (s) => !symbolToKey.has(s.trading_symbol?.toUpperCase().trim() ?? "")
+      )
+      if (stillMissing.length > 0) {
+        const cleanSyms = [...new Set(stillMissing.map((s) => cleanNseSymbol(s.trading_symbol)))]
+        const { data: rows } = await admin
+          .from("instruments")
+          .select("trading_symbol, instrument_key")
+          .in("trading_symbol", cleanSyms)
+          .limit(MAX_SYMBOLS)
+        for (const row of rows ?? []) {
+          const sym = (row.trading_symbol as string)?.toUpperCase()
+          const ik = row.instrument_key as string
+          if (sym && ik?.includes("|")) symbolToKey.set(sym, ik)
+        }
       }
     } catch (err) {
       console.warn("[ltp] Instruments table look-up failed:", err)
     }
   }
 
-  // For anything still without a DB key, synthesise NSE_EQ|SYMBOL
+  // For anything still without a key, synthesise NSE_EQ|cleanSymbol
   for (const s of symbolsNeedingKey) {
     const sym = s.trading_symbol?.toUpperCase().trim()
-    if (sym && !symbolToKey.has(sym)) symbolToKey.set(sym, `NSE_EQ|${sym}`)
+    if (sym && !symbolToKey.has(sym)) symbolToKey.set(sym, `NSE_EQ|${cleanNseSymbol(sym)}`)
   }
 
   const allSymbols = [...symbolToKey.keys()].slice(0, MAX_SYMBOLS)
