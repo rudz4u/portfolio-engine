@@ -1,12 +1,48 @@
 import { NextResponse } from "next/server"
+import { createHmac } from "crypto"
 import { UPSTOX_CONFIG } from "@/lib/upstox"
+import { createClient } from "@/lib/supabase/server"
 
 /**
  * GET /api/oauth/upstox/authorize
  * Redirects the user to Upstox's OAuth2 authorization page.
- * A random `state` value is generated for CSRF protection and stored in a
- * short-lived HttpOnly cookie.  The callback validates it before proceeding.
+ *
+ * CSRF protection: the current user's Supabase user ID is embedded in the
+ * `state` parameter as an HMAC-signed, base64url-encoded token.
+ * The callback verifies the signature server-side — NO browser cookie needed.
+ * This works reliably on Netlify where Set-Cookie headers on 302 redirects
+ * can be stripped by the CDN edge layer before reaching the browser.
  */
+export const dynamic = "force-dynamic"
+
+/** HMAC signing key derived from the Upstox client secret (server-only). */
+const STATE_SECRET = process.env.UPSTOX_CLIENT_SECRET || process.env.UPSTOX_CLIENT_ID || "upstox-oauth-state"
+const STATE_TTL_MS = 15 * 60 * 1000 // 15 minutes
+
+export function createOAuthState(userId: string): string {
+  const ts = Date.now().toString()
+  const msg = `${userId};${ts}`
+  const sig = createHmac("sha256", STATE_SECRET).update(msg).digest("hex").slice(0, 32)
+  return Buffer.from(`${msg};${sig}`).toString("base64url")
+}
+
+export function parseOAuthState(state: string): string | null {
+  try {
+    const decoded = Buffer.from(state, "base64url").toString("utf8")
+    const parts = decoded.split(";")
+    if (parts.length !== 3) return null
+    const [userId, tsStr, sig] = parts
+    const msg = `${userId};${tsStr}`
+    const expected = createHmac("sha256", STATE_SECRET).update(msg).digest("hex").slice(0, 32)
+    if (sig !== expected) return null
+    const ts = parseInt(tsStr, 10)
+    if (!ts || Date.now() - ts > STATE_TTL_MS) return null
+    return userId
+  } catch {
+    return null
+  }
+}
+
 export async function GET() {
   const clientId = UPSTOX_CONFIG.clientId
   if (!clientId) {
@@ -16,13 +52,22 @@ export async function GET() {
     )
   }
 
-  // The redirect URI MUST match exactly what is registered in the Upstox developer portal.
   const redirectUri =
     UPSTOX_CONFIG.redirectUri ||
     "https://investbuddyai.com/api/oauth/upstox/callback"
 
-  // Generate a random state token for CSRF protection.
-  const state = crypto.randomUUID().replace(/-/g, "")
+  // Embed the logged-in user's ID in the state for CSRF-safe identity passing.
+  // The settings page is a protected route, so the user is always authenticated here.
+  let userId = "anon"
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.id) userId = user.id
+  } catch {
+    // Fallback: anon state — callback will use session instead
+  }
+
+  const state = createOAuthState(userId)
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -31,18 +76,7 @@ export async function GET() {
     state,
   })
 
-  const response = NextResponse.redirect(
+  return NextResponse.redirect(
     `${UPSTOX_CONFIG.authUrl}?${params.toString()}`
   )
-
-  // Store state in a short-lived first-party cookie so the callback can verify it.
-  response.cookies.set("upstox_oauth_state", state, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    maxAge: 600, // 10 minutes — enough time for the user to complete Upstox login
-    path: "/",
-  })
-
-  return response
 }
