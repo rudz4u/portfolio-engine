@@ -158,7 +158,7 @@ export default function ImportWizard({
       setError("Import failed. Please try again.")
       setImporting(false)
     }
-  }, [file, broker, mapping, portfolioName])
+  }, [file, broker, mapping, portfolioName, portfolioId])
 
   // ── Navigation ──
   const goBack = () => {
