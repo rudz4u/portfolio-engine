@@ -25,9 +25,11 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get("error")
   const stateParam = searchParams.get("state")
 
-  const redirectUri =
+  // Normalize redirect URI — trailing slash causes a mismatch on Upstox token exchange
+  const redirectUri = (
     UPSTOX_CONFIG.redirectUri ||
     "https://investbuddyai.com/api/oauth/upstox/callback"
+  ).replace(/\/$/, "")
   const baseUrl = new URL(redirectUri).origin
 
   if (error || !code) {
@@ -39,39 +41,76 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Guard: catch misconfigured env vars early and surface them clearly
+  if (!UPSTOX_CONFIG.clientId || !UPSTOX_CONFIG.clientSecret) {
+    console.error("[OAuth callback] Missing Upstox credentials:", {
+      hasClientId: !!UPSTOX_CONFIG.clientId,
+      hasClientSecret: !!UPSTOX_CONFIG.clientSecret,
+    })
+    return NextResponse.redirect(
+      `${baseUrl}/settings?error=misconfigured&message=${encodeURIComponent(
+        "Upstox app credentials are not configured on the server. Contact the admin."
+      )}`
+    )
+  }
+
   // ── 1. Exchange code for access token ────────────────────────────────────
   let accessToken: string
   try {
+    const tokenBody = new URLSearchParams({
+      code,
+      client_id: UPSTOX_CONFIG.clientId,
+      client_secret: UPSTOX_CONFIG.clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    }).toString()
+
+    console.log("[OAuth callback] Token exchange →", {
+      tokenUrl: UPSTOX_CONFIG.tokenUrl,
+      redirect_uri: redirectUri,
+      client_id: UPSTOX_CONFIG.clientId,
+      // never log client_secret
+    })
+
     const tokenRes = await fetch(UPSTOX_CONFIG.tokenUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
       },
-      body: new URLSearchParams({
-        code,
-        client_id: UPSTOX_CONFIG.clientId,
-        client_secret: UPSTOX_CONFIG.clientSecret,
-        redirect_uri: redirectUri,
-        grant_type: "authorization_code",
-      }).toString(),
+      body: tokenBody,
     })
 
     const tokenData = await tokenRes.json()
 
     if (!tokenRes.ok || !tokenData.access_token) {
-      console.error("[OAuth callback] Token exchange failed:", tokenData)
+      // Upstox v2 error format: { status, errors: [{ errorCode, message }] }
+      const upstoxMsg =
+        tokenData.errors?.[0]?.message ||
+        tokenData.message ||
+        tokenData.error_description ||
+        tokenData.error ||
+        `HTTP ${tokenRes.status}`
+
+      console.error("[OAuth callback] Token exchange failed:", {
+        httpStatus: tokenRes.status,
+        upstoxMsg,
+        tokenData,
+      })
+
       return NextResponse.redirect(
-        `${baseUrl}/settings?error=token_exchange_failed&message=${encodeURIComponent(
-          tokenData.message || "Token exchange failed"
-        )}`
+        `${baseUrl}/settings?error=token_exchange_failed&message=${encodeURIComponent(upstoxMsg)}`
       )
     }
 
     accessToken = tokenData.access_token
   } catch (err) {
     console.error("[OAuth callback] Token fetch threw:", err)
-    return NextResponse.redirect(`${baseUrl}/settings?error=token_fetch_error`)
+    return NextResponse.redirect(
+      `${baseUrl}/settings?error=token_fetch_error&message=${encodeURIComponent(
+        err instanceof Error ? err.message : String(err)
+      )}`
+    )
   }
 
   // ── Helper: save token into user_settings.preferences JSONB ──────────────
