@@ -141,6 +141,8 @@ export default function SettingsPage() {
         description: doSync ? "Syncing your portfolio now…" : "Your Upstox account is linked.",
       })
       window.history.replaceState({}, "", "/settings")
+      // Explicitly reload settings so upstoxTokenSet reflects the newly saved token.
+      loadSettings()
 
       if (doSync) {
         fetch("/api/upstox/sync", { method: "POST" })
@@ -469,6 +471,19 @@ export default function SettingsPage() {
               </Button>
               <p className="text-xs text-muted-foreground">
                 Your credentials are never stored outside your own account.
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-md px-3 py-2 max-w-sm">
+                <strong>Tip:</strong> If the Upstox OTP is not arriving, first{" "}
+                <a
+                  href="https://upstox.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  log in to Upstox.com
+                </a>{" "}
+                directly in another tab, then come back and click Connect — Upstox will ask for your
+                6-digit PIN instead of sending an OTP.
               </p>
             </div>
           )}

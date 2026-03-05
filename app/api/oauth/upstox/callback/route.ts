@@ -8,7 +8,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server"
  * This handler supports two flows:
  *
  *  A) LOGGED-IN user (connect flow from /settings):
- *     Token is saved directly to user_settings and user is sent to /settings.
+ *     Token is saved directly to user_settings.preferences and user is sent to /settings.
  *
  *  B) NOT LOGGED-IN user (sign-in / sign-up via Upstox):
  *     1. Fetch Upstox profile for email + name
@@ -18,10 +18,13 @@ import { createClient, createAdminClient } from "@/lib/supabase/server"
  *     4. Redirect to the magic-link action URL, which auto-signs the user in
  *        and lands them on /settings with sync=1
  */
+export const dynamic = "force-dynamic"
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get("code")
   const error = searchParams.get("error")
+  const stateParam = searchParams.get("state")
 
   const redirectUri =
     UPSTOX_CONFIG.redirectUri ||
@@ -33,6 +36,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       `${baseUrl}/settings?error=upstox_auth_failed&message=${encodeURIComponent(
         error || "No authorisation code returned"
+      )}`
+    )
+  }
+
+  // ── CSRF: validate state cookie ───────────────────────────────────────────
+  const stateCookie = request.cookies.get("upstox_oauth_state")?.value
+  if (!stateParam || !stateCookie || stateParam !== stateCookie) {
+    console.error(
+      "[OAuth callback] State mismatch — possible CSRF or stale flow",
+      { stateParam, stateCookie }
+    )
+    return NextResponse.redirect(
+      `${baseUrl}/settings?error=state_mismatch&message=${encodeURIComponent(
+        "OAuth session expired or state mismatch. Please try connecting again."
       )}`
     )
   }
@@ -90,7 +107,7 @@ export async function GET(request: NextRequest) {
     console.error("[OAuth callback] Upstox profile fetch threw:", e)
   }
 
-  // ── Helper: save token to user_settings using a given client ─────────────
+  // ── Helper: save token into user_settings.preferences JSONB ──────────────
   async function saveToken(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     client: Awaited<ReturnType<typeof createClient>>,
@@ -112,6 +129,18 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Clear the one-time state cookie regardless of outcome.
+  function clearStateCookie(response: NextResponse) {
+    response.cookies.set("upstox_oauth_state", "", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 0,
+      path: "/",
+    })
+    return response
+  }
+
   // ── 3A. Logged-in user → connect flow ────────────────────────────────────
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -119,20 +148,30 @@ export async function GET(request: NextRequest) {
   if (user) {
     const { error: saveError } = await saveToken(supabase, user.id)
     if (saveError) {
-      console.error("[OAuth callback] Failed to save token:", saveError)
-      return NextResponse.redirect(`${baseUrl}/settings?error=save_token_failed`)
+      console.error("[OAuth callback] Failed to save token for logged-in user:", saveError)
+      return clearStateCookie(
+        NextResponse.redirect(
+          `${baseUrl}/settings?error=save_token_failed&message=${encodeURIComponent(
+            saveError.message || "Could not save the Upstox token. Please try again."
+          )}`
+        )
+      )
     }
     console.log(`[OAuth callback] Token saved for logged-in user ${user.id}`)
-    return NextResponse.redirect(`${baseUrl}/settings?success=upstox_connected&sync=1`)
+    return clearStateCookie(
+      NextResponse.redirect(`${baseUrl}/settings?success=upstox_connected&sync=1`)
+    )
   }
 
   // ── 3B. Not logged in → auto sign-in / sign-up via magic link ────────────
   if (!upstoxEmail) {
     console.error("[OAuth callback] No email from Upstox profile — cannot auto sign-in")
-    return NextResponse.redirect(
-      `${baseUrl}/signin?error=no_email&message=${encodeURIComponent(
-        "Upstox did not share your email. Please sign in or sign up manually, then connect Upstox from Settings."
-      )}`
+    return clearStateCookie(
+      NextResponse.redirect(
+        `${baseUrl}/signin?error=no_email&message=${encodeURIComponent(
+          "Upstox did not share your email. Please sign in or sign up manually, then connect Upstox from Settings."
+        )}`
+      )
     )
   }
 
@@ -152,10 +191,12 @@ export async function GET(request: NextRequest) {
 
     if (linkError || !linkData) {
       console.error("[OAuth callback] generateLink failed:", linkError)
-      return NextResponse.redirect(
-        `${baseUrl}/signin?error=link_failed&message=${encodeURIComponent(
-          "Could not create a sign-in link. Please sign in or sign up manually."
-        )}`
+      return clearStateCookie(
+        NextResponse.redirect(
+          `${baseUrl}/signin?error=link_failed&message=${encodeURIComponent(
+            "Could not create a sign-in link. Please sign in or sign up manually."
+          )}`
+        )
       )
     }
 
@@ -172,13 +213,15 @@ export async function GET(request: NextRequest) {
     // lands them on /settings?success=upstox_connected&sync=1
     const actionLink = linkData.properties.action_link
     console.log(`[OAuth callback] Magic-link sign-in generated for ${upstoxEmail} (user ${targetUserId})`)
-    return NextResponse.redirect(actionLink)
+    return clearStateCookie(NextResponse.redirect(actionLink))
   } catch (err) {
     console.error("[OAuth callback] Admin flow threw:", err)
-    return NextResponse.redirect(
-      `${baseUrl}/signin?error=admin_error&message=${encodeURIComponent(
-        "Sign-in failed. Please try again or use email sign-in."
-      )}`
+    return clearStateCookie(
+      NextResponse.redirect(
+        `${baseUrl}/signin?error=admin_error&message=${encodeURIComponent(
+          "Sign-in failed. Please try again or use email sign-in."
+        )}`
+      )
     )
   }
 }
