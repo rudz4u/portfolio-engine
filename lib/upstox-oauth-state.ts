@@ -1,10 +1,13 @@
 import { createHmac } from "crypto"
 
-/** HMAC signing key derived from the Upstox client secret (server-only). */
-export const STATE_SECRET =
-  process.env.UPSTOX_CLIENT_SECRET ||
-  process.env.UPSTOX_CLIENT_ID ||
-  "upstox-oauth-state"
+/** HMAC signing key — read fresh at call time to avoid stale warm-lambda caching. */
+function getStateSecret(): string {
+  return (
+    process.env.UPSTOX_CLIENT_SECRET ||
+    process.env.UPSTOX_CLIENT_ID ||
+    "upstox-oauth-state"
+  )
+}
 
 export const STATE_TTL_MS = 15 * 60 * 1000 // 15 minutes
 
@@ -16,7 +19,7 @@ export const STATE_TTL_MS = 15 * 60 * 1000 // 15 minutes
 export function createOAuthState(userId: string): string {
   const ts = Date.now().toString()
   const msg = `${userId};${ts}`
-  const sig = createHmac("sha256", STATE_SECRET).update(msg).digest("hex").slice(0, 32)
+  const sig = createHmac("sha256", getStateSecret()).update(msg).digest("hex").slice(0, 32)
   return Buffer.from(`${msg};${sig}`).toString("base64url")
 }
 
@@ -31,7 +34,7 @@ export function parseOAuthState(state: string): string | null {
     if (parts.length !== 3) return null
     const [userId, tsStr, sig] = parts
     const msg = `${userId};${tsStr}`
-    const expected = createHmac("sha256", STATE_SECRET)
+    const expected = createHmac("sha256", getStateSecret())
       .update(msg)
       .digest("hex")
       .slice(0, 32)

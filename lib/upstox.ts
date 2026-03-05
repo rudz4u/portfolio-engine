@@ -1,10 +1,12 @@
 // Upstox API configuration
+// Use getters for env vars that can change between deployments so the value
+// is always read fresh from process.env at call time, not frozen at module load.
 export const UPSTOX_CONFIG = {
-  clientId: process.env.UPSTOX_CLIENT_ID || "",
-  clientSecret: process.env.UPSTOX_CLIENT_SECRET || "",
-  redirectUri: process.env.UPSTOX_REDIRECT_URI || "https://investbuddyai.com/api/oauth/upstox/callback",
-  accessToken: process.env.UPSTOX_ACCESS_TOKEN || "",
-  sandbox: process.env.UPSTOX_SANDBOX === "true",
+  get clientId() { return process.env.UPSTOX_CLIENT_ID || "" },
+  get clientSecret() { return process.env.UPSTOX_CLIENT_SECRET || "" },
+  get redirectUri() { return process.env.UPSTOX_REDIRECT_URI || "https://investbuddyai.com/api/oauth/upstox/callback" },
+  get accessToken() { return process.env.UPSTOX_ACCESS_TOKEN || "" },
+  get sandbox() { return process.env.UPSTOX_SANDBOX === "true" },
   baseUrl: "https://api.upstox.com/v2",
   authUrl: "https://api.upstox.com/v2/login/authorization/dialog",
   tokenUrl: "https://api.upstox.com/v2/login/authorization/token",
