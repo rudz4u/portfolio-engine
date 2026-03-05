@@ -25,6 +25,8 @@ export interface BrokerFormat {
   exportGuideUrl: string
   /** Steps for user to export holdings. */
   exportSteps: string[]
+  /** Optional highlighted note shown below the export steps (e.g. a visual tip). */
+  exportNote?: string
   /** Supported file types. */
   fileTypes: ("xlsx" | "csv" | "pdf")[]
   /**
@@ -41,25 +43,31 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
   upstox: {
     id: "upstox",
     label: "Upstox",
-    headerRow: 9,
-    sheetName: "HOLDING",
+    headerRow: 0,
+    sheetName: null,  // Holdings-page export uses first sheet; auto-detect
     columnMap: {
-      // Only 3 fields are reliably mapped from the Upstox XLSX:
+      // Column names from the Upstox Holdings page XLSX download
+      // (https://pro.upstox.com/holdings → download icon top-right)
       isin: ["ISIN"],
-      quantity: ["Current Qty"],
-      avg_price: ["Rate"],       // "Rate" = average cost price (not LTP)
-      // Everything else is AI-filled (see defaultAiFill below)
+      company_name: ["Scrip Name"],
+      trading_symbol: ["Symbol"],
+      quantity: ["Qty", "Current Qty"],
+      avg_price: ["Avg Buy Price", "Avg. Buy Price", "Average Buy Price"],
+      invested_amount: ["Total Invested", "Invested Amount"],
+      ltp: ["C.M.P", "CMP", "LTP"],         // present in file but AI-filled (live price preferred)
+      unrealized_pl: ["P&L", "Unrealised P&L"], // present in file but AI-filled (recalc from live LTP)
     },
-    defaultAiFill: ["company_name", "trading_symbol", "ltp", "invested_amount", "unrealized_pl"],
-    exportGuideUrl: "https://account.upstox.com/reports/holding/all",
+    // ltp and unrealized_pl are always derived live — don't read stale values from the file
+    defaultAiFill: ["ltp", "unrealized_pl"],
+    exportGuideUrl: "https://pro.upstox.com/holdings",
     exportSteps: [
-      "Log in to your Upstox account at upstox.com",
-      "Go to Account → Reports → Holdings",
-      "Select the date for the report",
-      'Click the download icon and choose "Excel" format — PDF is not supported',
+      "Log in to your Upstox account and open the Holdings page at pro.upstox.com/holdings",
+      'Click the Download icon (\u2193) in the top-right corner of the Holdings table — it looks like a downward arrow next to the refresh and expand icons',
+      "The file downloads automatically as an Excel (.xlsx) file",
       "Upload the downloaded .xlsx file here",
     ],
-    fileTypes: ["xlsx"],  // PDF parsing not supported for Upstox — XLSX only
+    exportNote: "\u26a0\ufe0f Important: Use the download from the Holdings page, not from Account \u2192 Reports \u2192 Holdings. The Reports export uses a different column format.",
+    fileTypes: ["xlsx"],  // PDF parsing not supported — XLSX only
     logoUrl: "https://assets.upstox.com/website/images/upstox-new-logo.svg",
   },
 
