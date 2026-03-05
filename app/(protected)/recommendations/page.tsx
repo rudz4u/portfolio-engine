@@ -51,6 +51,7 @@ interface SourceSignal {
   signal: string
   target_price: number | null
   tier: number
+  website_url?: string | null
 }
 
 interface Summary {
@@ -87,6 +88,16 @@ function ScoreBar({ value, max, color }: { value: number; max: number; color: st
       <span className="text-xs text-muted-foreground w-6 text-right">{value}</span>
     </div>
   )
+}
+
+function advisorLogoUrl(websiteUrl?: string | null): string | null {
+  if (!websiteUrl) return null
+  try {
+    const domain = new URL(websiteUrl).hostname
+    return `https://www.google.com/s2/favicons?sz=32&domain=${domain}`
+  } catch {
+    return null
+  }
 }
 
 export default function RecommendationsPage() {
@@ -435,25 +446,38 @@ export default function RecommendationsPage() {
                 {/* Per-source advisor chips */}
                 {sourceBreakdown[h.trading_symbol]?.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {sourceBreakdown[h.trading_symbol].map((s) => (
-                      <span
-                        key={s.source_name}
-                        className={cn(
-                          "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border",
-                          s.signal === "BUY" || s.signal === "STRONG_BUY"
-                            ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
-                            : s.signal === "SELL" || s.signal === "STRONG_SELL"
-                            ? "bg-red-400/10 text-red-400 border-red-400/30"
-                            : s.signal === "HOLD"
-                            ? "bg-amber-400/10 text-amber-400 border-amber-400/30"
-                            : "bg-muted text-muted-foreground border-border/50"
-                        )}
-                      >
-                        <span className="truncate max-w-[80px]">{s.source_name}</span>
-                        <span className="font-semibold">{s.signal}</span>
-                        {s.target_price ? <span>₹{s.target_price.toLocaleString("en-IN")}</span> : null}
-                      </span>
-                    ))}
+                    {sourceBreakdown[h.trading_symbol].map((s) => {
+                      const logo = advisorLogoUrl(s.website_url)
+                      return (
+                        <span
+                          key={s.source_name}
+                          className={cn(
+                            "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border",
+                            s.signal === "BUY" || s.signal === "STRONG_BUY"
+                              ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
+                              : s.signal === "SELL" || s.signal === "STRONG_SELL"
+                              ? "bg-red-400/10 text-red-400 border-red-400/30"
+                              : s.signal === "HOLD"
+                              ? "bg-amber-400/10 text-amber-400 border-amber-400/30"
+                              : "bg-muted text-muted-foreground border-border/50"
+                          )}
+                        >
+                          {logo && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={logo}
+                              alt=""
+                              width={12}
+                              height={12}
+                              className="w-3 h-3 rounded-sm object-contain shrink-0"
+                            />
+                          )}
+                          <span className="truncate max-w-[80px]">{s.source_name}</span>
+                          <span className="font-semibold">{s.signal}</span>
+                          {s.target_price ? <span>₹{s.target_price.toLocaleString("en-IN")}</span> : null}
+                        </span>
+                      )
+                    })}
                   </div>
                 )}
 
