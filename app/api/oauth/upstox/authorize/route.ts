@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { createHmac } from "crypto"
 import { UPSTOX_CONFIG } from "@/lib/upstox"
 import { createClient } from "@/lib/supabase/server"
+import { createOAuthState } from "@/lib/upstox-oauth-state"
 
 /**
  * GET /api/oauth/upstox/authorize
@@ -14,34 +14,6 @@ import { createClient } from "@/lib/supabase/server"
  * can be stripped by the CDN edge layer before reaching the browser.
  */
 export const dynamic = "force-dynamic"
-
-/** HMAC signing key derived from the Upstox client secret (server-only). */
-const STATE_SECRET = process.env.UPSTOX_CLIENT_SECRET || process.env.UPSTOX_CLIENT_ID || "upstox-oauth-state"
-const STATE_TTL_MS = 15 * 60 * 1000 // 15 minutes
-
-export function createOAuthState(userId: string): string {
-  const ts = Date.now().toString()
-  const msg = `${userId};${ts}`
-  const sig = createHmac("sha256", STATE_SECRET).update(msg).digest("hex").slice(0, 32)
-  return Buffer.from(`${msg};${sig}`).toString("base64url")
-}
-
-export function parseOAuthState(state: string): string | null {
-  try {
-    const decoded = Buffer.from(state, "base64url").toString("utf8")
-    const parts = decoded.split(";")
-    if (parts.length !== 3) return null
-    const [userId, tsStr, sig] = parts
-    const msg = `${userId};${tsStr}`
-    const expected = createHmac("sha256", STATE_SECRET).update(msg).digest("hex").slice(0, 32)
-    if (sig !== expected) return null
-    const ts = parseInt(tsStr, 10)
-    if (!ts || Date.now() - ts > STATE_TTL_MS) return null
-    return userId
-  } catch {
-    return null
-  }
-}
 
 export async function GET() {
   const clientId = UPSTOX_CONFIG.clientId

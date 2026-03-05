@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { UPSTOX_CONFIG } from "@/lib/upstox"
 import { createClient, createAdminClient } from "@/lib/supabase/server"
-import { parseOAuthState } from "../authorize/route"
+import { parseOAuthState } from "@/lib/upstox-oauth-state"
 
 /**
  * GET /api/oauth/upstox/callback
