@@ -21,6 +21,8 @@ export interface MappedHolding {
   ltp: number
   invested_amount: number
   unrealized_pl: number
+  /** Populated during enrichment — the proper Upstox instrument_key (e.g. NSE_EQ|SYMBOL) */
+  instrument_key?: string
 }
 
 /** Sentinel value used when the user selects "✨ AI Fill" in the column mapping UI */

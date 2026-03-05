@@ -1,101 +1,71 @@
 /**
  * POST /api/instruments/ltp
  *
- * Fetches current/last-traded prices for a batch of symbols.
- * Used during portfolio import when LTP is absent from the broker export.
+ * Fetches last-traded prices for a batch of symbols via Upstox v3 LTP API.
+ * Falls back to NSE_EQ segment look-up from the instruments table when no
+ * proper instrument_key is supplied.
  *
- * Primary source : Yahoo Finance (unofficial, no auth required)
- *   URL: https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}.NS
- *   Tries .NS (NSE) first, then .BO (BSE) for unlisted symbols.
- *
- * Fallback       : Upstox market-quote API (only if user has OAuth token)
- *
- * Body  : { symbols: [{ trading_symbol: string, isin?: string }] }
+ * Body: { symbols?: [{ trading_symbol, isin? }], instrument_keys?: string[] }
  * Response: { prices: { "RELIANCE": 2450.50, ... }, errors: { "XYZ": "Not found" } }
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { resolveUpstoxToken } from "@/lib/upstox-token"
-import { UPSTOX_CONFIG, getUpstoxHeaders } from "@/lib/upstox"
+import { getUpstoxHeaders } from "@/lib/upstox"
 
 export const maxDuration = 30
 export const dynamic = "force-dynamic"
 
 const MAX_SYMBOLS = 50
+const UPSTOX_LTP_URL = "https://api.upstox.com/v3/market-quote/ltp"
 
-// ── Simple in-process cache (survives across requests in the same Lambda warm instance) ──
+// ── In-process price cache ────────────────────────────────────────────────────
 const priceCache = new Map<string, { price: number; at: number }>()
-const CACHE_TTL_MS = 15 * 60 * 1000 // 15 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
-function getCached(symbol: string): number | null {
-  const entry = priceCache.get(symbol)
+function getCached(key: string): number | null {
+  const entry = priceCache.get(key)
   if (!entry) return null
-  if (Date.now() - entry.at > CACHE_TTL_MS) {
-    priceCache.delete(symbol)
-    return null
-  }
+  if (Date.now() - entry.at > CACHE_TTL_MS) { priceCache.delete(key); return null }
   return entry.price
 }
-
-function setCache(symbol: string, price: number) {
-  priceCache.set(symbol, { price, at: Date.now() })
+function setCache(key: string, price: number) {
+  priceCache.set(key, { price, at: Date.now() })
 }
 
-// ── Yahoo Finance fetch ────────────────────────────────────────────────────────
-
-async function fetchYahooPrice(symbol: string): Promise<number | null> {
-  const suffixes = ["NS", "BO"] // NSE first, then BSE
-  for (const suffix of suffixes) {
-    try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}.${suffix}?interval=1d&range=1d`
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; portfolio-engine/1.0)",
-          Accept: "application/json",
-        },
-        signal: AbortSignal.timeout(5000), // 5-second timeout per symbol
-      })
-      if (!res.ok) continue
-      const json = await res.json()
-      const meta = json?.chart?.result?.[0]?.meta
-      if (!meta) continue
-      const price: number =
-        meta.regularMarketPrice ??
-        meta.previousClose ??
-        meta.chartPreviousClose
-      if (price && price > 0) return price
-    } catch {
-      // try next suffix
-    }
-  }
-  return null
-}
-
-// ── Upstox market-quote fetch (batch, NSE_EQ segment assumed) ─────────────────
-
-async function fetchUpstoxPrices(
-  symbols: string[],
-  token: string
+// ── Upstox v3 LTP batch fetch ─────────────────────────────────────────────────
+// instrument_keys must be in "NSE_EQ|SYMBOL" format (pipe-separated).
+// Response keys use ":" separator: "NSE_EQ:SYMBOL".
+async function fetchUpstoxLtp(
+  instrumentKeys: string[],
+  token: string,
 ): Promise<Record<string, number>> {
-  const keys = symbols.map((s) => `NSE_EQ|${s}`).join(",")
+  if (instrumentKeys.length === 0) return {}
   try {
-    const url = `${UPSTOX_CONFIG.baseUrl}/market-quote/quotes?instrument_key=${encodeURIComponent(keys)}`
+    const keyParam = instrumentKeys.map((k) => encodeURIComponent(k)).join(",")
+    const url = `${UPSTOX_LTP_URL}?instrument_key=${keyParam}`
     const res = await fetch(url, {
       headers: getUpstoxHeaders(token),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(10_000),
     })
-    if (!res.ok) return {}
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "")
+      console.warn(`[ltp] Upstox v3 LTP ${res.status}: ${txt.slice(0, 200)}`)
+      return {}
+    }
     const json = await res.json()
     const map: Record<string, number> = {}
     for (const [key, val] of Object.entries(json?.data ?? {})) {
-      // key is like "NSE_EQ:RELIANCE"
-      const sym = key.split(":")[1] || key.split("|")[1] || key
-      const price = (val as Record<string, number>)?.last_price
-      if (sym && price && price > 0) map[sym] = price
+      // key comes back as "NSE_EQ:RELIANCE" — extract the symbol part
+      const sym = key.includes(":") ? key.split(":")[1] : key.split("|")[1] ?? key
+      const price = (val as { last_price?: number })?.last_price
+      if (sym && price && price > 0) map[sym.toUpperCase()] = price
     }
     return map
-  } catch {
+  } catch (err) {
+    console.warn("[ltp] Upstox v3 LTP fetch error:", err)
     return {}
   }
 }
@@ -104,98 +74,107 @@ async function fetchUpstoxPrices(
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  let body: { symbols?: { trading_symbol: string; isin?: string }[] }
+  let body: {
+    symbols?: { trading_symbol: string; isin?: string }[]
+    instrument_keys?: string[]
+  }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const symbolsInput = body.symbols ?? []
-  if (!Array.isArray(symbolsInput) || symbolsInput.length === 0) {
-    return NextResponse.json({ prices: {}, errors: {} })
+  // Build a unified list of { symbol (uppercase), instrument_key }
+  // instrument_key may be supplied directly (e.g. "NSE_EQ|RELIANCE") or looked up from symbols
+  const symbolToKey = new Map<string, string>()
+
+  // Accept direct instrument_keys (already in NSE_EQ|SYMBOL format)
+  for (const ik of body.instrument_keys ?? []) {
+    const sym = ik.includes("|") ? ik.split("|")[1].toUpperCase() : ik.toUpperCase()
+    symbolToKey.set(sym, ik)
   }
 
-  // Deduplicate + clamp
-  const symbols = [
-    ...new Set(
-      symbolsInput
-        .map((s) => s.trading_symbol?.toUpperCase().trim())
-        .filter(Boolean) as string[]
-    ),
-  ].slice(0, MAX_SYMBOLS)
+  // For symbols without keys, try the instruments table first
+  const symbolsNeedingKey: { trading_symbol: string; isin?: string }[] = []
+  for (const s of body.symbols ?? []) {
+    const sym = s.trading_symbol?.toUpperCase().trim()
+    if (!sym) continue
+    if (!symbolToKey.has(sym)) symbolsNeedingKey.push(s)
+  }
 
+  if (symbolsNeedingKey.length > 0) {
+    try {
+      const admin = await createAdminClient()
+      const tradingSymbols = symbolsNeedingKey.map((s) => s.trading_symbol.toUpperCase())
+      const isins = symbolsNeedingKey.map((s) => s.isin).filter(Boolean) as string[]
+
+      const query = admin
+        .from("instruments")
+        .select("trading_symbol, instrument_key, isin")
+        .limit(MAX_SYMBOLS)
+
+      if (isins.length > 0) {
+        query.or(`trading_symbol.in.(${tradingSymbols.join(",")}),isin.in.(${isins.join(",")})`)
+      } else {
+        query.in("trading_symbol", tradingSymbols)
+      }
+
+      const { data: rows } = await query
+      for (const row of rows ?? []) {
+        const sym = (row.trading_symbol as string)?.toUpperCase()
+        if (sym && row.instrument_key) symbolToKey.set(sym, row.instrument_key as string)
+      }
+    } catch (err) {
+      console.warn("[ltp] Instruments table look-up failed:", err)
+    }
+  }
+
+  // For anything still without a DB key, synthesise NSE_EQ|SYMBOL
+  for (const s of symbolsNeedingKey) {
+    const sym = s.trading_symbol?.toUpperCase().trim()
+    if (sym && !symbolToKey.has(sym)) symbolToKey.set(sym, `NSE_EQ|${sym}`)
+  }
+
+  const allSymbols = [...symbolToKey.keys()].slice(0, MAX_SYMBOLS)
   const prices: Record<string, number> = {}
   const errors: Record<string, string> = {}
 
-  // Serve anything already cached
-  const uncached: string[] = []
-  for (const sym of symbols) {
+  // Serve from cache first
+  const uncachedSymbols: string[] = []
+  for (const sym of allSymbols) {
     const cached = getCached(sym)
-    if (cached !== null) {
-      prices[sym] = cached
-    } else {
-      uncached.push(sym)
-    }
+    if (cached !== null) prices[sym] = cached
+    else uncachedSymbols.push(sym)
   }
 
-  if (uncached.length === 0) {
+  if (uncachedSymbols.length === 0) {
     return NextResponse.json({ prices, errors, source: "cache" })
   }
 
-  // ── Try Upstox first if the user has an OAuth token ──
   const upstoxToken = await resolveUpstoxToken()
-  let resolvedViaUpstox = 0
-  if (upstoxToken) {
-    const upstoxPrices = await fetchUpstoxPrices(uncached, upstoxToken)
-    for (const sym of uncached) {
-      if (upstoxPrices[sym] !== undefined) {
-        prices[sym] = upstoxPrices[sym]
-        setCache(sym, upstoxPrices[sym])
-        resolvedViaUpstox++
-      }
-    }
+  if (!upstoxToken) {
+    for (const sym of uncachedSymbols) errors[sym] = "No Upstox token"
+    return NextResponse.json({ prices, errors, source: "none" })
   }
 
-  // ── Yahoo Finance for anything Upstox didn't cover ──
-  const stillMissing = uncached.filter((s) => prices[s] === undefined)
-
-  // Fetch in parallel but throttle to 10 concurrent to avoid rate limits
-  const CONCURRENCY = 10
-  for (let i = 0; i < stillMissing.length; i += CONCURRENCY) {
-    const batch = stillMissing.slice(i, i + CONCURRENCY)
-    const results = await Promise.allSettled(
-      batch.map(async (sym) => {
-        const price = await fetchYahooPrice(sym)
-        return { sym, price }
-      })
-    )
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        const { sym, price } = result.value
-        if (price !== null && price > 0) {
-          prices[sym] = price
-          setCache(sym, price)
-        } else {
-          errors[sym] = "Price unavailable"
-        }
+  // Batch into groups of 50 (Upstox limit per request)
+  const BATCH = 50
+  for (let i = 0; i < uncachedSymbols.length; i += BATCH) {
+    const batch = uncachedSymbols.slice(i, i + BATCH)
+    const keys = batch.map((sym) => symbolToKey.get(sym)!).filter(Boolean)
+    const result = await fetchUpstoxLtp(keys, upstoxToken)
+    for (const sym of batch) {
+      if (result[sym] !== undefined) {
+        prices[sym] = result[sym]
+        setCache(sym, result[sym])
       } else {
-        errors[result.reason?.sym ?? "unknown"] = "Fetch failed"
+        errors[sym] = "Price unavailable"
       }
     }
   }
 
-  const source =
-    resolvedViaUpstox > 0
-      ? stillMissing.length === 0
-        ? "upstox"
-        : "upstox+yahoo"
-      : "yahoo"
-
-  return NextResponse.json({ prices, errors, source })
+  return NextResponse.json({ prices, errors, source: "upstox_v3" })
 }

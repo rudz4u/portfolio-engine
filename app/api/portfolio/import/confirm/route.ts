@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     if (isins.length > 0) {
       const { data: instrRows } = await admin
         .from("instruments")
-        .select("isin, name, trading_symbol, segment")
+        .select("isin, name, trading_symbol, instrument_key, segment")
         .in("isin", isins)
 
       if (instrRows && instrRows.length > 0) {
@@ -113,6 +113,8 @@ export async function POST(request: NextRequest) {
           if (!h.company_name && instr.name) h.company_name = instr.name
           // Fill missing trading symbol
           if (!h.trading_symbol && instr.trading_symbol) h.trading_symbol = instr.trading_symbol
+          // Carry forward the proper Upstox instrument_key (NSE_EQ|SYMBOL format)
+          if (instr.instrument_key) h.instrument_key = instr.instrument_key
         }
       }
     }
@@ -227,11 +229,12 @@ export async function POST(request: NextRequest) {
       await admin.from("holdings").delete().eq("portfolio_id", updatePortfolioId)
 
       const holdingsPayload = holdings.map((h) => {
-        const key = h.isin || h.trading_symbol || h.company_name
-        const segment = segmentMap[key] || classifySegment(h.company_name)
+        // Prefer the proper NSE_EQ|SYMBOL key fetched from instruments table
+        const instrKey = h.instrument_key || h.isin || h.trading_symbol || h.company_name
+        const segment = segmentMap[instrKey] || classifySegment(h.company_name, h.trading_symbol)
         return {
           portfolio_id: updatePortfolioId,
-          instrument_key: key,
+          instrument_key: instrKey,
           trading_symbol: h.trading_symbol || h.company_name,
           company_name: h.company_name,
           quantity: h.quantity,
@@ -305,19 +308,23 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Insert holdings ──
-    const holdingsPayload = holdings.map((h) => ({
-      portfolio_id: portfolio.id,
-      instrument_key: h.isin || h.trading_symbol || h.company_name,
-      trading_symbol: h.trading_symbol || h.company_name,
-      company_name: h.company_name,
-      quantity: h.quantity,
-      avg_price: h.avg_price,
-      invested_amount: h.invested_amount,
-      ltp: h.ltp,
-      unrealized_pl: h.unrealized_pl,
-      segment: classifySegment(h.company_name),
-      raw: null,
-    }))
+    const holdingsPayload = holdings.map((h) => {
+      // Prefer the proper NSE_EQ|SYMBOL key fetched from instruments table
+      const instrKey = h.instrument_key || h.isin || h.trading_symbol || h.company_name
+      return {
+        portfolio_id: portfolio.id,
+        instrument_key: instrKey,
+        trading_symbol: h.trading_symbol || h.company_name,
+        company_name: h.company_name,
+        quantity: h.quantity,
+        avg_price: h.avg_price,
+        invested_amount: h.invested_amount,
+        ltp: h.ltp,
+        unrealized_pl: h.unrealized_pl,
+        segment: classifySegment(h.company_name, h.trading_symbol),
+        raw: null,
+      }
+    })
 
     const { error: holdingsError } = await admin.from("holdings").insert(holdingsPayload)
     if (holdingsError) {

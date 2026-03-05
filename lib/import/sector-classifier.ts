@@ -7,9 +7,9 @@
  */
 
 const SECTOR_KEYWORDS: [string, string[]][] = [
-  ["Defence",     ["hal", "bel", "bharat dynamics", "bdl", "mazagon", "garden reach", "grse", "cochin shipyard", "paras defence"]],
+  ["Defence",     ["hal", "bel", "bharat dynamics", "bdl", "mazagon", "garden reach", "grse", "cochin shipyard", "paras defence", "data patterns"]],
   ["EV",          ["ola electric", "ather energy"]],
-  ["Technology",  ["infosys", "tcs", "wipro", "hcl tech", "tech mahindra", "persistent", "ltimindtree", "coforge", "mphasis", "cyient", "niit", "hexaware", "zensar", "kpit", "birlasoft", "mastek", "intellect design", "happiest minds"]],
+  ["Technology",  ["infosys", "tcs", "wipro", "hcl tech", "tech mahindra", "persistent", "ltimindtree", "coforge", "mphasis", "cyient", "niit", "hexaware", "zensar", "kpit", "birlasoft", "mastek", "intellect design", "happiest minds", "tata technologies", "tata consultancy"]],
   ["Telecom",     ["bharti airtel", "indus towers", "sterlite tech", "vodafone", "tata communications", "route mobile", "tanla"]],
   ["BFSI",        ["bank", "hdfc", "kotak", "icici", "sbi", "axis", "bajaj fin", "insurance", "financial services", "credit", "shriram", "muthoot", "chola", "pnb", "canara", "uco bank", "indian bank", "yes bank", "indusind", "federal bank", "bandhan", "au small finance", "ujjivan", "equitas", "capital first", "five star", "microfinance"]],
   ["Pharma",      ["pharma", "sun pharma", "cipla", "dr reddy", "lupin", "biocon", "divis", "glenmark", "torrent pharma", "alkem", "ipca", "natco", "granules", "laurus", "strides", "shilpa", "ajanta", "syngene"]],
@@ -28,11 +28,35 @@ const SECTOR_KEYWORDS: [string, string[]][] = [
   ["PSU",         ["bharat electronics", "bhel", "nationalised", "hindustan aeronautics", "bharat petroleum", "hindustan petroleum", "oil and natural", "mahanagar"]],
 ]
 
+// Trading-symbol-level shortcuts for abbreviated NSE symbols
+const SYMBOL_SECTOR_MAP: Record<string, string> = {
+  TATATECH: "Technology",  LTTS: "Technology",      PERSISTENT: "Technology",
+  COFORGE: "Technology",   KPITTECH: "Technology",  BSOFT: "Technology",
+  ZOMATO: "Consumer",      NYKAA: "Consumer",        PAYTM: "Technology",
+  POLICYBZR: "BFSI",       DEVYANI: "FMCG",          DELHIVERY: "Logistics",
+  COCHINSHIP: "Defence",   GRSE: "Defence",           BEML: "Defence",
+  DATAPATT: "Defence",     MIDHANI: "Defence",
+  COALINDIA: "Metals",     NMDC: "Metals",            MOIL: "Metals",
+  SUZLON: "Power",         NHPC: "Power",             SJVN: "Power",
+  RVNL: "Infrastructure",  IRCON: "Infrastructure",   IRCTC: "Infrastructure",
+  RAILVIKAS: "Infrastructure",
+  MOTHERSON: "Auto",       SONACOMS: "Auto",          BALKRISIND: "Auto",
+  DEEPAKFERT: "Chemicals", VINATIORGA: "Chemicals",   NAVINFLUOR: "Chemicals",
+  AARTIIND: "Chemicals",   FINPIPE: "Chemicals",
+  ASTRAL: "Chemicals",
+}
+
 /**
- * Returns the best-matching sector for a given company name.
+ * Returns the best-matching sector for a given company name (and optional trading symbol).
  * Falls back to "Others" if no match is found.
  */
-export function classifySegment(companyName: string): string {
+export function classifySegment(companyName: string, tradingSymbol?: string): string {
+  // Fast path: exact symbol match
+  if (tradingSymbol) {
+    const sym = tradingSymbol.toUpperCase().trim()
+    if (SYMBOL_SECTOR_MAP[sym]) return SYMBOL_SECTOR_MAP[sym]
+  }
+
   if (!companyName) return "Others"
   const lower = companyName.toLowerCase()
   for (const [sector, keywords] of SECTOR_KEYWORDS) {

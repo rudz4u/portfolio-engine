@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
-import { ArrowUpDown, ChevronUp, ChevronDown, Bookmark, BookmarkCheck } from "lucide-react"
+import { ArrowUpDown, ChevronUp, ChevronDown, Bookmark, BookmarkCheck, RefreshCw } from "lucide-react"
 
 /* ─── Segments ─────────────────────────────────────────────────────────── */
 
@@ -43,12 +44,17 @@ const SEGMENT_DOT: Record<string, string> = {
 
 export function getTradingSymbol(h: Record<string, unknown>): string {
   const raw = h.raw as Record<string, unknown> | null
-  return (raw?.trading_symbol as string) || (raw?.tradingsymbol as string) || (h.instrument_key as string)
+  return (
+    (raw?.trading_symbol as string) ||
+    (raw?.tradingsymbol as string) ||
+    (h.trading_symbol as string) ||
+    (h.instrument_key as string)
+  )
 }
 
 export function getCompanyName(h: Record<string, unknown>): string {
   const raw = h.raw as Record<string, unknown> | null
-  return (raw?.company_name as string) || ""
+  return (raw?.company_name as string) || (h.company_name as string) || ""
 }
 
 function getExchange(h: HoldingRow): string {
@@ -56,6 +62,10 @@ function getExchange(h: HoldingRow): string {
   const ex = (raw?.exchange as string) || ""
   if (ex.startsWith("NSE")) return "NSE"
   if (ex.startsWith("BSE")) return "BSE"
+  // Derive from instrument_key format: "NSE_EQ|RELIANCE" or "NSE_EQ:RELIANCE"
+  const key = h.instrument_key || ""
+  if (key.startsWith("NSE")) return "NSE"
+  if (key.startsWith("BSE")) return "BSE"
   return ex
 }
 
@@ -69,6 +79,9 @@ function getDayChangePct(h: HoldingRow): number {
 export interface HoldingRow {
   id: string
   instrument_key: string
+  trading_symbol?: string
+  company_name?: string
+  portfolio_id?: string
   quantity: number
   avg_price: number
   ltp: number
@@ -144,13 +157,44 @@ function SortHeader({
 interface Props { holdings: HoldingRow[] }
 
 export default function PortfolioTable({ holdings: initial }: Props) {
+  const router = useRouter()
   const [holdings, setHoldings] = useState<HoldingRow[]>(initial)
   const [editingSegment, setEditingSegment] = useState<string | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [sortConfig, setSortConfig] = useState<SortConfig | null>({
     key: "invested",
     dir: "desc",
   })
+
+  /* ── Live price refresh for imported portfolios ───────────────────────── */
+  const portfolioId = initial[0]?.portfolio_id
+
+  const refreshPrices = useCallback(async () => {
+    if (!portfolioId || refreshing) return
+    setRefreshing(true)
+    try {
+      const res = await fetch(`/api/portfolio/refresh-prices?portfolioId=${portfolioId}`)
+      if (res.ok) {
+        const { holdings: fresh } = await res.json() as { holdings: HoldingRow[] }
+        if (fresh?.length) setHoldings(fresh)
+        // Refresh server component so summary cards update too
+        router.refresh()
+      }
+    } catch { /* non-critical */ } finally {
+      setRefreshing(false)
+    }
+  }, [portfolioId, refreshing, router])
+
+  // Auto-refresh if most holdings have no LTP (i.e. imported without AI Fill)
+  useEffect(() => {
+    if (!portfolioId) return
+    const missingLtp = initial.filter((h) => !h.ltp || h.ltp === 0).length
+    if (missingLtp > initial.length * 0.3) {
+      refreshPrices()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   /* ── Watchlist ─────────────────────────────────────────────────────────── */
   const [watchlist, setWatchlist] = useState<Set<string>>(new Set())
@@ -238,6 +282,20 @@ export default function PortfolioTable({ holdings: initial }: Props) {
     <>
       {editingSegment && (
         <div className="fixed inset-0 z-10" onClick={() => setEditingSegment(null)} />
+      )}
+
+      {/* ── Refresh prices toolbar ─────────────────────────────────────── */}
+      {portfolioId && (
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={refreshPrices}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Refreshing prices…" : "Refresh Prices"}
+          </button>
+        </div>
       )}
 
       <div className="overflow-x-auto">
