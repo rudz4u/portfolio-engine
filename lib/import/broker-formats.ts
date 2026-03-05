@@ -41,7 +41,8 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
       isin: ["ISIN"],
       company_name: ["Scrip Name"],
       quantity: ["Current Qty"],
-      ltp: ["Rate"],
+      avg_price: ["Rate"],            // "Rate" in Upstox report = average cost price
+      invested_amount: ["Valuation"], // "Valuation" = qty × avg_price
     },
     exportGuideUrl: "https://account.upstox.com/reports/holding/all",
     exportSteps: [

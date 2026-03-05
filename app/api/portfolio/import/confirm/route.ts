@@ -89,13 +89,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Apply column mapping to get normalized holdings
-    const holdings = applyMapping(parsed.rows, columnMapping)
+    let holdings = applyMapping(parsed.rows, columnMapping)
 
     if (holdings.length === 0) {
       return NextResponse.json({ error: "No valid holdings found after mapping. Check your column mapping." }, { status: 400 })
     }
 
     // ── Enrich holdings from instruments DB (fills missing company names, symbols, P&L) ──
+    // Also used to detect exchange-traded INF ISINs (ETFs) vs mutual funds (not in master)
+    const exchangeTradedIsins = new Set<string>()
     const isins = holdings.map((h) => h.isin).filter(Boolean) as string[]
     if (isins.length > 0) {
       const { data: instrRows } = await admin
@@ -105,6 +107,12 @@ export async function POST(request: NextRequest) {
 
       if (instrRows && instrRows.length > 0) {
         const isinMap = new Map(instrRows.map((r) => [r.isin as string, r]))
+        for (const row of instrRows) {
+          // Track any ISIN whose master row has a proper exchange key (e.g. NSE_EQ|SYMBOL)
+          if (row.isin && (row.instrument_key as string)?.includes("|")) {
+            exchangeTradedIsins.add(row.isin as string)
+          }
+        }
         for (const h of holdings) {
           if (!h.isin) continue
           const instr = isinMap.get(h.isin)
@@ -117,6 +125,25 @@ export async function POST(request: NextRequest) {
           if (instr.instrument_key) h.instrument_key = instr.instrument_key
         }
       }
+    }
+
+    // ── Skip mutual fund holdings ──────────────────────────────────────────────
+    // Indian ISINs starting with INF can be either mutual funds OR ETFs.
+    // ETFs are exchange-traded and appear in the instruments master with a proper
+    // NSE_EQ|SYMBOL key. Regular mutual funds are not exchange-traded and won't be
+    // in the master. We skip MFs; we keep ETFs (and anything else).
+    const skippedMf: string[] = []
+    holdings = holdings.filter((h) => {
+      if (!h.isin?.startsWith("INF")) return true  // equity (INE) or unknown — keep
+      if (exchangeTradedIsins.has(h.isin)) return true  // ETF found in master — keep
+      // Safety net: if company name explicitly mentions ETF, keep it even if not in master
+      const nameUpper = (h.company_name ?? "").toUpperCase()
+      if (nameUpper.includes("ETF") || nameUpper.includes("EXCHANGE TRADED")) return true
+      skippedMf.push(h.isin)
+      return false  // mutual fund — skip
+    })
+    if (skippedMf.length > 0) {
+      console.log(`[import] Skipped ${skippedMf.length} mutual fund holding(s): ${skippedMf.join(", ")}`)
     }
 
     // ── Derive missing numeric fields ──
@@ -278,7 +305,10 @@ export async function POST(request: NextRequest) {
         status: "updated",
         portfolioId: updatePortfolioId,
         count: holdings.length,
-        message: `${holdings.length} holdings updated from ${format.label}`,
+        skippedMutualFunds: skippedMf.length,
+        message: skippedMf.length > 0
+          ? `${holdings.length} holdings updated from ${format.label} (${skippedMf.length} mutual fund(s) skipped)`
+          : `${holdings.length} holdings updated from ${format.label}`,
       })
     }
 
@@ -345,7 +375,10 @@ export async function POST(request: NextRequest) {
       status: "success",
       portfolioId: portfolio.id,
       count: holdings.length,
-      message: `${holdings.length} holdings imported from ${format.label}`,
+      skippedMutualFunds: skippedMf.length,
+      message: skippedMf.length > 0
+        ? `${holdings.length} holdings imported from ${format.label} (${skippedMf.length} mutual fund(s) skipped)`
+        : `${holdings.length} holdings imported from ${format.label}`,
     })
   } catch (e) {
     console.error("[import/confirm] Error:", e)
