@@ -15,6 +15,10 @@ import { createClient } from "@/lib/supabase/server"
 import { BROKER_FORMATS } from "@/lib/import/broker-formats"
 import { parseXlsx, parseCsv, parsePdf, autoMapColumns } from "@/lib/import/parser"
 
+// Allow up to 15 MB request body for file uploads
+export const maxDuration = 60
+export const dynamic = "force-dynamic"
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
 export async function POST(request: NextRequest) {

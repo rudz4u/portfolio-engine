@@ -25,8 +25,11 @@ export interface MappedHolding {
 
 // ── XLSX parsing ──────────────────────────────────────────────────────────────
 
+/** Words that indicate a row is the header row */
+const HEADER_SIGNALS = ["isin", "qty", "quantity", "scrip", "stock", "symbol", "name", "price", "rate", "valuation"]
+
 export function parseXlsx(buffer: Buffer, format: BrokerFormat): ParsedFile {
-  const workbook = XLSX.read(buffer, { type: "buffer" })
+  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false })
 
   // Find the target sheet
   const sheetName =
@@ -35,31 +38,57 @@ export function parseXlsx(buffer: Buffer, format: BrokerFormat): ParsedFile {
       : workbook.SheetNames[0]
 
   const sheet = workbook.Sheets[sheetName]
-  if (!sheet) throw new Error("No sheet found in the uploaded file")
+  if (!sheet) throw new Error(`Sheet not found in file. Available sheets: ${workbook.SheetNames.join(", ")}`)
 
-  // Convert to array-of-arrays (raw)
+  // Include blank rows so indices are preserved (blankrows: true is the default)
   const rawData: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, {
     header: 1,
     defval: "",
-    blankrows: false,
+    blankrows: true,
+    raw: false, // Return formatted strings, not raw numbers
   })
 
   if (rawData.length === 0) throw new Error("File appears to be empty")
 
-  // Extract metadata from rows above the header (for known formats like Upstox)
+  // ── Dynamic header detection ──
+  // Scan each row and score it for header likelihood
+  let headerRowIndex = -1
+  let bestScore = 0
+
+  for (let i = 0; i < Math.min(rawData.length, 30); i++) {
+    const row = rawData[i]
+    if (!row || row.length < 2) continue
+    const rowText = row.map((c) => String(c || "").toLowerCase().trim()).join(" ")
+    let score = 0
+    for (const signal of HEADER_SIGNALS) {
+      if (rowText.includes(signal)) score++
+    }
+    if (score > bestScore) {
+      bestScore = score
+      headerRowIndex = i
+    }
+  }
+
+  // Fall back to configured headerRow if detection failed
+  if (headerRowIndex === -1 || bestScore < 2) {
+    headerRowIndex = Math.min(format.headerRow, rawData.length - 1)
+  }
+
+  // Extract metadata from rows above the header
   const meta: Record<string, string> = {}
-  for (let i = 0; i < Math.min(format.headerRow, rawData.length); i++) {
+  for (let i = 0; i < headerRowIndex; i++) {
     const row = rawData[i]
     if (row && row.length >= 2) {
       const key = String(row[0] || "").trim()
       const val = String(row[1] || "").trim()
-      if (key && val) meta[key] = val
+      if (key && val && key.length < 50) meta[key] = val
     }
   }
 
-  // Identify header row
-  const headerRowIndex = Math.min(format.headerRow, rawData.length - 1)
-  const headers = rawData[headerRowIndex].map((h) => String(h || "").trim()).filter(Boolean)
+  // Build headers from the detected header row
+  const headers = rawData[headerRowIndex]
+    .map((h) => String(h || "").trim())
+    .filter((h) => h.length > 0)
 
   if (headers.length === 0) throw new Error("Could not find column headers in the file")
 
@@ -67,11 +96,12 @@ export function parseXlsx(buffer: Buffer, format: BrokerFormat): ParsedFile {
   const rows: Record<string, string>[] = []
   for (let i = headerRowIndex + 1; i < rawData.length; i++) {
     const rowArr = rawData[i]
-    if (!rowArr || rowArr.length === 0) continue
+    if (!rowArr || rowArr.every((c) => !String(c || "").trim())) continue
 
-    // Skip rows that look like footers/disclaimers (first cell is very long text)
     const firstCell = String(rowArr[0] || "").trim()
-    if (firstCell.length > 100) continue
+    // Skip footer/disclaimer rows (very long first cell)
+    if (firstCell.length > 80) continue
+    // Skip rows where the first cell looks like a section header (e.g. all-caps single word)
     if (!firstCell) continue
 
     const row: Record<string, string> = {}
@@ -136,9 +166,10 @@ function csvSplitLine(line: string): string[] {
 // ── PDF parsing ───────────────────────────────────────────────────────────────
 
 export async function parsePdf(buffer: Buffer): Promise<ParsedFile> {
-  // Dynamic import to avoid loading pdf-parse on every request
+  // Import from lib directly to bypass pdf-parse's self-test runner, which tries
+  // to read a local test PDF file and always fails in serverless environments.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>
+  const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (buf: Buffer, options?: object) => Promise<{ text: string; numpages: number }>
   const data = await pdfParse(buffer)
   const text: string = data.text
 

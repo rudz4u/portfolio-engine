@@ -16,6 +16,9 @@ import { BROKER_FORMATS } from "@/lib/import/broker-formats"
 import { parseXlsx, parseCsv, parsePdf, applyMapping } from "@/lib/import/parser"
 import { recordPortfolioSnapshot } from "@/lib/portfolio-snapshot"
 
+export const maxDuration = 60
+export const dynamic = "force-dynamic"
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
 export async function POST(request: NextRequest) {
@@ -38,6 +41,8 @@ export async function POST(request: NextRequest) {
   const brokerId = (formData.get("broker") as string) || "other"
   const mappingJson = formData.get("mapping") as string
   const portfolioName = (formData.get("portfolioName") as string) || null
+  // If provided, update this existing portfolio's holdings instead of creating a new one
+  const updatePortfolioId = (formData.get("updatePortfolioId") as string) || null
 
   if (!file) {
     return NextResponse.json({ error: "No file uploaded" }, { status: 400 })
