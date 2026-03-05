@@ -57,19 +57,28 @@ export async function GET(request: NextRequest) {
   // ── 1. Exchange code for access token ────────────────────────────────────
   let accessToken: string
   try {
+    const secret = UPSTOX_CONFIG.clientSecret
     const tokenBody = new URLSearchParams({
       code,
       client_id: UPSTOX_CONFIG.clientId,
-      client_secret: UPSTOX_CONFIG.clientSecret,
+      client_secret: secret,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
     }).toString()
 
+    // Diagnostic log — surface everything needed to debug token-exchange failures.
+    // secret_preview is safe to log (first+last 3 chars only).
     console.log("[OAuth callback] Token exchange →", {
       tokenUrl: UPSTOX_CONFIG.tokenUrl,
-      redirect_uri: redirectUri,
       client_id: UPSTOX_CONFIG.clientId,
-      // never log client_secret
+      redirect_uri: redirectUri,
+      redirect_uri_len: redirectUri.length,
+      secret_len: secret.length,
+      secret_preview: secret.length > 0
+        ? `${secret.slice(0, 3)}...${secret.slice(-3)}`
+        : "(EMPTY — env var missing!)",
+      code_len: code.length,
+      code_preview: code.slice(0, 4),
     })
 
     const tokenRes = await fetch(UPSTOX_CONFIG.tokenUrl, {
@@ -92,10 +101,11 @@ export async function GET(request: NextRequest) {
         tokenData.error ||
         `HTTP ${tokenRes.status}`
 
+      // Stringify so nested objects (errorCode, propertyPath, etc.) are visible in logs
       console.error("[OAuth callback] Token exchange failed:", {
         httpStatus: tokenRes.status,
         upstoxMsg,
-        tokenData,
+        tokenData: JSON.stringify(tokenData),
       })
 
       return NextResponse.redirect(
