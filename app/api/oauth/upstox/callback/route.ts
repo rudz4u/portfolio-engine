@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
+        "Api-Version": "2.0",
       },
       body: tokenBody,
     })
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest) {
 
     if (!tokenRes.ok || !tokenData.access_token) {
       // Upstox v2 error format: { status, errors: [{ errorCode, message }] }
+      const errorCode = tokenData.errors?.[0]?.errorCode || ""
       const upstoxMsg =
         tokenData.errors?.[0]?.message ||
         tokenData.message ||
@@ -104,12 +106,20 @@ export async function GET(request: NextRequest) {
       // Stringify so nested objects (errorCode, propertyPath, etc.) are visible in logs
       console.error("[OAuth callback] Token exchange failed:", {
         httpStatus: tokenRes.status,
+        errorCode,
         upstoxMsg,
         tokenData: JSON.stringify(tokenData),
       })
 
+      // UDAPI100016 for non-owner users → Indie App only allows the creator to authenticate.
+      // A Multi-Client App (via Uplink Business) is needed for multi-user OAuth.
+      const userMessage =
+        errorCode === "UDAPI100016"
+          ? "Upstox connection is currently available only for the app owner. Multi-user access requires an Uplink Business (multi-client) app from Upstox."
+          : upstoxMsg
+
       return NextResponse.redirect(
-        `${baseUrl}/settings?error=token_exchange_failed&message=${encodeURIComponent(upstoxMsg)}`
+        `${baseUrl}/settings?error=token_exchange_failed&message=${encodeURIComponent(userMessage)}`
       )
     }
 
