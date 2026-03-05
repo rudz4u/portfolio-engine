@@ -170,11 +170,21 @@ export async function parsePdf(buffer: Buffer): Promise<ParsedFile> {
   // Next.js does not bundle it (see serverExternalPackages in next.config.js).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PDFParse } = require("pdf-parse") as {
-    PDFParse: new (opts: { data: Buffer }) => { getText(opts?: object): Promise<{ text: string }> }
+    PDFParse: new (opts: object) => { getText(opts?: object): Promise<{ text: string }> }
   }
-  const parser = new PDFParse({ data: buffer })
-  const result = await parser.getText()
-  const text: string = result.text
+  // stopAtErrors:false  — continue even if font programs throw (e.g. "Dotmatrix is not defined")
+  // disableFontFace:true — skip font-face evaluation; we only need the text stream
+  const parser = new PDFParse({ data: buffer, stopAtErrors: false, disableFontFace: true })
+  let text: string
+  try {
+    const result = await parser.getText()
+    text = result.text
+  } catch (fontErr) {
+    // If pdf-parse still throws (e.g. unresolvable font reference), fall back to
+    // returning the raw error so the user sees a clean message rather than a stack trace.
+    const msg = fontErr instanceof Error ? fontErr.message : String(fontErr)
+    throw new Error(`PDF could not be parsed: ${msg}. Try exporting as Excel (.xlsx) instead.`)
+  }
 
   // Try to extract tabular data from PDF text
   const lines: string[] = text.split("\n").map((l: string) => l.trim()).filter(Boolean)
