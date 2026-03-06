@@ -1,0 +1,60 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Invest Buddy AI app icon">
+  <defs>
+    <linearGradient id="bg" x1="140" y1="120" x2="884" y2="904" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="0.42" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+
+    <radialGradient id="halo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(512 500) rotate(90) scale(320)">
+      <stop offset="0" stop-color="#4C1D95" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#4C1D95" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="ring" x1="250" y1="236" x2="774" y2="782" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A78BFA"/>
+      <stop offset="0.5" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#34D399"/>
+    </linearGradient>
+
+    <linearGradient id="lineGrad" x1="332" y1="624" x2="676" y2="366" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A78BFA"/>
+      <stop offset="0.5" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#86EFAC"/>
+    </linearGradient>
+
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="240" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="240" fill="url(#halo)"/>
+
+  <circle cx="512" cy="512" r="280" stroke="url(#ring)" stroke-width="22" filter="url(#glow)"/>
+  <circle cx="512" cy="512" r="210" stroke="#8B5CF6" stroke-opacity="0.16" stroke-width="6"/>
+  <circle cx="512" cy="512" r="136" stroke="#38BDF8" stroke-opacity="0.14" stroke-width="5"/>
+
+  <path d="M332 612L430 520L526 556L650 368L734 412" stroke="url(#lineGrad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <path d="M602 332H736V466" stroke="#86EFAC" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M650 368L736 332" stroke="#86EFAC" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M650 368L736 420" stroke="#86EFAC" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <circle cx="332" cy="612" r="24" fill="#DDD6FE"/>
+  <circle cx="430" cy="520" r="24" fill="#BAE6FD"/>
+  <circle cx="526" cy="556" r="24" fill="#DDD6FE"/>
+  <circle cx="650" cy="368" r="24" fill="#BAE6FD"/>
+  <circle cx="734" cy="412" r="24" fill="#DDD6FE"/>
+
+  <circle cx="512" cy="512" r="42" fill="#0F172A" stroke="#A78BFA" stroke-width="10"/>
+  <circle cx="512" cy="512" r="14" fill="#34D399"/>
+  <circle cx="512" cy="512" r="78" stroke="#A78BFA" stroke-opacity="0.22" stroke-width="6"/>
+
+  <path d="M360 378C402 334 458 310 512 310C578 310 648 344 688 400" stroke="#A78BFA" stroke-opacity="0.4" stroke-width="10" stroke-linecap="round"/>
+  <path d="M306 670C360 726 434 756 508 754C602 752 688 710 742 640" stroke="#38BDF8" stroke-opacity="0.28" stroke-width="10" stroke-linecap="round"/>
+</svg>

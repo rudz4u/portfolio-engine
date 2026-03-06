@@ -341,3 +341,51 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   PWA & Mobile — Safe Area, iOS fixes, momentum scrolling
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+/* Extra bottom padding when running as installed PWA (home screen / standalone) */
+@media (display-mode: standalone) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Utility classes for safe-area spacing */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pt-safe { padding-top:    env(safe-area-inset-top, 0px); }
+.mb-safe { margin-bottom:  env(safe-area-inset-bottom, 0px); }
+.pl-safe { padding-left:   env(safe-area-inset-left, 0px); }
+.pr-safe { padding-right:  env(safe-area-inset-right, 0px); }
+
+/* iOS: prevent input auto-zoom (triggered when font-size < 16px) */
+@supports (-webkit-touch-callout: none) {
+  input[type="email"],
+  input[type="password"],
+  input[type="text"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: max(16px, 1rem);
+  }
+}
+
+/* Momentum-style smooth scrolling on iOS */
+.overflow-y-auto,
+.overflow-y-scroll,
+.overflow-auto,
+.overflow-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+

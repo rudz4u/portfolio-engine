@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Loader2, Zap, TrendingUp, ShieldCheck, BarChart2, ArrowRight } from "lucide-react"
+import { Loader2, TrendingUp, ShieldCheck, BarChart2, ArrowRight } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -88,10 +88,11 @@ export default function SignInForm() {
       <div className="hidden lg:flex flex-col justify-center px-16 w-[52%] relative z-10">
         {/* Brand */}
         <div className="flex items-center gap-3 mb-12">
-          <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center glow">
-            <Zap className="h-5 w-5 text-white" strokeWidth={2.5} />
-          </div>
-          <span className="text-2xl font-bold gradient-text">Invest<span className="text-white">Buddy AI</span></span>
+          <img
+            src="/Logos/investbuddy_mascot_logo.svg"
+            alt="InvestBuddy AI"
+            className="h-12"
+          />
         </div>
 
         <h2 className="text-4xl font-bold leading-tight text-white mb-4">
@@ -149,11 +150,13 @@ export default function SignInForm() {
 
         {/* Mobile logo */}
         <div className="flex flex-col items-center gap-2 mb-8 lg:hidden">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center glow">
-            <Zap className="h-6 w-6 text-white" strokeWidth={2.5} />
-          </div>
+          <img
+            src="/Logos/investbuddyai_app_icon.svg"
+            alt="InvestBuddy AI"
+            className="h-14 w-14 rounded-2xl shadow-lg"
+          />
           <span className="text-2xl font-bold gradient-text">InvestBuddy AI</span>
-          <p className="text-xs text-white/45">AI-Powered Equity Management</p>
+          <p className="text-xs text-white/45">Your Portfolio&rsquo;s Intelligence Layer</p>
         </div>
 
         {/* Card */}

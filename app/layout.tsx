@@ -11,11 +11,12 @@ const inter = Inter({
 const APP_URL = "https://investbuddyai.com"
 const APP_NAME = "InvestBuddy AI"
 const DESCRIPTION =
-  "AI-powered equity portfolio management for Indian markets. Get quant-driven buy/sell signals, live P&L tracking, sector analytics, and AI recommendations — all in one platform. Supports Upstox, Zerodha and more."
+  "Your Portfolio\u2019s Intelligence Layer. AI-powered equity portfolio management for Indian markets. Get quant-driven buy/sell signals, live P&L tracking, sector analytics, and AI recommendations \u2014 all in one platform. Supports Upstox, Zerodha and more."
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#080c18",
 }
 
@@ -62,10 +63,10 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: [
       {
-        url: "/opengraph-image",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: `${APP_NAME} — AI-Powered Equity Management for Indian Markets`,
+        alt: `${APP_NAME} — Your Portfolio\u2019s Intelligence Layer`,
         type: "image/png",
       },
     ],
@@ -77,7 +78,7 @@ export const metadata: Metadata = {
     creator: "@investbuddyai",
     title: `${APP_NAME} — AI Equity Management for India`,
     description: DESCRIPTION,
-    images: ["/opengraph-image"],
+    images: ["/og-image.png"],
   },
 
   robots: {
@@ -97,6 +98,14 @@ export const metadata: Metadata = {
   },
 
   manifest: "/manifest.json",
+
+  icons: {
+    icon: [
+      { url: "/Logos/investbuddy_favicon_transparent.svg", type: "image/svg+xml" },
+      { url: "/icon", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+  },
 
   appleWebApp: {
     capable: true,

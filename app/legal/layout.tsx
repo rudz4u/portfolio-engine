@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Zap } from "lucide-react"
 
 export const metadata = {
   title: "Legal — Invest Buddy AI",
@@ -12,9 +11,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
       <header className="border-b border-white/[0.07] sticky top-0 z-40 backdrop-blur-sm bg-[hsl(222,47%,4%)]/90">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
-              <Zap className="h-4 w-4 text-white" strokeWidth={2.5} />
-            </div>
+            <img src="/Logos/investbuddy_favicon_transparent.svg" alt="" className="h-8 w-8 shrink-0" aria-hidden="true" />
             <span className="font-bold text-sm">
               <span className="text-violet-400">Invest Buddy</span>{" "}
               <span className="text-white">AI</span>

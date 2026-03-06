@@ -7,6 +7,8 @@ export default [
   ...nextConfig,
   {
     rules: {
+      // Legal pages have prose content with quotes/apostrophes — warn instead of error
+      "react/no-unescaped-entities": "warn",
       // Common data-fetching pattern: setState inside useEffect is intentional
       "react-hooks/set-state-in-effect": "warn",
       // React Compiler purity rules — warn only; these are valid patterns in async handlers

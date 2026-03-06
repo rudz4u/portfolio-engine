@@ -376,7 +376,8 @@ function QuantTerminal() {
 
 export default function HomePage() {
   const typewriterText = useTypewriter([
-    "RSI · MACD · Bollinger Bands",
+    "Your Portfolio\u2019s Intelligence Layer",
+    "RSI \u00B7 MACD \u00B7 Bollinger Bands",
     "AI Buy/Sell Recommendations",
     "17+ SEBI Advisory Sources",
     "Live Upstox Portfolio Sync",
@@ -395,8 +396,8 @@ export default function HomePage() {
           <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
             <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
               transition={{ type: "spring", stiffness: 300 }} className="flex items-center gap-2.5">
-              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-lg glow-sm">
-                <Zap className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
+              <div className="h-7 w-7 rounded-lg shrink-0">
+                <img src="/Logos/investbuddy_favicon_transparent.svg" alt="" className="h-7 w-7" aria-hidden="true" />
               </div>
               <span className="font-bold gradient-text">InvestBuddy AI</span>
               <BetaBadge />
@@ -432,7 +433,10 @@ export default function HomePage() {
                   className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-4 leading-[1.06]">
                   <span className="block">AI Portfolio</span>
                   <span className="block gradient-text">Intelligence</span>
-                  <span className="block text-2xl sm:text-3xl lg:text-4xl text-muted-foreground/60 font-semibold mt-2 font-mono">for Indian Equity Markets</span>
+                  <span className="block text-xl sm:text-2xl lg:text-3xl text-white/50 font-medium mt-3 tracking-wide">
+                    Your Portfolio&rsquo;s Intelligence Layer
+                  </span>
+                  <span className="block text-sm sm:text-base text-muted-foreground/40 font-normal mt-1 font-mono tracking-widest uppercase">for Indian Equity Markets</span>
                 </motion.h1>
               </motion.div>
               {/* Typewriter subtitle */}
@@ -687,7 +691,7 @@ export default function HomePage() {
                 className="glass rounded-2xl p-10 relative overflow-hidden">
                 <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-blue-600/5 pointer-events-none rounded-2xl" />
                 <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
-                  <Zap className="h-10 w-10 text-primary mx-auto mb-5 glow-sm" />
+                  <img src="/Logos/investbuddy_favicon_transparent.svg" alt="" className="h-10 w-10 mx-auto mb-5" aria-hidden="true" />
                 </motion.div>
                 <h2 className="text-2xl font-bold mb-3">Ready to trade smarter?</h2>
                 <p className="text-muted-foreground text-sm mb-2">Connect your broker in under 60 seconds. Free during beta.</p>
@@ -715,8 +719,8 @@ export default function HomePage() {
             <div className="grid sm:grid-cols-2 gap-8 mb-6">
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="h-6 w-6 rounded-md bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
-                    <Zap className="h-3 w-3 text-white" strokeWidth={2.5} />
+                  <div className="h-6 w-6 rounded-md shrink-0">
+                    <img src="/Logos/investbuddy_favicon_transparent.svg" alt="" className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <span className="font-bold text-sm gradient-text">InvestBuddy AI</span>
                   <BetaBadge tooltip={false} />
