@@ -18,7 +18,7 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Loader2, Save, TestTube2, CheckCircle2, XCircle,
   Eye, EyeOff, Key, Mail, Bell, ExternalLink, RefreshCw,
-  Plus, Trash2, Sparkles, Database,
+  Plus, Trash2, Sparkles, Database, SlidersHorizontal,
 } from "lucide-react"
 import { useToast } from "@/lib/hooks/use-toast"
 
@@ -96,6 +96,11 @@ export default function SettingsPage() {
 
   const [savingNotif, setSavingNotif] = useState(false)
   const [sendingDigest, setSendingDigest] = useState(false)
+
+  /* ── scoring weights ── */
+  const [scoringWeights, setScoringWeights] = useState({ momentum: 30, valuation: 25, position: 20, advisory: 25 })
+  const [savingWeights, setSavingWeights] = useState(false)
+  const weightsTotal = scoringWeights.momentum + scoringWeights.valuation + scoringWeights.position + scoringWeights.advisory
 
   // Instruments DB seeding
   const [instrCount, setInstrCount]   = useState<number | null>(null)
@@ -195,6 +200,15 @@ export default function SettingsPage() {
     const emailStr: string = data.notification_emails || ""
     const parsed = emailStr.split(",").map((e: string) => e.trim()).filter(Boolean)
     setEmails(parsed.length > 0 ? parsed : [""])
+
+    if (data.scoring_weights) {
+      setScoringWeights({
+        momentum: data.scoring_weights.momentum ?? 30,
+        valuation: data.scoring_weights.valuation ?? 25,
+        position:  data.scoring_weights.position  ?? 20,
+        advisory:  data.scoring_weights.advisory  ?? 25,
+      })
+    }
   }
 
   /* ── handlers: upstox ── */
@@ -340,6 +354,23 @@ export default function SettingsPage() {
     setSendingDigest(false)
     if (res.ok) toast({ title: "Digest sent!", description: data.message })
     else toast({ title: "Send failed", description: data.error, variant: "destructive" })
+  }
+
+  /* ── handlers: scoring weights ── */
+  async function handleSaveWeights() {
+    setSavingWeights(true)
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scoring_weights: scoringWeights }),
+    })
+    const data = await res.json()
+    setSavingWeights(false)
+    if (res.ok) {
+      toast({ title: "Scoring weights saved!", description: "Scores will update on your next portfolio load." })
+    } else {
+      toast({ title: "Failed to save", description: data.error, variant: "destructive" })
+    }
   }
 
   /* ── Curated BYOK shortlist: reasoning-first, tool-aware, investment-grade ── */
@@ -683,6 +714,76 @@ export default function SettingsPage() {
               {sendingDigest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
               Send Test Digest
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ══ Scoring Configuration ══ */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4" />
+            Scoring Configuration
+          </CardTitle>
+          <CardDescription>
+            Adjust how each factor contributes to your portfolio score. Weights must add up to exactly 100.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {(
+            [
+              { key: "momentum",  label: "Momentum",     desc: "P&L, day change, RSI & MACD trend signals" },
+              { key: "valuation", label: "Valuation",    desc: "LTP vs. your average buy price gap" },
+              { key: "position",  label: "Position Size",desc: "Portfolio weight sizing quality (ideal: 2–8%)" },
+              { key: "advisory",  label: "Advisory",     desc: "Weighted consensus from SEBI registered advisors" },
+            ] as const
+          ).map(({ key, label, desc }) => (
+            <div key={key} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">{label}</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                </div>
+                <span className={`text-sm font-semibold tabular-nums w-8 text-right ${weightsTotal === 100 ? "text-primary" : "text-muted-foreground"}`}>
+                  {scoringWeights[key]}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={5}
+                max={60}
+                step={1}
+                value={scoringWeights[key]}
+                onChange={(e) => setScoringWeights((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-muted accent-primary"
+              />
+            </div>
+          ))}
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-sm font-semibold ${weightsTotal === 100 ? "text-emerald-400" : "text-red-400"}`}>
+                Total: {weightsTotal} / 100
+              </p>
+              {weightsTotal !== 100 && (
+                <p className="text-xs text-muted-foreground mt-0.5">Adjust sliders so the total equals exactly 100.</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setScoringWeights({ momentum: 30, valuation: 25, position: 20, advisory: 25 })}
+              >
+                Reset
+              </Button>
+              <Button size="sm" onClick={handleSaveWeights} disabled={savingWeights || weightsTotal !== 100}>
+                {savingWeights ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
+                Save
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

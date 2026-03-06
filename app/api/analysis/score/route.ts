@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { scoreHoldings, portfolioSummary, type HoldingInput } from "@/lib/quant/scoring"
+import { validateWeights, DEFAULT_WEIGHTS } from "@/lib/quant/scoring-defaults"
 
 export const dynamic = "force-dynamic"
 
@@ -53,11 +54,22 @@ export async function GET(request: NextRequest) {
   const todaySymbols = holdings.map((h) => (h.trading_symbol as string) || h.instrument_key)
   const today = new Date().toISOString().slice(0, 10)
 
-  const { data: consensusRows } = await supabase
-    .from("advisory_consensus")
-    .select("trading_symbol, advisory_score")
-    .in("trading_symbol", todaySymbols)
-    .eq("consensus_date", today)
+  // Fetch user's custom scoring weights (and advisory consensus) in parallel
+  const [{ data: consensusRows }, { data: userSettings }] = await Promise.all([
+    supabase
+      .from("advisory_consensus")
+      .select("trading_symbol, advisory_score")
+      .in("trading_symbol", todaySymbols)
+      .eq("consensus_date", today),
+    supabase
+      .from("user_settings")
+      .select("preferences")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ])
+
+  const prefs = (userSettings?.preferences as Record<string, unknown> | null) ?? {}
+  const userWeights = validateWeights(prefs.scoring_weights) ?? DEFAULT_WEIGHTS
 
   const advisoryMap = new Map<string, number>(
     (consensusRows ?? []).map((r) => [r.trading_symbol as string, r.advisory_score as number])
@@ -85,7 +97,7 @@ export async function GET(request: NextRequest) {
     }
   })
 
-  const scored = scoreHoldings(inputs)
+  const scored = scoreHoldings(inputs, userWeights)
   const summary = portfolioSummary(scored)
 
   // Persist latest scores to analysis_reports (upsert per instrument)

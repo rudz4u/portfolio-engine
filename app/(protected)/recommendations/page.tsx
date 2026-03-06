@@ -301,6 +301,23 @@ export default function RecommendationsPage() {
         )}
       </div>
 
+      {/* Advisory empty-state hint */}
+      {!loading && !error && (data?.scored.length ?? 0) > 0 && Object.keys(sourceBreakdown).length === 0 && (
+        <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 px-4 py-3 flex items-start gap-3 text-sm">
+          <span className="text-amber-400 text-lg leading-none mt-0.5">⚡</span>
+          <div>
+            <p className="font-medium text-amber-400">Advisor signals not yet loaded</p>
+            <p className="text-muted-foreground mt-0.5">
+              The per-advisor logo grid shows after an advisory scan runs. Go to{" "}
+              <a href="/api/cron/advisory-scan" className="underline hover:text-foreground">
+                trigger a scan
+              </a>{" "}
+              or wait for the nightly cron to populate signals.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Error state */}
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">

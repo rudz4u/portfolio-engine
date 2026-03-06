@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { validateWeights } from "@/lib/quant/scoring-defaults"
 
 export const dynamic = "force-dynamic"
 
@@ -24,14 +25,14 @@ export async function GET() {
   }
 
   // Return preferences but scrub actual key values (just return whether they're set)
-  const prefs = (data?.preferences as Record<string, string> | null) || {}
+  const prefs = (data?.preferences as Record<string, unknown> | null) || {}
 
   // Decode token expiry if present
   let upstoxTokenExpiresAt: string | null = null
-  if (prefs.upstox_access_token) {
+  if (prefs.upstox_access_token && typeof prefs.upstox_access_token === "string") {
     try {
       const payload = JSON.parse(
-        Buffer.from(prefs.upstox_access_token.split(".")[1], "base64").toString()
+        Buffer.from((prefs.upstox_access_token as string).split(".")[1], "base64").toString()
       )
       if (payload.exp) {
         upstoxTokenExpiresAt = new Date(payload.exp * 1000).toISOString()
@@ -70,6 +71,8 @@ export async function GET() {
     notif_order_placed:       prefs.notif_order_placed !== "false",
     notif_portfolio_alert:    prefs.notif_portfolio_alert === "true",
     notif_price_alert:        prefs.notif_price_alert === "true",
+    // Scoring
+    scoring_weights: prefs.scoring_weights ?? null,
   })
 }
 
@@ -100,10 +103,10 @@ export async function POST(request: NextRequest) {
     .eq("user_id", user.id)
     .single()
 
-  const current = ((existing?.preferences as Record<string, string>) || {}) as Record<string, string>
+  const current = ((existing?.preferences as Record<string, unknown>) || {}) as Record<string, unknown>
 
-  // Merge only allowed fields
-  const updated: Record<string, string> = { ...current }
+  // Merge only allowed string fields
+  const updated: Record<string, unknown> = { ...current }
   for (const key of allowed) {
     if (body[key] !== undefined) {
       // Empty string = delete the key
@@ -113,6 +116,18 @@ export async function POST(request: NextRequest) {
         updated[key] = body[key]
       }
     }
+  }
+
+  // Handle scoring_weights separately (stored as a JSON object, not a string)
+  if (body.scoring_weights !== undefined) {
+    const validated = validateWeights(body.scoring_weights)
+    if (!validated) {
+      return NextResponse.json(
+        { error: "Invalid scoring weights: each component must be 5–60 and all must sum to exactly 100" },
+        { status: 400 }
+      )
+    }
+    updated.scoring_weights = validated
   }
 
   const { error } = await supabase.from("user_settings").upsert(

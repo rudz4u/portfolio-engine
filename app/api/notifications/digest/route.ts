@@ -250,7 +250,7 @@ async function handleDigest(request: Request) {
     .from("analysis_reports")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .eq("report_type", "test_digest")
+    .eq("instrument_key", "test_digest")
     .gte("created_at", todayStart.toISOString())
 
   if ((sentToday ?? 0) >= 3) {
@@ -372,8 +372,8 @@ async function handleDigest(request: Request) {
   try {
     await supabase.from("analysis_reports").insert({
       user_id: user.id,
-      report_type: "test_digest",
-      data: { sent_to: toEmail, message_id: result.messageId, sent_at: new Date().toISOString() },
+      instrument_key: "test_digest",
+      report: { sent_to: toEmail, message_id: result.messageId, sent_at: new Date().toISOString() },
     })
   } catch { /* ignore */ }
 

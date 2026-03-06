@@ -124,7 +124,43 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IN" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans`}>{children}</body>
+      <body className={`${inter.variable} font-sans`}>
+        {/* CSS-only splash — visible immediately on first paint, dismisses via animation */}
+        {/* eslint-disable-next-line @next/next/no-css-tags */}
+        <style>{`
+          #app-splash {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #080c18;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+            animation: _splash-out 0.5s ease-out 1.8s forwards;
+            pointer-events: none;
+          }
+          #app-splash-mascot {
+            width: 80px; height: 80px;
+            animation: _splash-bounce 1.8s ease-in-out infinite;
+          }
+          #app-splash-wordmark { width: 160px; opacity: 0.9; }
+          #app-splash-dots { display: flex; gap: 6px; }
+          #app-splash-dots span {
+            display: block; width: 6px; height: 6px; border-radius: 50%;
+            background: #6c63ff;
+            animation: _splash-dot 1.2s ease-in-out infinite;
+          }
+          #app-splash-dots span:nth-child(2) { animation-delay: 0.2s; }
+          #app-splash-dots span:nth-child(3) { animation-delay: 0.4s; }
+          @keyframes _splash-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+          @keyframes _splash-dot { 0%,100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.25); } }
+          @keyframes _splash-out { to { opacity: 0; visibility: hidden; } }
+        `}</style>
+        <div id="app-splash" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img id="app-splash-mascot" src="/Logos/investbuddy_mascot_logo.svg" alt="" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img id="app-splash-wordmark" src="/Logos/investbuddy_wordmark.svg" alt="InvestBuddy AI" />
+          <div id="app-splash-dots"><span /><span /><span /></div>
+        </div>
+        {children}
+      </body>
     </html>
   )
 }

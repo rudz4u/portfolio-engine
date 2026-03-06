@@ -12,6 +12,7 @@
  */
 
 import { rsiSignal } from "./indicators"
+import { ScoringWeights, DEFAULT_WEIGHTS } from "./scoring-defaults"
 
 export type Signal = "BUY" | "HOLD" | "SELL" | "WATCH"
 export type TechnicalSignal = "oversold" | "neutral" | "overbought"
@@ -48,7 +49,8 @@ export interface ScoredHolding extends HoldingInput {
   macd_trend: "bullish" | "bearish" | "neutral"  // trend direction proxy
 }
 
-export function scoreHoldings(holdings: HoldingInput[]): ScoredHolding[] {
+export function scoreHoldings(holdings: HoldingInput[], weights?: ScoringWeights): ScoredHolding[] {
+  const w = weights ?? DEFAULT_WEIGHTS
   const totalInvested = holdings.reduce((s, h) => s + (h.invested_amount || 0), 0)
   const totalValue = holdings.reduce((s, h) => s + (h.ltp * h.quantity || 0), 0)
 
@@ -128,7 +130,14 @@ export function scoreHoldings(holdings: HoldingInput[]): ScoredHolding[] {
       // this preserves existing score distribution until the cron populates data.
       const advisory_score = Math.max(0, Math.min(25, h.advisory_score ?? 12))
 
-      const score = Math.round(momentum_score + valuation_score + position_score + advisory_score)
+      // Weighted score — user-configurable component weights that sum to 100.
+      // Each component is normalised to its default max before applying the weight.
+      const score = Math.round(
+        (momentum_score  / 30) * w.momentum  +
+        (valuation_score / 25) * w.valuation +
+        (position_score  / 20) * w.position  +
+        (advisory_score  / 25) * w.advisory
+      )
 
       // ── Signal ────────────────────────────────────────────────
       let signal: Signal

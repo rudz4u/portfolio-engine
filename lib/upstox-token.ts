@@ -10,6 +10,16 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { UPSTOX_CONFIG } from "@/lib/upstox"
 
+function isTokenExpired(token: string): boolean {
+  try {
+    const parts = token.split(".")
+    if (parts.length !== 3) return false
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString())
+    if (payload.exp) return Date.now() / 1000 > payload.exp - 60 // 60s buffer
+  } catch { /* not a standard JWT, treat as valid */ }
+  return false
+}
+
 export async function resolveUpstoxToken(): Promise<string | null> {
   try {
     // 1. Identify the current user via cookie session.
@@ -28,7 +38,7 @@ export async function resolveUpstoxToken(): Promise<string | null> {
         .single()
 
       const prefs = (data?.preferences as Record<string, string> | null) ?? {}
-      if (prefs.upstox_access_token) {
+      if (prefs.upstox_access_token && !isTokenExpired(prefs.upstox_access_token)) {
         return prefs.upstox_access_token
       }
     }

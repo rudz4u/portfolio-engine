@@ -208,8 +208,8 @@ export async function POST(req: Request) {
         try {
           await supabase.from("analysis_reports").insert({
             user_id: row.user_id,
-            report_type: "daily_digest",
-            data: { sent_to: toEmail, sent_at: new Date().toISOString() },
+            instrument_key: "daily_digest",
+            report: { sent_to: toEmail, sent_at: new Date().toISOString() },
           })
         } catch { /* ignore audit log errors */ }
       } else {

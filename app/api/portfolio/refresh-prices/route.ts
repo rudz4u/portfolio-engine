@@ -223,7 +223,13 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  const ltpMap = await fetchUpstoxLtp(uniqueKeys, upstoxToken)
+  let ltpMap = await fetchUpstoxLtp(uniqueKeys, upstoxToken)
+
+  // If the user token yielded nothing (expired/invalid), retry with the server env token.
+  const serverToken = process.env.UPSTOX_ACCESS_TOKEN ?? ""
+  if (Object.keys(ltpMap).length === 0 && serverToken && serverToken !== upstoxToken) {
+    ltpMap = await fetchUpstoxLtp(uniqueKeys, serverToken)
+  }
 
   if (Object.keys(ltpMap).length === 0) {
     return NextResponse.json({ holdings, updated: 0, message: "Upstox returned no prices" })

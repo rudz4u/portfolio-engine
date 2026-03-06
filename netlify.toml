@@ -31,6 +31,7 @@
   # The Supabase anon key is public by design — security comes from RLS policies.
   # Tell Netlify's secrets scanner to skip these expected keys.
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_URL,SUPABASE_PROJECT_ID,NEXT_PUBLIC_SUPABASE_ANON_KEY"
+  NEXT_PUBLIC_APP_URL = "https://investbuddyai.com"
 
 # ── Functions ────────────────────────────────────────────────────────────────
 
