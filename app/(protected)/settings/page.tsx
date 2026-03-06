@@ -18,7 +18,7 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Loader2, Save, TestTube2, CheckCircle2, XCircle,
   Eye, EyeOff, Key, Mail, Bell, ExternalLink, RefreshCw,
-  Plus, Trash2, Sparkles, Database, SlidersHorizontal,
+  Plus, Trash2, Sparkles, Database, SlidersHorizontal, Target,
 } from "lucide-react"
 import { useToast } from "@/lib/hooks/use-toast"
 
@@ -101,6 +101,15 @@ export default function SettingsPage() {
   const [scoringWeights, setScoringWeights] = useState({ momentum: 30, valuation: 25, position: 20, advisory: 25 })
   const [savingWeights, setSavingWeights] = useState(false)
   const weightsTotal = scoringWeights.momentum + scoringWeights.valuation + scoringWeights.position + scoringWeights.advisory
+
+  /* ── strategy profile ── */
+  const DEFAULT_SEGMENTS = { large_cap: 40, mid_cap: 20, small_cap: 15, debt: 15, gold: 5, international: 5 }
+  const [strategyText, setStrategyText] = useState("")
+  const [segments, setSegments] = useState<Record<string, number>>(DEFAULT_SEGMENTS)
+  const [savingStrategy, setSavingStrategy] = useState(false)
+  const segmentsTotal = Object.values(segments).reduce((s, v) => s + v, 0)
+  // HHI-based diversification: 100 - (sum of squares / 100). Max 100 = perfectly equal, 0 = fully concentrated.
+  const divScore = Math.round(Math.max(0, 100 - Object.values(segments).reduce((s, v) => s + v * v, 0) / 100))
 
   // Instruments DB seeding
   const [instrCount, setInstrCount]   = useState<number | null>(null)
@@ -208,6 +217,11 @@ export default function SettingsPage() {
         position:  data.scoring_weights.position  ?? 20,
         advisory:  data.scoring_weights.advisory  ?? 25,
       })
+    }
+
+    if (data.strategy_profile) {
+      setStrategyText(data.strategy_profile.strategy_text ?? "")
+      if (data.strategy_profile.segments) setSegments(data.strategy_profile.segments)
     }
   }
 
@@ -370,6 +384,23 @@ export default function SettingsPage() {
       toast({ title: "Scoring weights saved!", description: "Scores will update on your next portfolio load." })
     } else {
       toast({ title: "Failed to save", description: data.error, variant: "destructive" })
+    }
+  }
+
+  /* ── handlers: strategy profile ── */
+  async function handleSaveStrategy() {
+    setSavingStrategy(true)
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ strategy_profile: { strategy_text: strategyText, segments } }),
+    })
+    setSavingStrategy(false)
+    if (res.ok) {
+      toast({ title: "Strategy saved!", description: "Your investment profile has been updated." })
+    } else {
+      const d = await res.json().catch(() => ({}))
+      toast({ title: "Failed to save", description: (d as { error?: string }).error, variant: "destructive" })
     }
   }
 
@@ -784,6 +815,118 @@ export default function SettingsPage() {
                 Save
               </Button>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ══ Investment Strategy & Diversification ══ */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Investment Strategy
+          </CardTitle>
+          <CardDescription>
+            Define your investment style and target asset-class mix. The diversification score reflects how spread out your intended allocation is.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Diversification score meter */}
+          <div className="rounded-xl border p-4 flex items-center gap-5">
+            <div className="relative flex items-center justify-center shrink-0" style={{ width: 64, height: 64 }}>
+              <svg viewBox="0 0 36 36" className="w-16 h-16 -rotate-90">
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/20" />
+                <circle
+                  cx="18" cy="18" r="15.9" fill="none" strokeWidth="3"
+                  strokeDasharray={`${divScore} 100`}
+                  strokeLinecap="round"
+                  className={divScore >= 70 ? "text-emerald-400" : divScore >= 45 ? "text-amber-400" : "text-red-400"}
+                  stroke="currentColor"
+                />
+              </svg>
+              <span className={`absolute text-sm font-bold tabular-nums ${divScore >= 70 ? "text-emerald-400" : divScore >= 45 ? "text-amber-400" : "text-red-400"}`}>
+                {divScore}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">
+                Diversification Score
+                <span className={`ml-2 text-xs font-medium px-1.5 py-0.5 rounded ${divScore >= 70 ? "bg-emerald-400/10 text-emerald-400" : divScore >= 45 ? "bg-amber-400/10 text-amber-400" : "bg-red-400/10 text-red-400"}`}>
+                  {divScore >= 70 ? "Well diversified" : divScore >= 45 ? "Moderately diversified" : "Concentrated"}
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Based on your <em>target</em> allocation below (HHI method). 100 = perfectly spread, 0 = single asset.
+              </p>
+              {segmentsTotal !== 100 && (
+                <p className="text-xs text-red-400 mt-1">
+                  Allocations must total 100% (currently {segmentsTotal}%)
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Segment sliders */}
+          <div className="space-y-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Asset Allocation</p>
+            {(
+              [
+                { key: "large_cap",     label: "Large Cap",     color: "bg-blue-400" },
+                { key: "mid_cap",       label: "Mid Cap",       color: "bg-violet-400" },
+                { key: "small_cap",     label: "Small Cap",     color: "bg-indigo-400" },
+                { key: "debt",          label: "Debt / Bonds",  color: "bg-amber-400" },
+                { key: "gold",          label: "Gold",          color: "bg-yellow-400" },
+                { key: "international", label: "International", color: "bg-emerald-400" },
+              ] as const
+            ).map(({ key, label, color }) => (
+              <div key={key} className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className={`inline-block w-2 h-2 rounded-full ${color}`} />
+                    {label}
+                  </span>
+                  <span className={`font-semibold tabular-nums w-10 text-right ${segmentsTotal === 100 ? "text-foreground" : "text-muted-foreground"}`}>
+                    {segments[key]}%
+                  </span>
+                </div>
+                <input
+                  type="range" min={0} max={100} step={1}
+                  value={segments[key]}
+                  onChange={(e) => setSegments((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
+                  className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-muted accent-primary"
+                />
+              </div>
+            ))}
+          </div>
+
+          <Separator />
+
+          {/* Strategy text */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Investment Strategy (optional)</Label>
+            <p className="text-xs text-muted-foreground">Describe your approach in plain words — e.g. &quot;Long-term wealth creation via large-cap quality compounders, rebalanced quarterly.&quot;</p>
+            <textarea
+              rows={3}
+              value={strategyText}
+              onChange={(e) => setStrategyText(e.target.value)}
+              placeholder="I prefer long-term buy-and-hold with a focus on quality large-cap and some mid-cap growth stocks…"
+              maxLength={500}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+            />
+            <p className="text-xs text-muted-foreground text-right">{strategyText.length}/500</p>
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline" size="sm"
+              onClick={() => { setSegments(DEFAULT_SEGMENTS); setStrategyText("") }}
+            >
+              Reset
+            </Button>
+            <Button size="sm" onClick={handleSaveStrategy} disabled={savingStrategy || segmentsTotal !== 100}>
+              {savingStrategy ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
+              Save Strategy
+            </Button>
           </div>
         </CardContent>
       </Card>

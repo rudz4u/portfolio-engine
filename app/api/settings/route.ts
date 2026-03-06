@@ -73,6 +73,8 @@ export async function GET() {
     notif_price_alert:        prefs.notif_price_alert === "true",
     // Scoring
     scoring_weights: prefs.scoring_weights ?? null,
+    // Strategy profile
+    strategy_profile: prefs.strategy_profile ?? null,
   })
 }
 
@@ -128,6 +130,15 @@ export async function POST(request: NextRequest) {
       )
     }
     updated.scoring_weights = validated
+  }
+
+  // Handle strategy_profile (free-text strategy + segment % allocations — stored as JSON)
+  if (body.strategy_profile !== undefined) {
+    if (body.strategy_profile === null || body.strategy_profile === "") {
+      delete updated.strategy_profile
+    } else if (typeof body.strategy_profile === "object") {
+      updated.strategy_profile = body.strategy_profile
+    }
   }
 
   const { error } = await supabase.from("user_settings").upsert(
