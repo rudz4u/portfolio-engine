@@ -22,6 +22,8 @@ export default function SignInForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
 
   const supabase = createClient()
 
@@ -239,6 +241,37 @@ export default function SignInForm() {
                 />
               </div>
 
+              {mode === "signup" && (
+                <div className="space-y-3 pt-1">
+                  <label className="flex items-start gap-2.5 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-500 cursor-pointer"
+                    />
+                    <span className="text-[11px] text-white/45 leading-relaxed group-hover:text-white/60 transition-colors">
+                      I agree to the{" "}
+                      <Link href="/legal/terms" target="_blank" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Terms of Service</Link>,{" "}
+                      <Link href="/legal/privacy" target="_blank" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Privacy Policy</Link>, and{" "}
+                      <Link href="/legal/beta-agreement" target="_blank" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Beta User Agreement</Link>.
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2.5 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={disclaimerAccepted}
+                      onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-500 cursor-pointer"
+                    />
+                    <span className="text-[11px] text-white/45 leading-relaxed group-hover:text-white/60 transition-colors">
+                      I acknowledge that Invest Buddy AI is <strong className="text-white/60">NOT a SEBI-registered adviser</strong> and does not provide regulated investment advice.{" "}
+                      <Link href="/legal/disclaimer" target="_blank" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Read Disclaimer</Link>
+                    </span>
+                  </label>
+                </div>
+              )}
+
               {error && (
                 <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5">
                   <p className="text-sm text-red-400">{error}</p>
@@ -253,8 +286,8 @@ export default function SignInForm() {
 
               <Button
                 type="submit"
-                disabled={loading}
-                className="w-full btn-gradient mt-2 gap-2 font-semibold shadow-lg shadow-violet-500/20"
+                disabled={loading || (mode === "signup" && (!termsAccepted || !disclaimerAccepted))}
+                className="w-full btn-gradient mt-2 gap-2 font-semibold shadow-lg shadow-violet-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading
                   ? <Loader2 className="h-4 w-4 animate-spin" />

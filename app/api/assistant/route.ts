@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { scoreHoldings, portfolioSummary, type HoldingInput } from "@/lib/quant/scoring"
 
-const SYSTEM_PROMPT = `You are an expert AI equity portfolio assistant for BrokerAI.
+const SYSTEM_PROMPT = `You are an expert AI equity portfolio assistant for Invest Buddy AI.
 You help users analyze their Indian stock portfolio, understand market trends, and make informed investment decisions.
 You have deep knowledge of NSE/BSE markets, fundamental analysis, technical indicators (RSI, MACD, ATR, Bollinger Bands), and portfolio management.
 You cite live numbers from the portfolio context when available. Always note at the end that insights are not financial advice.

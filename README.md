@@ -1,6 +1,6 @@
-# AI-Powered Equity Management Platform
+# Invest Buddy AI — AI-Powered Equity Management Platform
 
-Repository for the AI-Powered Equity Management Platform (Portfolio Engine).
+Repository for Invest Buddy AI (Portfolio Engine).
 
 See project documentation in the `Docs/` folder for architecture, DB schema, implementation plan, and the sprint board.
 

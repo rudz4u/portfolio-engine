@@ -67,7 +67,7 @@ export default function SettingsPage() {
 
   /* ── AI mode ── */
   const [aiMode, setAiMode] = useState<"platform" | "byok">("platform")
-  const [preferredLlm, setPreferredLlm] = useState("brokerai")
+  const [preferredLlm, setPreferredLlm] = useState("invest-buddy-ai")
   const [openaiKey, setOpenaiKey] = useState("")
   const [anthropicKey, setAnthropicKey] = useState("")
   const [geminiKey, setGeminiKey] = useState("")
@@ -182,7 +182,7 @@ export default function SettingsPage() {
       brevo_key_set: !!data.brevo_key_set,
     })
     setAiMode(data.ai_mode === "byok" ? "byok" : "platform")
-    setPreferredLlm(data.preferred_llm || "brokerai")
+    setPreferredLlm(data.preferred_llm || "invest-buddy-ai")
     setUpstoxSandbox(data.sandbox_mode !== false)
     setUpstoxTokenSet(!!data.upstox_token_set)
     setUpstoxTokenExpiresAt(data.upstox_token_expires_at || null)
@@ -346,7 +346,7 @@ export default function SettingsPage() {
   // All model IDs match the provider's actual API model identifiers.
   const llmOptions: Record<string, { value: string; label: string }[]> =
     aiMode === "platform"
-      ? { "": [{ value: "brokerai", label: "BrokerAI (managed routing, recommended)" }] }
+      ? { "": [{ value: "invest-buddy-ai", label: "Invest Buddy AI (managed routing, recommended)" }] }
       : {
           "Reasoning & Deep Research": [
             { value: "gpt-5.1",           label: "GPT-5.1 — OpenAI: flagship reasoning+coding, 400K ctx, configurable effort" },
@@ -492,12 +492,12 @@ export default function SettingsPage() {
 
       {/* ══ AI Access ══ */}
       <Card>
-        <CardHeader>
+          <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
             AI Access
           </CardTitle>
-          <CardDescription>Choose how BrokerAI accesses AI models for analysis and chat.</CardDescription>
+          <CardDescription>Choose how Invest Buddy AI accesses AI models for analysis and chat.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-2 gap-2">
@@ -507,14 +507,14 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => {
                   setAiMode(mode)
-                  setPreferredLlm(mode === "platform" ? "brokerai" : "gpt-5.2")
+                  setPreferredLlm(mode === "platform" ? "invest-buddy-ai" : "gpt-5.2")
                 }}
                 className={`rounded-lg border-2 p-3 text-left transition-colors ${
                   aiMode === mode ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/40"
                 }`}
               >
                 <p className="text-sm font-semibold">
-                  {mode === "platform" ? "BrokerAI Platform" : "Bring Your Own Keys"}
+                  {mode === "platform" ? "Invest Buddy AI Platform" : "Bring Your Own Keys"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {mode === "platform"
@@ -597,7 +597,7 @@ export default function SettingsPage() {
               )}
             </select>
             {aiMode === "platform" && (
-              <p className="text-xs text-muted-foreground">BrokerAI manages model routing automatically.</p>
+              <p className="text-xs text-muted-foreground">Invest Buddy AI manages model routing automatically.</p>
             )}
           </div>
 

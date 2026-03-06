@@ -61,7 +61,7 @@ export async function GET() {
     upstox_token_set: Boolean(prefs.upstox_access_token),
     upstox_token_expires_at: upstoxTokenExpiresAt,
     platform_llm_available: platformLlmAvailable,
-    preferred_llm: prefs.preferred_llm || "brokerai",
+    preferred_llm: prefs.preferred_llm || "invest-buddy-ai",
     ai_mode: prefs.ai_mode || "platform",  // "platform" | "byok"
     sandbox_mode: prefs.sandbox_mode !== "false",
     // Notifications

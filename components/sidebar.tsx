@@ -16,6 +16,7 @@ import {
   BarChart2,
   Bookmark,
   HelpCircle,
+  Scale,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -111,6 +112,14 @@ function SidebarContent({ pathname, onNavClick, onSignOut, onTakeTour }: Sidebar
           <HelpCircle className="h-4 w-4 shrink-0" />
           Take a Tour
         </button>
+        <Link
+          href="/legal"
+          onClick={onNavClick}
+          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors duration-150"
+        >
+          <Scale className="h-4 w-4 shrink-0" />
+          Legal & Policies
+        </Link>
         <button
           onClick={onSignOut}
           className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors duration-150"

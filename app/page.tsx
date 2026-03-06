@@ -730,12 +730,20 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="flex flex-col sm:items-end gap-2">
-                <div className="flex gap-4 text-xs text-muted-foreground">
+                <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                   <Link href="/signin" className="hover:text-foreground transition-colors">Sign In</Link>
                   <Link href="/signin" className="hover:text-foreground transition-colors">Sign Up</Link>
                   <Link href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
                 </div>
-                <p className="text-[11px] text-muted-foreground/40">© 2026 InvestBuddy AI · investbuddyai.com</p>
+                <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground/50">
+                  <Link href="/legal/terms" className="hover:text-muted-foreground transition-colors">Terms</Link>
+                  <Link href="/legal/privacy" className="hover:text-muted-foreground transition-colors">Privacy</Link>
+                  <Link href="/legal/disclaimer" className="hover:text-muted-foreground transition-colors">Disclaimer</Link>
+                  <Link href="/legal" className="hover:text-muted-foreground transition-colors">Legal</Link>
+                </div>
+                <p className="text-[11px] text-muted-foreground/40">
+                  © 2026 <a href="https://upflowsprint.com" target="_blank" rel="noopener noreferrer" className="hover:text-muted-foreground transition-colors">Upflow Sprint Private Limited</a>
+                </p>
                 <p className="text-[11px] text-muted-foreground/30">Built with Next.js · Supabase · Upstox API</p>
               </div>
             </div>

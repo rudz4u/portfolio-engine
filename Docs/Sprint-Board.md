@@ -37,7 +37,7 @@ Sprint start: 2026-03-03
 - **API routes** — /api/upstox/{profile,holdings,sync,authorize,callback}, /api/assistant
 - **TypeScript check** — 0 errors
 - **Local build** — clean, 14 routes (all dynamic/protected + static landing)
-- **Live deployment** — https://brokerai.rudz.in ✅
+-- **Live deployment** — https://investbuddyai.com ✅
 - **Auth** — sign in → /dashboard redirect working ✅
 - **Dashboard** — real Supabase data: ₹3,37,846 invested, 50 holdings ✅
 - **Portfolio** — 51-row holdings table ✅
