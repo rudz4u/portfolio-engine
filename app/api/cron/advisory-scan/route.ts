@@ -93,7 +93,9 @@ export async function POST(request: NextRequest) {
   console.log(`[advisory-scan] Extracted ${allRaws.length} raw recs in ${Date.now() - startMs}ms`)
 
   // ── 5. Resolve symbols ─────────────────────────────────────────────────
-  const resolved = await resolveRecommendations(allRaws, symbolList)
+  // Pass no allowedSymbols (empty = keep all resolved recs globally).
+  // Per-user filtering happens in the /api/advisory/consensus endpoint.
+  const resolved = await resolveRecommendations(allRaws)
   console.log(`[advisory-scan] Resolved ${resolved.length}/${allRaws.length} recs to known instruments`)
 
   // ── 6. Persist recommendations ─────────────────────────────────────────
