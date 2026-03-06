@@ -44,30 +44,71 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
     id: "upstox",
     label: "Upstox",
     headerRow: 0,
-    sheetName: null,  // Holdings-page export uses first sheet; auto-detect
+    sheetName: null,
     columnMap: {
-      // Column names from the Upstox Holdings page XLSX download
-      // (https://pro.upstox.com/holdings → download icon top-right)
-      isin: ["ISIN"],
-      company_name: ["Scrip Name"],
-      trading_symbol: ["Symbol"],
-      quantity: ["Qty", "Current Qty"],
-      avg_price: ["Avg Buy Price", "Avg. Buy Price", "Average Buy Price"],
-      invested_amount: ["Total Invested", "Invested Amount"],
-      ltp: ["C.M.P", "CMP", "LTP"],         // present in file but AI-filled (live price preferred)
-      unrealized_pl: ["P&L", "Unrealised P&L"], // present in file but AI-filled (recalc from live LTP)
+      // Covers both export sources:
+      //   (A) Holdings page download  → pro.upstox.com/holdings  (recommended)
+      //   (B) Portfolio page download → pro.upstox.com/portfolio
+      //   (C) Account › Reports › Holdings (alternate, older format)
+      isin: ["ISIN", "ISIN Code"],
+      company_name: [
+        // Holdings page
+        "Scrip Name",
+        // Portfolio page / Reports
+        "Instrument", "Instrument Name", "Security Name", "Stock Name",
+        "Stock", "Scrip", "Company", "Company Name",
+      ],
+      trading_symbol: [
+        "Symbol", "NSE Symbol", "BSE Symbol",
+        "Trading Symbol", "Exchange Symbol", "Ticker",
+      ],
+      quantity: [
+        "Qty", "Qty.", "Current Qty", "Quantity",
+        "Holdings", "Total Qty", "Net Qty",
+      ],
+      avg_price: [
+        // Holdings page
+        "Avg Buy Price", "Avg. Buy Price", "Average Buy Price",
+        // Portfolio / Reports
+        "Avg Cost", "Avg. Cost", "Average Cost",
+        "Cost Price", "Buy Price", "Purchase Price",
+        "Average Price", "Avg Price",
+      ],
+      invested_amount: [
+        // Holdings page
+        "Total Invested", "Invested Amount",
+        // Portfolio / Reports
+        "Invested Value", "Purchase Value", "Cost Value",
+        "Buy Value", "Investment", "Total Investment",
+        "Net Cost",
+      ],
+      ltp: [
+        // Holdings page
+        "C.M.P", "CMP",
+        // Portfolio / Reports / universal
+        "LTP", "Current Price", "Market Price",
+        "Last Price", "Current Market Price", "Last Traded Price",
+        "Price", "Close Price",
+      ],
+      unrealized_pl: [
+        // Holdings page
+        "P&L", "Unrealised P&L",
+        // Portfolio / Reports
+        "Unrealized P&L", "Total P&L", "P&L Amount",
+        "Net P&L", "Gain/Loss", "Profit/Loss",
+        "Overall P&L", "Overall Gain",
+      ],
     },
-    // ltp and unrealized_pl are always derived live — don't read stale values from the file
-    defaultAiFill: ["ltp", "unrealized_pl"],
     exportGuideUrl: "https://pro.upstox.com/holdings",
     exportSteps: [
-      "Log in to your Upstox account and open the Holdings page at pro.upstox.com/holdings",
-      'Click the Download icon (\u2193) in the top-right corner of the Holdings table — it looks like a downward arrow next to the refresh and expand icons',
-      "The file downloads automatically as an Excel (.xlsx) file",
+      "Log in to your Upstox account",
+      "Open the Holdings page at pro.upstox.com/holdings  — OR — the Portfolio page at pro.upstox.com/portfolio",
+      "Click the Download / Export icon (↓) near the top-right of the table",
+      "The file downloads as an Excel (.xlsx) file",
       "Upload the downloaded .xlsx file here",
     ],
-    exportNote: "\u26a0\ufe0f Important: Use the download from the Holdings page, not from Account \u2192 Reports \u2192 Holdings. The Reports export uses a different column format.",
-    fileTypes: ["xlsx"],  // PDF parsing not supported — XLSX only
+    exportNote: "⚠️ Tip: Both the Holdings page and the Portfolio page downloads are supported. The Account › Reports › Holdings export uses a different column format and may not map correctly.",
+    fileTypes: ["xlsx"],
     logoUrl: "https://assets.upstox.com/website/images/upstox-new-logo.svg",
   },
 
