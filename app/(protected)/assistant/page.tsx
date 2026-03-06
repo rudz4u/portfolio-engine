@@ -49,8 +49,10 @@ export default function AssistantPage() {
     const settingsRes = await fetch("/api/settings")
     if (settingsRes.ok) {
       const s = await settingsRes.json()
-      setHasApiKey(s.openai_key_set || s.anthropic_key_set || s.gemini_key_set ||
-        !!process.env.NEXT_PUBLIC_HAS_LLM_KEY)
+      const byokConfigured = s.openai_key_set || s.anthropic_key_set || s.gemini_key_set ||
+        s.deepseek_key_set || s.qwen_key_set
+      const platformMode = (s.ai_mode || "platform") === "platform"
+      setHasApiKey(byokConfigured || (platformMode && s.platform_llm_available))
     }
 
     const { data: history } = await supabase

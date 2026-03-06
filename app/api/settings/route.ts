@@ -41,6 +41,15 @@ export async function GET() {
     }
   }
 
+  // Check if the platform has any LLM keys configured via server-side env vars
+  const platformLlmAvailable = Boolean(
+    process.env.OPENAI_API_KEY ||
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.GOOGLE_GEMINI_API_KEY ||
+    process.env.DEEPSEEK_API_KEY ||
+    process.env.QWEN_API_KEY
+  )
+
   return NextResponse.json({
     openai_key_set: Boolean(prefs.openai_key),
     anthropic_key_set: Boolean(prefs.anthropic_key),
@@ -51,6 +60,7 @@ export async function GET() {
     brevo_key_set: Boolean(prefs.brevo_key),
     upstox_token_set: Boolean(prefs.upstox_access_token),
     upstox_token_expires_at: upstoxTokenExpiresAt,
+    platform_llm_available: platformLlmAvailable,
     preferred_llm: prefs.preferred_llm || "brokerai",
     ai_mode: prefs.ai_mode || "platform",  // "platform" | "byok"
     sandbox_mode: prefs.sandbox_mode !== "false",
