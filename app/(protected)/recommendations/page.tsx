@@ -161,6 +161,15 @@ export default function RecommendationsPage() {
         setScanMsg({ ok: false, text: "Daily limit of 4 manual scans reached." })
       } else if (!res.ok || !json.ok) {
         setScanMsg({ ok: false, text: json.error || "Scan failed." })
+      } else if (json.queued) {
+        // Scan is running in background — count down then reload results
+        setScanUsage({ remaining: json.remaining, used: json.used, max: json.max })
+        for (let s = 50; s > 0; s--) {
+          setScanMsg({ ok: true, text: `Scan running… refreshing results in ${s}s` })
+          await new Promise(r => setTimeout(r, 1000))
+        }
+        await load()
+        setScanMsg({ ok: true, text: "Results refreshed — check recommendations below." })
       } else {
         setScanMsg({
           ok: true,

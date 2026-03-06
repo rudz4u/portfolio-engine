@@ -42,6 +42,10 @@
 [functions."*"]
   timeout = 30
 
+# OpenNext SSR handler — needs longer timeout for advisory scan after() callbacks
+[functions."___netlify-server-handler"]
+  timeout = 120
+
 # Scheduled function — daily portfolio sync (Mon–Fri 4:30 AM UTC / 10 AM IST)
 # Requires SUPABASE_SERVICE_ROLE_KEY set in Netlify dashboard
 [functions."daily-sync"]

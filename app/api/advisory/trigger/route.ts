@@ -7,7 +7,7 @@
  * No schema migration needed — preferences is already an open JSONB column.
  */
 
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse, after } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 const MAX_PER_DAY = 4
@@ -78,37 +78,32 @@ export async function POST(request: NextRequest) {
       { onConflict: "user_id" }
     )
 
-  // ── 3. Trigger advisory scan pipeline ────────────────────────────────
+  // ── 3. Fire the scan AFTER returning the response (avoids 30s gateway timeout) ──
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://investbuddyai.com"
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-  const scanStart = Date.now()
-  let scanResult: Record<string, unknown> = {}
-  let scanError: string | null = null
-
-  try {
-    const res = await fetch(`${appUrl}/api/cron/advisory-scan`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${serviceKey}`,
-      },
-    })
-    scanResult = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      scanError = `Scan returned HTTP ${res.status}`
+  after(async () => {
+    try {
+      const res = await fetch(`${appUrl}/api/cron/advisory-scan`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceKey}`,
+        },
+      })
+      const result = await res.json().catch(() => ({}))
+      console.log("[advisory/trigger] background scan result:", result)
+    } catch (err) {
+      console.error("[advisory/trigger] background scan error:", err)
     }
-  } catch (err) {
-    scanError = String(err)
-  }
+  })
 
+  // Return immediately — client polls/reloads after a delay to see results
   return NextResponse.json({
-    ok: !scanError,
-    error: scanError,
+    ok: true,
+    queued: true,
     remaining: Math.max(0, MAX_PER_DAY - newCount),
     used: newCount,
     max: MAX_PER_DAY,
-    elapsed_ms: Date.now() - scanStart,
-    scan: scanResult,
-  })
+  }, { status: 202 })
 }
