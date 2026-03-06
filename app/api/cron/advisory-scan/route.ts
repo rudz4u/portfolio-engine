@@ -114,13 +114,26 @@ export async function POST(request: NextRequest) {
       published_at: r.published_at,
     }))
 
+    // Intra-batch dedup by (source_id, trading_symbol, signal, UTC day) so we
+    // never pass two conflicting rows to a single INSERT statement.
+    const seenKeys = new Set<string>()
+    const dedupedRows = rows.filter((row) => {
+      const day = row.published_at
+        ? new Date(row.published_at).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0]
+      const k = `${row.source_id}|${row.trading_symbol}|${row.signal}|${day}`
+      if (seenKeys.has(k)) return false
+      seenKeys.add(k)
+      return true
+    })
+
+    // upsert with ignoreDuplicates sends `Prefer: resolution=ignore-duplicates`
+    // → PostgREST generates `ON CONFLICT DO NOTHING` (catches advisory_recs_dedup_idx)
     const { error: insertErr, count } = await supabase
       .from("advisory_recommendations")
-      .insert(rows, { count: "exact" })
-      // On conflict (dedup index) do nothing
-      .throwOnError()
+      .upsert(dedupedRows, { ignoreDuplicates: true, count: "exact" })
 
-    persistedCount = count ?? rows.length
+    persistedCount = count ?? dedupedRows.length
     if (insertErr) console.error("[advisory-scan] Insert error:", insertErr)
   }
 
