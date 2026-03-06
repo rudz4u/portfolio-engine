@@ -31,13 +31,15 @@ VALUES
 (
   'Kotak Securities',
   'INH000000586',
-  'https://www.kotaksecurities.com/research/equity-research',
+  'https://www.kotaksecurities.com/fundamental-research-report/',
+  -- Previously: /research/equity-research (404)
   1, 0.85, 'both'
 ),
 (
   'Motilal Oswal',
   'INH000000412',
-  'https://www.motilaloswal.com/research/equity-research',
+  'https://www.motilaloswal.com/stock-research',
+  -- Previously: /research/equity-research (404)
   1, 0.85, 'both'
 ),
 
@@ -83,8 +85,9 @@ VALUES
 (
   'Equitymaster',
   'INH000000218',
-  'https://www.equitymaster.com/research-it/bull-bear/',
-  3, 0.65, 'both'
+  'https://equitymaster.com/stock-research',
+  -- Previously: /research-it/bull-bear/ (403 on direct fetch — switched to tavily-only)
+  3, 0.65, 'tavily'
 ),
 (
   'Research & Ranking',
