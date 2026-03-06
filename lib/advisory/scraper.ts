@@ -200,17 +200,16 @@ export async function scrapeAllSources(
   tavilyKey: string
 ): Promise<RawSourceContent[]> {
   const active = sources.filter((s) => s.active)
-  const results: RawSourceContent[] = []
 
-  // Process in batches of 5 to avoid hammering Tavily rate limits
-  for (let i = 0; i < active.length; i += 5) {
-    const batch = active.slice(i, i + 5)
-    const batchResults = await Promise.allSettled(
-      batch.map((s) => scrapeSource(s, symbols, tavilyKey))
-    )
-    for (const r of batchResults) {
-      if (r.status === "fulfilled") results.push(...r.value)
-    }
+  // All sources in parallel — Tavily rate-limiting is handled per-source with
+  // direct-fetch fallback, so sequential batching only adds latency here.
+  const batchResults = await Promise.allSettled(
+    active.map((s) => scrapeSource(s, symbols, tavilyKey))
+  )
+
+  const results: RawSourceContent[] = []
+  for (const r of batchResults) {
+    if (r.status === "fulfilled") results.push(...r.value)
   }
 
   return results

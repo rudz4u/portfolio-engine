@@ -123,8 +123,13 @@ export async function resolveRecommendations(
       for (const raw of batch) {
         const sym = (raw.trading_symbol || "").trim().toUpperCase()
         if (sym.length > 1) orParts.push(`trading_symbol.ilike.${sym}%`)
-        const name = raw.stock_name?.trim()
-        if (name && name.length > 3) orParts.push(`name.ilike.%${name}%`)
+        // Clean special chars (dots, hyphens, etc.) that break ilike pattern matching
+        const cleanedName = (raw.stock_name ?? "")
+          .trim()
+          .replace(/[.\-&,()\/]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+        if (cleanedName.length > 3) orParts.push(`name.ilike.%${cleanedName}%`)
       }
 
       if (orParts.length === 0) continue
@@ -139,7 +144,13 @@ export async function resolveRecommendations(
 
       for (const raw of batch) {
         const sym = (raw.trading_symbol || "").trim().toUpperCase()
-        const nameLower = raw.stock_name?.trim().toLowerCase() ?? ""
+        // Clean special chars for consistent matching
+        const cleanedNameLower = (raw.stock_name ?? "")
+          .trim()
+          .replace(/[.\-&,()\/]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase()
 
         // Prefer prefix match on symbol, fall back to name containment
         let match: InstrumentRow | null = null
@@ -149,8 +160,16 @@ export async function resolveRecommendations(
           match = rows.find((r) => r.trading_symbol.toUpperCase().startsWith(sym)) ?? null
           if (match) confidence = 0.85
         }
-        if (!match && nameLower.length > 3) {
-          match = rows.find((r) => r.name.toLowerCase().includes(nameLower)) ?? null
+        if (!match && cleanedNameLower.length > 3) {
+          // Full name containment check (cleaned)
+          match = rows.find((r) => r.name.toLowerCase().includes(cleanedNameLower)) ?? null
+          if (!match) {
+            // Fallback: DB name starts with our first significant word (6+ chars)
+            const firstWord = cleanedNameLower.split(" ")[0]
+            if (firstWord.length >= 6) {
+              match = rows.find((r) => r.name.toLowerCase().startsWith(firstWord)) ?? null
+            }
+          }
         }
 
         if (match) {

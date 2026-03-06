@@ -17,7 +17,7 @@ Given a block of text from an Indian stock advisory firm, extract every BUY, SEL
 Return a JSON array. Each element must have EXACTLY these fields:
 {
   "stock_name": "<company name as written in the text>",
-  "trading_symbol": "<NSE symbol if explicitly mentioned, else null>",
+  "trading_symbol": "<NSE/BSE trading symbol — use your knowledge of Indian listed equities to infer this from the company name (e.g. RELIANCE for Reliance Industries, TCS for Tata Consultancy Services, INFY for Infosys) even when not stated in the text; else null>",
   "signal": "BUY" | "SELL" | "HOLD" | "NEUTRAL",
   "target_price": <number or null>,
   "stop_loss": <number or null>,
@@ -49,7 +49,7 @@ async function callGemini(content: string, apiKey: string): Promise<RawRecommend
           ],
         },
       ],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
     }),
   })
 
