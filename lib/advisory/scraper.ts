@@ -72,7 +72,7 @@ async function fetchViaTavily(
         source_id: source.id,
         source_name: source.name,
         url: source.website_url || TAVILY_API_URL,
-        content: combined.slice(0, 12000), // cap at 12K chars to control token usage
+        content: combined.slice(0, 8000), // extractor uses first 6K; keep 8K as buffer
         fetched_at: new Date().toISOString(),
       })
     }
@@ -118,7 +118,7 @@ async function fetchDirect(source: AdvisorySource): Promise<RawSourceContent[]> 
       .replace(/<[^>]+>/g, " ")
       .replace(/\s{3,}/g, "\n")
       .trim()
-      .slice(0, 12000)
+      .slice(0, 8000) // match Tavily cap
 
     if (text) {
       return [

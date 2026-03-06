@@ -45,11 +45,11 @@ async function callGemini(content: string, apiKey: string): Promise<RawRecommend
         {
           parts: [
             { text: EXTRACTION_PROMPT },
-            { text: `\n\n---\nSOURCE TEXT:\n${content.slice(0, 10000)}` },
+            { text: `\n\n---\nSOURCE TEXT:\n${content.slice(0, 6000)}` },
           ],
         },
       ],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
     }),
   })
 
@@ -155,22 +155,18 @@ export async function extractRecommendations(
 
 /**
  * Extract recommendations from multiple raw content blocks concurrently.
- * Rate-limited to 3 concurrent LLM calls to control costs.
+ * All blocks in parallel — Gemini 2.5 Flash-Lite handles concurrency well
+ * and we need to finish well inside the 30s function budget.
  */
 export async function extractAllRecommendations(
   rawContents: RawSourceContent[]
 ): Promise<Array<{ source_id: string; recs: RawRecommendation[] }>> {
-  const results: Array<{ source_id: string; recs: RawRecommendation[] }> = []
-
-  for (let i = 0; i < rawContents.length; i += 3) {
-    const batch = rawContents.slice(i, i + 3)
-    const batchResults = await Promise.allSettled(
-      batch.map((raw) => extractRecommendations(raw).then((recs) => ({ source_id: raw.source_id, recs })))
+  const batchResults = await Promise.allSettled(
+    rawContents.map((raw) =>
+      extractRecommendations(raw).then((recs) => ({ source_id: raw.source_id, recs }))
     )
-    for (const r of batchResults) {
-      if (r.status === "fulfilled") results.push(r.value)
-    }
-  }
-
-  return results
+  )
+  return batchResults
+    .filter((r): r is PromiseFulfilledResult<{ source_id: string; recs: RawRecommendation[] }> => r.status === "fulfilled")
+    .map((r) => r.value)
 }
