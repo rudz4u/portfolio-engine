@@ -308,11 +308,10 @@ export default function RecommendationsPage() {
           <div>
             <p className="font-medium text-amber-400">Advisor signals not yet loaded</p>
             <p className="text-muted-foreground mt-0.5">
-              The per-advisor logo grid shows after an advisory scan runs. Go to{" "}
-              <a href="/api/cron/advisory-scan" className="underline hover:text-foreground">
-                trigger a scan
-              </a>{" "}
-              or wait for the nightly cron to populate signals.
+              The per-advisor logo grid appears after the nightly advisory scan runs.
+              Trigger it manually via your cron endpoint{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">POST /api/cron/advisory-scan</code>{" "}
+              with your service-role key as a Bearer token.
             </p>
           </div>
         </div>
