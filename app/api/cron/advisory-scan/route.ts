@@ -114,8 +114,9 @@ export async function POST(request: NextRequest) {
       published_at: r.published_at,
     }))
 
-    // Intra-batch dedup by (source_id, trading_symbol, signal, UTC day) so we
-    // never pass two conflicting rows to a single INSERT statement.
+    // ── Step A: intra-batch dedup ─────────────────────────────────────────
+    // Deduplicate by (source_id, trading_symbol, signal, UTC day) so a single
+    // batch never contains two rows that would conflict with each other.
     const seenKeys = new Set<string>()
     const dedupedRows = rows.filter((row) => {
       const day = row.published_at
@@ -127,14 +128,45 @@ export async function POST(request: NextRequest) {
       return true
     })
 
-    // upsert with ignoreDuplicates sends `Prefer: resolution=ignore-duplicates`
-    // → PostgREST generates `ON CONFLICT DO NOTHING` (catches advisory_recs_dedup_idx)
-    const { error: insertErr, count } = await supabase
+    // ── Step B: pre-filter against DB ────────────────────────────────────
+    // PostgREST's upsert/ignoreDuplicates only targets the PK, not our
+    // expression-based unique index (advisory_recs_dedup_idx). Pre-filtering
+    // is the reliable way to avoid 23505 on the custom expression index.
+    //
+    // Fetch existing records for each source_id that appears in this batch,
+    // published/scraped in the last 48 h to cover any timezone edge (UTC vs IST).
+    const batchSourceIds = [...new Set(dedupedRows.map((r) => r.source_id))]
+    const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+    const { data: existing } = await supabase
       .from("advisory_recommendations")
-      .upsert(dedupedRows, { ignoreDuplicates: true, count: "exact" })
+      .select("source_id, trading_symbol, signal, published_at, scraped_at")
+      .in("source_id", batchSourceIds)
+      .or(`published_at.gte.${since48h},scraped_at.gte.${since48h}`)
 
-    persistedCount = count ?? dedupedRows.length
-    if (insertErr) console.error("[advisory-scan] Insert error:", insertErr)
+    const existingKeys = new Set<string>()
+    for (const e of existing ?? []) {
+      const day = (e.published_at ?? e.scraped_at ?? new Date().toISOString())
+        .split("T")[0]
+      existingKeys.add(`${e.source_id}|${e.trading_symbol}|${e.signal}|${day}`)
+    }
+
+    const newRows = dedupedRows.filter((row) => {
+      const day = row.published_at
+        ? new Date(row.published_at).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0]
+      return !existingKeys.has(`${row.source_id}|${row.trading_symbol}|${row.signal}|${day}`)
+    })
+
+    if (newRows.length > 0) {
+      const { error: insertErr, count } = await supabase
+        .from("advisory_recommendations")
+        .insert(newRows, { count: "exact" })
+
+      persistedCount = count ?? newRows.length
+      if (insertErr) console.error("[advisory-scan] Insert error:", insertErr)
+    } else {
+      console.log("[advisory-scan] All resolved recs already exist in DB — nothing new to insert")
+    }
   }
 
   // ── 7. Compute consensus ───────────────────────────────────────────────
