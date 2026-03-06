@@ -142,27 +142,33 @@ export const BROKER_FORMATS: Record<string, BrokerFormat> = {
   groww: {
     id: "groww",
     label: "Groww",
-    headerRow: 0,
+    // The XLSX has ~10 metadata rows (Name, Unique Client Code, date heading,
+    // Summary block) before the actual column header row.
+    headerRow: 10,
     sheetName: null,
     columnMap: {
+      // Exact headers from the Groww holdings XLSX (as of Mar 2026)
       isin: ["ISIN"],
-      company_name: ["Company Name", "Stock Name", "Name"],
-      trading_symbol: ["Symbol", "Trading Symbol"],
-      quantity: ["Quantity", "Qty"],
-      avg_price: ["Avg. Price", "Average Price", "Buy Price"],
-      ltp: ["LTP", "Current Price", "CMP"],
-      invested_amount: ["Invested Value", "Invested"],
-      unrealized_pl: ["P&L", "Returns", "Unrealised P&L"],
+      company_name: ["Stock Name"],
+      quantity: ["Quantity"],
+      avg_price: ["Average buy price"],
+      invested_amount: ["Buy value"],
+      ltp: ["Closing price"],
+      unrealized_pl: ["Unrealised P&L"],
+      // "trading_symbol" is not present in the export — handled via defaultAiFill
     },
-    exportGuideUrl: "https://groww.in/stocks/user/explore",
+    exportGuideUrl: "https://groww.in/portfolio",
     exportSteps: [
-      "Log in to your Groww account",
-      "Go to Profile → Reports → Holdings",
-      'Click "CMR Copy" or "Holding Statement"',
-      "Download the report received via email",
-      "Upload the downloaded file here",
+      "Log in to your Groww account (app or web)",
+      "Tap/click Portfolio → Stocks",
+      "Tap the Download icon (↓) at the top-right",
+      "The file downloads as an Excel (.xlsx) file",
+      "Upload the downloaded .xlsx file here",
     ],
-    fileTypes: ["xlsx", "csv", "pdf"],
+    exportNote: "⚠️ The downloaded file contains a summary section at the top followed by the holdings table. The parser will automatically skip the header rows.",
+    fileTypes: ["xlsx"],
+    // trading_symbol is absent from Groww's export — always AI-fill it
+    defaultAiFill: ["trading_symbol"],
     logoUrl: "https://resources.groww.in/web-assets/img/website-logo/groww_logo.webp",
   },
 
