@@ -305,13 +305,18 @@ export default function RecommendationsPage() {
       {!loading && !error && (data?.scored.length ?? 0) > 0 && Object.keys(sourceBreakdown).length === 0 && (
         <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 px-4 py-3 flex items-start gap-3 text-sm">
           <span className="text-amber-400 text-lg leading-none mt-0.5">⚡</span>
-          <div>
+          <div className="flex-1">
             <p className="font-medium text-amber-400">Advisor signals not yet loaded</p>
             <p className="text-muted-foreground mt-0.5">
-              The per-advisor logo grid appears after the nightly advisory scan runs.
-              Trigger it manually via your cron endpoint{" "}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">POST /api/cron/advisory-scan</code>{" "}
-              with your service-role key as a Bearer token.
+              Run a scan to populate the per-advisor logo grid.{" "}
+              <button
+                onClick={triggerScan}
+                disabled={scanning || (scanUsage?.remaining ?? 1) <= 0}
+                className="underline hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {scanning ? "Scanning…" : "Scan now"}
+              </button>
+              {scanUsage && <span className="ml-1 opacity-60">({scanUsage.remaining} of {scanUsage.max} left today)</span>}
             </p>
           </div>
         </div>
