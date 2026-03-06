@@ -13,6 +13,11 @@ import type { AdvisorySource, RawSourceContent } from "./types"
 
 const TAVILY_API_URL = "https://api.tavily.com/search"
 
+/** Thrown when Tavily returns 432 (monthly credits exhausted). */
+class TavilyRateLimitError extends Error {
+  constructor() { super("Tavily credits exhausted (HTTP 432)") }
+}
+
 // ── Tavily mode ─────────────────────────────────────────────────────────────
 
 async function fetchViaTavily(
@@ -32,13 +37,18 @@ async function fetchViaTavily(
       body: JSON.stringify({
         api_key: tavilyKey,
         query,
-        search_depth: "advanced",
-        include_answer: true,
+        search_depth: "basic",    // 1 credit vs 2 for "advanced"
+        include_answer: false,
         include_raw_content: false,
-        max_results: 5,
+        max_results: 3,            // was 5 — reduces credit burn
         include_domains: source.website_url ? [new URL(source.website_url).hostname] : undefined,
       }),
     })
+
+    if (res.status === 432) {
+      // Monthly credits exhausted — throw so callers can fall back to direct fetch
+      throw new TavilyRateLimitError()
+    }
 
     if (!res.ok) {
       console.error(`[scraper/tavily] ${source.name} HTTP ${res.status}`)
@@ -146,20 +156,34 @@ export async function scrapeSource(
 
   switch (source.scrape_mode) {
     case "tavily":
-      return fetchViaTavily(source, symbols, tavilyKey)
+      try {
+        return await fetchViaTavily(source, symbols, tavilyKey)
+      } catch (err) {
+        if (err instanceof TavilyRateLimitError) {
+          console.warn(`[scraper] Tavily credits exhausted — direct-fetch fallback for ${source.name}`)
+          return fetchDirect(source)
+        }
+        console.error(`[scraper/tavily] ${source.name} unexpected error:`, err)
+        return []
+      }
 
     case "fetch":
       return fetchDirect(source)
 
     case "both": {
-      const [tavilyResults, directResults] = await Promise.allSettled([
-        fetchViaTavily(source, symbols, tavilyKey),
-        fetchDirect(source),
-      ])
-      return [
-        ...(tavilyResults.status === "fulfilled" ? tavilyResults.value : []),
-        ...(directResults.status === "fulfilled" ? directResults.value : []),
-      ]
+      // Run in sequence so a 432 on Tavily doesn't block the direct fetch
+      let tavilyContent: RawSourceContent[] = []
+      try {
+        tavilyContent = await fetchViaTavily(source, symbols, tavilyKey)
+      } catch (err) {
+        if (err instanceof TavilyRateLimitError) {
+          console.warn(`[scraper] Tavily credits exhausted — skipping Tavily for ${source.name}`)
+        } else {
+          console.error(`[scraper/tavily] ${source.name} unexpected error:`, err)
+        }
+      }
+      const directContent = await fetchDirect(source)
+      return [...tavilyContent, ...directContent]
     }
 
     default:

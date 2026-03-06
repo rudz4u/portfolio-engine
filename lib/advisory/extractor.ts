@@ -35,7 +35,7 @@ Rules:
 - Return ONLY a valid JSON array — no markdown, no explanation.`
 
 async function callGemini(content: string, apiKey: string): Promise<RawRecommendation[]> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`
 
   const res = await fetch(url, {
     method: "POST",
