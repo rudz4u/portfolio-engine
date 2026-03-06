@@ -309,19 +309,8 @@ export default function SignInForm() {
 
             {/* ── Broker OAuth buttons ── */}
             <div className="space-y-2.5">
-              <motion.a
-                href="/api/oauth/upstox/authorize"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                className="group flex w-full items-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:border-violet-500/40 hover:bg-white/[0.08]"
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 text-[10px] font-bold text-white shadow">U</span>
-                Connect with Upstox
-                <ArrowRight className="ml-auto h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
-              </motion.a>
-
               <div className="flex gap-2">
-                {["Zerodha", "Angel One", "Dhan"].map((b) => (
+                {["Upstox", "Zerodha", "Angel One", "Dhan"].map((b) => (
                   <div key={b} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] py-2 text-[11px] text-white/25">
                     {b}
                     <span className="rounded bg-white/[0.06] px-1 py-0.5 text-[9px] text-white/20">Soon</span>
