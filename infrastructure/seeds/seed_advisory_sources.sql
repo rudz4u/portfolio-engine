@@ -1,4 +1,4 @@
--- Seed: 17 SEBI-registered Advisory Sources
+-- Seed: 20 SEBI-registered Advisory Sources
 -- Run AFTER migration 010_advisory_system.sql
 --
 -- Tier assignment:
@@ -98,7 +98,9 @@ VALUES
 (
   'Trendlyne',
   'INA300016738',
-  'https://trendlyne.com/research-reports/',
+  'https://trendlyne.com/research-reports/all/',
+  -- /all/ page is a structured table (Date|Company|Broker|Target|CMP|Upside%|Signal)
+  -- aggregating 50+ brokers — far richer than the bare /research-reports/ root
   3, 0.65, 'both'
 ),
 (
@@ -126,6 +128,29 @@ VALUES
   'INH000015686',
   'https://risingresearch.in/reports/',
   4, 0.55, 'tavily'
+),
+
+-- ── Tier 2 additions: Major institutional research houses ─────────────────
+(
+  'Emkay Global',
+  'INH000000354',
+  'https://www.emkayglobal.com/research/reports',
+  -- Public research page updated regularly; Emkay is top-10 institutional research house
+  2, 0.75, 'tavily'
+),
+(
+  'Prabhudas Lilladher',
+  'INH000000271',
+  'https://www.plindia.com/research/',
+  -- PL Capital research hub; SEBI RA INH000000271 (from plindia.com footer)
+  2, 0.75, 'tavily'
+),
+(
+  'Nirmal Bang',
+  'INH000001766',
+  'https://www.nirmalbang.com/nb-research/equity-research-report-india.aspx',
+  -- Retail research desk; publishes regular equity research reports
+  2, 0.75, 'tavily'
 )
 
 ON CONFLICT (name) DO UPDATE SET
