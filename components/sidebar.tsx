@@ -60,6 +60,7 @@ const navItems: NavItem[] = [
     icon: Settings,
     tourId: "tour-settings",
     submenu: [
+      { href: "/settings/profile", label: "Profile & Privacy", icon: Lock },
       { href: "/settings/connection", label: "Connection", icon: Zap },
       { href: "/settings/ai", label: "AI & Keys", icon: Lock },
       { href: "/settings/notifications", label: "Notifications", icon: Bell },

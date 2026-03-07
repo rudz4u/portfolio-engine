@@ -18,20 +18,32 @@ export default function NotificationsPage() {
   const [priceAlert, setPriceAlert] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadSettings()
   }, [])
 
   async function loadSettings() {
-    const res = await fetch("/api/settings")
-    if (!res.ok) return
-    const data = await res.json()
-    setEmailRecipients(data.email_recipients || [])
-    setSendDigest(data.send_digest_email)
-    setOrderPlaced(data.notify_order_placed)
-    setPortfolioAlert(data.notify_portfolio_alert)
-    setPriceAlert(data.notify_price_alert)
+    try {
+      const res = await fetch("/api/settings")
+      if (!res.ok) {
+        setLoading(false)
+        return
+      }
+      const data = await res.json()
+      // Parse comma-separated email string into array
+      const emails = data.notification_emails ? data.notification_emails.split(",").map((e: string) => e.trim()).filter((e: string) => e) : []
+      setEmailRecipients(emails)
+      setSendDigest(data.notif_daily_digest !== false)
+      setOrderPlaced(data.notif_order_placed !== false)
+      setPortfolioAlert(data.notif_portfolio_alert === true)
+      setPriceAlert(data.notif_price_alert === true)
+    } catch (error) {
+      console.error("Failed to load settings:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleAddEmail = () => {
@@ -61,21 +73,28 @@ export default function NotificationsPage() {
 
   async function handleSave() {
     setSaving(true)
-    const res = await fetch("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email_recipients: emailRecipients,
-        send_digest_email: sendDigest,
-        notify_order_placed: orderPlaced,
-        notify_portfolio_alert: portfolioAlert,
-        notify_price_alert: priceAlert,
-      }),
-    })
-    setSaving(false)
-    if (res.ok) {
-      toast({ title: "Notification settings saved!" })
-    } else {
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          notification_emails: emailRecipients.join(","),
+          notif_daily_digest: sendDigest,
+          notif_order_placed: orderPlaced,
+          notif_portfolio_alert: portfolioAlert,
+          notif_price_alert: priceAlert,
+        }),
+      })
+      setSaving(false)
+      if (res.ok) {
+        toast({ title: "Notification settings saved!" })
+        loadSettings() // Reload to confirm
+      } else {
+        const error = await res.json()
+        toast({ title: error.error || "Failed to save settings", variant: "destructive" })
+      }
+    } catch (error) {
+      setSaving(false)
       toast({ title: "Failed to save settings", variant: "destructive" })
     }
   }
@@ -86,15 +105,21 @@ export default function NotificationsPage() {
       return
     }
     setTestLoading(true)
-    const res = await fetch("/api/notifications/send-test-digest", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recipients: emailRecipients }),
-    })
-    setTestLoading(false)
-    if (res.ok) {
-      toast({ title: "Test digest sent! Check your inbox." })
-    } else {
+    try {
+      const res = await fetch("/api/notifications/send-test-digest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipients: emailRecipients }),
+      })
+      setTestLoading(false)
+      if (res.ok) {
+        toast({ title: "Test digest sent! Check your inbox." })
+      } else {
+        const error = await res.json()
+        toast({ title: error.error || "Failed to send test digest", variant: "destructive" })
+      }
+    } catch (error) {
+      setTestLoading(false)
       toast({ title: "Failed to send test digest", variant: "destructive" })
     }
   }
