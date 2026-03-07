@@ -115,25 +115,33 @@ function SidebarContent({ pathname, onNavClick, onSignOut, onTakeTour }: Sidebar
                 <button
                   onClick={() => setExpandedSubmenu(isExpanded ? null : item.href)}
                   className={cn(
-                    "group flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
-                    active || isExpanded
+                    "group flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    isExpanded
+                      ? "bg-gradient-to-r from-primary/10 via-primary/5 to-transparent text-primary border-l-2 border-primary/40"
+                      : active
                       ? "nav-active text-primary"
                       : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                   )}
                 >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 shrink-0 transition-colors",
-                      active || isExpanded ? "text-primary" : "group-hover:text-foreground"
-                    )}
-                  />
+                  <motion.div
+                    animate={{ scale: isExpanded ? 1.1 : 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 shrink-0 transition-all duration-200",
+                        isExpanded || active ? "text-primary" : "group-hover:text-foreground"
+                      )}
+                    />
+                  </motion.div>
                   {item.label}
-                  <ChevronDown
-                    className={cn(
-                      "ml-auto h-4 w-4 transition-transform duration-200",
-                      isExpanded ? "rotate-180" : ""
-                    )}
-                  />
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="ml-auto flex items-center justify-center"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </motion.div>
                 </button>
               ) : (
                 <Link
@@ -168,44 +176,69 @@ function SidebarContent({ pathname, onNavClick, onSignOut, onTakeTour }: Sidebar
               <AnimatePresence>
                 {isExpanded && item.submenu && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-0.5 overflow-hidden"
+                    initial={{ opacity: 0, height: 0, marginTop: -8 }}
+                    animate={{ opacity: 1, height: "auto", marginTop: 8 }}
+                    exit={{ opacity: 0, height: 0, marginTop: -8 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    className="overflow-hidden border-l-2 border-primary/20 bg-gradient-to-r from-primary/5 via-transparent to-transparent rounded-l-lg"
                   >
-                    {item.submenu.map((subitem) => {
-                      const SubIcon = subitem.icon
-                      const subActive = pathname === subitem.href
-                      return (
-                        <Link
-                          key={subitem.href}
-                          href={subitem.href}
-                          onClick={onNavClick}
-                          className={cn(
-                            "group flex items-center gap-3 pl-9 pr-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
-                            subActive
-                              ? "nav-active text-primary"
-                              : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                          )}
-                        >
-                          <SubIcon
-                            className={cn(
-                              "h-3.5 w-3.5 shrink-0 transition-colors",
-                              subActive ? "text-primary" : "group-hover:text-foreground"
-                            )}
-                          />
-                          {subitem.label}
-                          {subActive && (
-                            <motion.span
-                              layoutId="active-nav-indicator-sub"
-                              className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]"
-                              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                            />
-                          )}
-                        </Link>
-                      )
-                    })}
+                    <div className="space-y-0.5 py-1.5 pl-3 pr-2">
+                      {item.submenu.map((subitem, idx) => {
+                        const SubIcon = subitem.icon
+                        const subActive = pathname === subitem.href
+                        return (
+                          <motion.div
+                            key={subitem.href}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -8 }}
+                            transition={{
+                              delay: idx * 0.05,
+                              duration: 0.2,
+                              ease: "easeOut",
+                            }}
+                          >
+                            <Link
+                              href={subitem.href}
+                              onClick={onNavClick}
+                              className={cn(
+                                "group flex items-center gap-2.5 pl-3 pr-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 relative",
+                                subActive
+                                  ? "bg-primary/10 text-primary shadow-sm"
+                                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                              )}
+                            >
+                              <div className={cn(
+                                "relative flex items-center justify-center h-5 w-5 rounded-sm transition-all duration-200",
+                                subActive ? "bg-primary/15" : "group-hover:bg-white/5"
+                              )}>
+                                <SubIcon
+                                  className={cn(
+                                    "h-3 w-3 shrink-0 transition-all duration-200",
+                                    subActive
+                                      ? "text-primary scale-110"
+                                      : "text-muted-foreground group-hover:text-foreground"
+                                  )}
+                                />
+                              </div>
+                              <span className={cn(
+                                "truncate flex-1 transition-all duration-200",
+                                subActive ? "font-semibold text-primary" : "font-normal"
+                              )}>
+                                {subitem.label}
+                              </span>
+                              {subActive && (
+                                <motion.span
+                                  layoutId="active-submenu-dot"
+                                  className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_4px_hsl(var(--primary))] flex-shrink-0"
+                                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                />
+                              )}
+                            </Link>
+                          </motion.div>
+                        )
+                      })}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
