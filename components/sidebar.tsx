@@ -51,7 +51,7 @@ const navItems: NavItem[] = [
   { href: "/portfolio",       label: "Portfolio",       icon: Briefcase,       tourId: "tour-portfolio" },
   { href: "/analytics",       label: "Analytics",       icon: BarChart2,       tourId: "tour-analytics" },
   { href: "/watchlist",       label: "Watchlist",       icon: Bookmark,        tourId: "tour-watchlist" },
-  { href: "/recommendations", label: "Recommendations", icon: Star,            tourId: "tour-recommendations" },
+  { href: "/recommendations", label: "Portfolio Signals", icon: Star,            tourId: "tour-recommendations" },
   { href: "/trade",           label: "Trade",           icon: TrendingUp,      tourId: "tour-trade" },
   { href: "/assistant",       label: "AI Assistant",    icon: Bot,             tourId: "tour-assistant" },
   {

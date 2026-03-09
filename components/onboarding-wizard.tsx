@@ -174,8 +174,8 @@ function StepWelcome() {
           Hi, I&rsquo;m <span className="bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">Buddy!</span>
         </h2>
         <p className="text-sm text-white/50 leading-relaxed max-w-xs mx-auto">
-          Your AI equity co-pilot. I&rsquo;ll help you track your portfolio, analyse stocks,
-          and surface smart buy/sell signals — all in one place.
+          Your AI equity co-pilot. I&rsquo;ll help you track your portfolio, analyse market data,
+          and surface quant portfolio analytics — all in one place.
         </p>
       </div>
       <div className="mt-2 flex flex-col gap-2 w-full max-w-xs text-left">

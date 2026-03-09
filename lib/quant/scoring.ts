@@ -146,19 +146,19 @@ export function scoreHoldings(holdings: HoldingInput[], weights?: ScoringWeights
       if (score >= 70 && pnl_pct > -10) {
         signal = "BUY"
         signal_reason = pnl_pct < 0
-          ? "Dip with strong momentum — potential accumulation zone"
-          : "Strong momentum + good sizing — consider adding"
+          ? "Strong quant score — elevated momentum in a dip"
+          : "Strong quant score — momentum elevated, position sized appropriately"
       } else if (score >= 50) {
         signal = "HOLD"
-        signal_reason = "Balanced risk-reward — maintain position"
+        signal_reason = "Moderate quant score — momentum balanced, monitor for trend change"
       } else if (score < 35 || pnl_pct < -20) {
         signal = "SELL"
         signal_reason = pnl_pct < -20
-          ? "Severe drawdown — review thesis or cut losses"
-          : "Weak momentum + poor sizing — consider trimming"
+          ? "Significant drawdown detected — quant score weakened, review allocation"
+          : "Low quant score — weak momentum, position may be oversized"
       } else {
         signal = "WATCH"
-        signal_reason = "Mixed signals — monitor for trend confirmation"
+        signal_reason = "Mixed quant signals — monitor for directional confirmation"
       }
 
       return {

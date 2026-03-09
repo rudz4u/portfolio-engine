@@ -78,6 +78,19 @@ const SIGNAL_STYLES: Record<string, string> = {
 const SIGNAL_FILTER_BUTTONS = ["All", "BUY", "HOLD", "SELL", "WATCH"] as const
 type FilterType = (typeof SIGNAL_FILTER_BUTTONS)[number]
 
+// ── Compliant display labels ─────────────────────────────────────────────────
+// Internal enum values (BUY / SELL / etc.) are used for DB queries and quant
+// logic only. The UI renders these human-readable, analytics-framed labels to
+// avoid SEBI Investment Adviser language (IA Regs, 2013).
+const SIGNAL_DISPLAY: Record<string, string> = {
+  BUY:        "Opportunity",
+  HOLD:       "Neutral",
+  SELL:       "Review",
+  WATCH:      "Monitor",
+  STRONG_BUY:  "High Opportunity",
+  STRONG_SELL: "High Review",
+}
+
 function ScoreBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = Math.min(100, (value / max) * 100)
   return (
@@ -214,9 +227,9 @@ export default function RecommendationsPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Recommendations</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Portfolio Signals</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            AI-powered signals computed from your portfolio data
+            Quant analytics computed from your live portfolio data
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -257,6 +270,17 @@ export default function RecommendationsPage() {
         </div>
       </div>
 
+      {/* ── Compliance disclaimer ──────────────────────────────────────────── */}
+      <div className="rounded-xl border border-muted/60 bg-muted/20 px-4 py-3 flex items-start gap-3 text-xs text-muted-foreground">
+        <span className="text-base leading-none mt-0.5">ℹ️</span>
+        <p>
+          <span className="font-semibold text-foreground/70">For informational purposes only.</span>{" "}
+          These quant scores and momentum indicators are generated from your portfolio data by an algorithmic model.
+          They are <span className="font-semibold">not investment advice</span> and do not constitute a recommendation to buy, sell, or hold any security.
+          InvestBuddy AI is not a SEBI-registered Investment Adviser. Please consult a SEBI-registered adviser before making investment decisions.
+        </p>
+      </div>
+
       {/* Summary cards */}
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -279,7 +303,7 @@ export default function RecommendationsPage() {
               onClick={() => setFilter(filter === sig ? "All" : sig)}
             >
               <CardContent className="pt-4 pb-3 px-4">
-                <div className={`text-xs font-medium ${SIGNAL_STYLES[sig].split(" ")[1]}`}>{sig}</div>
+                <div className={`text-xs font-medium ${SIGNAL_STYLES[sig].split(" ")[1]}`}>{SIGNAL_DISPLAY[sig] ?? sig}</div>
                 <div className="text-2xl font-bold mt-1">{data.summary.bySignal[sig]}</div>
               </CardContent>
             </Card>
@@ -299,7 +323,7 @@ export default function RecommendationsPage() {
                 : "border-border text-muted-foreground hover:text-foreground"
             }`}
           >
-            {f}
+            {f === "All" ? "All" : (SIGNAL_DISPLAY[f] ?? f)}
             {f !== "All" && data ? ` (${data.summary.bySignal[f]})` : ""}
           </button>
         ))}
@@ -366,7 +390,7 @@ export default function RecommendationsPage() {
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${SIGNAL_STYLES[h.signal]}`}
                       >
-                        {h.signal}
+                        {SIGNAL_DISPLAY[h.signal] ?? h.signal}
                       </span>
                       {h.segment && (
                         <span className="text-xs text-muted-foreground border rounded px-1.5 py-0.5">
@@ -454,8 +478,8 @@ export default function RecommendationsPage() {
                       CONSENSUS_STYLES[consensusMap[h.trading_symbol].consensus_signal]
                     }`}>
                       <BarChart2 className="w-2.5 h-2.5" />
-                      {consensusMap[h.trading_symbol].consensus_signal.replace("_", "\u00A0")}&nbsp;·&nbsp;
-                      {consensusMap[h.trading_symbol].total_sources} advisors
+                      {SIGNAL_DISPLAY[consensusMap[h.trading_symbol].consensus_signal] ?? consensusMap[h.trading_symbol].consensus_signal.replace("_", "\u00A0")}&nbsp;·&nbsp;
+                      {consensusMap[h.trading_symbol].total_sources} research sources
                     </span>
                   )}
                 </div>
@@ -465,10 +489,10 @@ export default function RecommendationsPage() {
                   const c = consensusMap[h.trading_symbol]
                   return (
                     <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
-                      <span className="text-emerald-400">▲ {c.buy_count} Buy</span>
-                      <span>◆ {c.hold_count} Hold</span>
-                      <span className="text-red-400">▼ {c.sell_count} Sell</span>
-                      <span className="ml-1 opacity-60">Consensus {c.weighted_score.toFixed(0)}/100</span>
+                      <span className="text-emerald-400">▲ {c.buy_count} Research Buy</span>
+                      <span>◆ {c.hold_count} Research Hold</span>
+                      <span className="text-red-400">▼ {c.sell_count} Research Sell</span>
+                      <span className="ml-1 opacity-60">Research Score {c.weighted_score.toFixed(0)}/100</span>
                     </div>
                   )
                 })()}
