@@ -15,15 +15,10 @@ export default function SignInForm() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") || "/dashboard"
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [fullName, setFullName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [message, setMessage] = useState("")
-  const [termsAccepted, setTermsAccepted] = useState(false)
-  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
 
   const supabase = createClient()
 
@@ -43,29 +38,6 @@ export default function SignInForm() {
     } else {
       router.push(redirect)
       router.refresh()
-    }
-  }
-
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    })
-
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
-      setMessage("Account created! Check your email to confirm, then sign in.")
-      setMode("signin")
-      setLoading(false)
     }
   }
 
@@ -96,12 +68,12 @@ export default function SignInForm() {
         </div>
 
         <h2 className="text-4xl font-bold leading-tight text-white mb-4">
-          Your AI-Powered<br />
+          Your Portfolio<br />
           <span className="gradient-text">Equity Command</span><br />
           Centre
         </h2>
         <p className="text-base text-white/50 mb-10 max-w-sm leading-relaxed">
-          Real-time portfolio intelligence, AI-driven recommendations and sector analysis — all in one place.
+          Real-time portfolio analytics, risk context, and sector analysis in one dashboard.
         </p>
 
         {/* Feature list */}
@@ -118,8 +90,8 @@ export default function SignInForm() {
               icon: BarChart2,
               color: "text-blue-400",
               bg: "bg-blue-500/10",
-              title: "AI Recommendations",
-              desc: "Buy, hold, or exit signals powered by composite quant scoring.",
+              title: "AI Research Summaries",
+              desc: "Structured summaries of quant indicators and advisory context.",
             },
             {
               icon: ShieldCheck,
@@ -170,53 +142,17 @@ export default function SignInForm() {
 
             {/* Header */}
             <div className="mb-7">
-              <h1 className="text-xl font-bold text-white">
-                {mode === "signin" ? "Welcome back" : "Create account"}
-              </h1>
+              <h1 className="text-xl font-bold text-white">Welcome back</h1>
               <p className="mt-1 text-sm text-white/45">
-                {mode === "signin"
-                  ? "Sign in to access your portfolio"
-                  : "Start managing your equity portfolio"}
+                Sign in to access your portfolio dashboard.
               </p>
-            </div>
-
-            {/* Mode toggle */}
-            <div className="mb-6 flex rounded-lg bg-white/[0.05] p-1 gap-1">
-              {(["signin", "signup"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => { setMode(m); setError(""); setMessage("") }}
-                  className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
-                    mode === m
-                      ? "bg-white/10 text-white shadow"
-                      : "text-white/40 hover:text-white/70"
-                  }`}
-                >
-                  {m === "signin" ? "Sign In" : "Sign Up"}
-                </button>
-              ))}
             </div>
 
             {/* Form */}
             <form
-              onSubmit={mode === "signin" ? handleSignIn : handleSignUp}
+              onSubmit={handleSignIn}
               className="space-y-4"
             >
-              {mode === "signup" && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="fullName" className="text-xs text-white/60 uppercase tracking-wide">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    placeholder="Your name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                    className="bg-white/[0.06] border-white/10 placeholder:text-white/25 focus:border-violet-500/60 focus:ring-violet-500/20"
-                  />
-                </div>
-              )}
-
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-xs text-white/60 uppercase tracking-wide">Email</Label>
                 <Input
@@ -244,80 +180,35 @@ export default function SignInForm() {
                 />
               </div>
 
-              {mode === "signup" && (
-                <div className="space-y-3 pt-1">
-                  <label className="flex items-start gap-2.5 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={termsAccepted}
-                      onChange={(e) => setTermsAccepted(e.target.checked)}
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-500 cursor-pointer"
-                    />
-                    <span className="text-[11px] text-white/45 leading-relaxed group-hover:text-white/60 transition-colors">
-                      I agree to the{" "}
-                      <Link href="/legal/terms" target="_blank" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Terms of Service</Link>,{" "}
-                      <Link href="/legal/privacy" target="_blank" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Privacy Policy</Link>, and{" "}
-                      <Link href="/legal/beta-agreement" target="_blank" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Beta User Agreement</Link>.
-                    </span>
-                  </label>
-                  <label className="flex items-start gap-2.5 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={disclaimerAccepted}
-                      onChange={(e) => setDisclaimerAccepted(e.target.checked)}
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-500 cursor-pointer"
-                    />
-                    <span className="text-[11px] text-white/45 leading-relaxed group-hover:text-white/60 transition-colors">
-                      I acknowledge that Invest Buddy AI is <strong className="text-white/60">NOT a SEBI-registered adviser</strong> and does not provide regulated investment advice.{" "}
-                      <Link href="/legal/disclaimer" target="_blank" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Read Disclaimer</Link>
-                    </span>
-                  </label>
-                </div>
-              )}
-
               {error && (
                 <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5">
                   <p className="text-sm text-red-400">{error}</p>
                 </div>
               )}
 
-              {message && (
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2.5">
-                  <p className="text-sm text-emerald-400">{message}</p>
-                </div>
-              )}
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5">
+                <p className="text-xs text-amber-300">
+                  Informational analytics only. InvestBuddy AI is not a SEBI-registered investment adviser and does not provide regulated investment advice.
+                  <Link href="/legal/disclaimer" target="_blank" className="ml-1 text-amber-200 underline underline-offset-2 hover:text-white">Read disclaimer</Link>
+                </p>
+              </div>
 
               <Button
                 type="submit"
-                disabled={loading || (mode === "signup" && (!termsAccepted || !disclaimerAccepted))}
+                disabled={loading}
                 className="w-full btn-gradient mt-2 gap-2 font-semibold shadow-lg shadow-violet-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading
                   ? <Loader2 className="h-4 w-4 animate-spin" />
                   : <ArrowRight className="h-4 w-4" />
                 }
-                {mode === "signin" ? "Sign In" : "Create Account"}
+                Sign In
               </Button>
             </form>
 
-            {/* ── OR divider ── */}
-            <div className="relative my-5 flex items-center gap-3">
-              <div className="flex-1 border-t border-white/[0.08]" />
-              <span className="text-[10px] font-medium uppercase tracking-widest text-white/30">or continue with</span>
-              <div className="flex-1 border-t border-white/[0.08]" />
-            </div>
-
-            {/* ── Broker OAuth buttons ── */}
-            <div className="space-y-2.5">
-              <div className="flex gap-2">
-                {["Upstox", "Zerodha", "Angel One", "Dhan"].map((b) => (
-                  <div key={b} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] py-2 text-[11px] text-white/25">
-                    {b}
-                    <span className="rounded bg-white/[0.06] px-1 py-0.5 text-[9px] text-white/20">Soon</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <p className="mt-5 text-center text-[11px] text-white/35">
+              Account registration is currently disabled on this page.
+            </p>
           </div>
 
           <p className="mt-5 text-center text-xs text-white/30">

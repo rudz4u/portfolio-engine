@@ -24,7 +24,7 @@ const jsonLd = {
   "applicationCategory": "FinanceApplication",
   "operatingSystem": "Web",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
-  "featureList": ["Live portfolio tracking", "RSI MACD Bollinger Band signals", "AI buy/sell recommendations", "Advisory intelligence aggregation", "Upstox OAuth integration", "Sector and correlation analytics"],
+  "featureList": ["Live portfolio tracking", "RSI MACD Bollinger Band signals", "AI research summaries", "Advisory intelligence aggregation", "Upstox OAuth integration", "Sector and correlation analytics"],
   "inLanguage": "en-IN",
   "author": { "@type": "Organization", "name": "InvestBuddy AI", "url": "https://investbuddyai.com" },
 }
@@ -328,7 +328,7 @@ function QuantTerminal() {
                   <p className="text-amber-400 font-mono text-sm mb-1">{result.symbol}</p>
                   <p className="text-xs text-emerald-400/40 font-mono mb-4">{result.note}</p>
                   <Link href="/signin" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-300 font-mono text-xs font-bold hover:bg-amber-500/25 transition-all">
-                    SIGN UP TO TRIGGER ANALYSIS <ArrowRight className="h-3.5 w-3.5" />
+                    SIGN IN TO TRIGGER ANALYSIS <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </motion.div>
               )}
@@ -378,7 +378,7 @@ export default function HomePage() {
   const typewriterText = useTypewriter([
     "Your Portfolio\u2019s Intelligence Layer",
     "RSI \u00B7 MACD \u00B7 Bollinger Bands",
-    "AI Buy/Sell Recommendations",
+    "AI Research Summaries",
     "17+ SEBI Advisory Sources",
     "Live Upstox Portfolio Sync",
     "Sector Correlation Analytics",
@@ -408,7 +408,7 @@ export default function HomePage() {
               </motion.div>
               <motion.div variants={fadeIn} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
                 <Button size="sm" className="btn-gradient border-0 glow" asChild>
-                  <Link href="/signin">Get Started <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Link>
+                  <Link href="/signin">Open Dashboard <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Link>
                 </Button>
               </motion.div>
             </motion.div>
@@ -451,7 +451,7 @@ export default function HomePage() {
                 className="flex flex-col sm:flex-row gap-3 justify-center mb-14">
                 <motion.div variants={fadeUp} whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
                   <Button size="lg" className="btn-gradient border-0 glow text-base px-7" asChild>
-                    <Link href="/signin">Start Free — No Card Needed <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                    <Link href="/signin">Sign In to Continue <ArrowRight className="ml-2 h-4 w-4" /></Link>
                   </Button>
                 </motion.div>
                 <motion.div variants={fadeUp} whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
@@ -465,8 +465,8 @@ export default function HomePage() {
                 className="grid grid-cols-3 gap-3 max-w-2xl mx-auto mb-12">
                 {[
                   { label: "Portfolio Value", value: "₹3.67L", sub: "+8.67%", subColor: "text-emerald-400" },
-                  { label: "Today P&L",       value: "+₹1,847", sub: "44 holdings", subColor: "text-emerald-400" },
-                  { label: "Quant Score",     value: "74/100",  sub: "STRONG BUY", subColor: "text-violet-400" },
+                  { label: "Today P&L",       value: "+₹1,847", sub: "44 active positions", subColor: "text-emerald-400" },
+                  { label: "Quant Score",     value: "74/100",  sub: "RISK REVIEW NEEDED", subColor: "text-violet-400" },
                 ].map((card, i) => (
                   <motion.div key={i} variants={fadeUp}
                     className="glass rounded-xl border border-border/70 px-3 py-3 shadow-xl backdrop-blur-xl text-left">
@@ -480,10 +480,10 @@ export default function HomePage() {
               <motion.div variants={staggerContainer(0.1, 0.8)} initial="hidden" animate="show"
                 className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-xl mx-auto">
                 {[
-                  { target: 50, suffix: "+", label: "Stocks tracked" },
-                  { target: 6,  suffix: "",  label: "Quant signals" },
-                  { target: 4,  suffix: "",  label: "AI providers" },
-                  { target: 17, suffix: "+", label: "SEBI advisors" },
+                  { target: 44, suffix: "",  label: "Active portfolio positions" },
+                  { target: 6,  suffix: "",  label: "Quant factors in score" },
+                  { target: 4,  suffix: "",  label: "AI models available" },
+                  { target: 17, suffix: "+", label: "SEBI advisor feeds" },
                 ].map((s) => (
                   <motion.div key={s.label} variants={fadeUp} className="text-center">
                     <div className="text-2xl font-bold gradient-text font-mono tabular-nums">
@@ -508,7 +508,7 @@ export default function HomePage() {
                   How <span className="gradient-text">InvestBuddy AI</span> Works
                 </h2>
                 <p className="text-muted-foreground text-sm max-w-md mx-auto">
-                  From broker connection to AI-powered trade signal in three steps.
+                  From broker connection to portfolio analysis in three steps.
                 </p>
               </motion.div>
               <div className="relative">
@@ -519,8 +519,8 @@ export default function HomePage() {
                   className="grid sm:grid-cols-3 gap-8 sm:gap-12">
                   {[
                     { icon: Plug,        step: "01", title: "Connect Your Broker",    color: "from-violet-500 to-purple-600", desc: "OAuth with Upstox or Zerodha (coming soon). Or import holdings manually. Secure, read-first." },
-                    { icon: LineChart,   step: "02", title: "Get Quant + AI Signals", color: "from-blue-500 to-cyan-500",     desc: "Composite scoring: RSI, MACD, valuation, sector correlation, and SEBI advisory intelligence." },
-                    { icon: ShieldCheck, step: "03", title: "Trade with Confidence",  color: "from-emerald-500 to-teal-500",  desc: "Every order requires your explicit confirmation. AI suggests, you decide. Always." },
+                    { icon: LineChart,   step: "02", title: "Review Quant + AI Analysis", color: "from-blue-500 to-cyan-500", desc: "Composite scoring: RSI, MACD, valuation, sector correlation, and SEBI advisory intelligence." },
+                    { icon: ShieldCheck, step: "03", title: "Make Your Own Decision",  color: "from-emerald-500 to-teal-500",  desc: "Insights are informational. You decide execution with your broker." },
                   ].map((s) => (
                     <motion.div key={s.step} variants={fadeUp} className="text-center">
                       <motion.div initial={{ scale: 0.7, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }}
@@ -543,7 +543,7 @@ export default function HomePage() {
             <div className="max-w-6xl mx-auto px-4">
               <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-12">
                 <h2 className="text-2xl sm:text-3xl font-bold mb-3">
-                  Everything You Need to <span className="gradient-text">Trade Smarter</span>
+                  Everything You Need for <span className="gradient-text">Portfolio Analysis</span>
                 </h2>
                 <p className="text-muted-foreground max-w-xl mx-auto text-sm">
                   A complete quant + AI platform built for Indian equity markets. NSE and BSE ready.
@@ -554,11 +554,11 @@ export default function HomePage() {
                 {[
                   { icon: TrendingUp, title: "Live Portfolio Tracking",        desc: "Sync from Upstox or add manually. Real-time P&L, segment allocation, performance breakdown.",                    color: "from-violet-500 to-purple-600" },
                   { icon: BarChart3,  title: "Quant Analysis Engine",          desc: "RSI, MACD, Bollinger Bands, ATR, Beta, Golden Cross — composite scoring across 6 dimensions.",              color: "from-blue-500 to-cyan-500" },
-                  { icon: Brain,      title: "AI Buy/Sell Recommendations",    desc: "LLM signals with SEBI advisor intelligence, news sentiment, and quantitative backing — daily updates.",     color: "from-emerald-500 to-teal-500" },
-                  { icon: Shield,     title: "Human-in-the-Loop Orders",       desc: "AI suggests. You decide. Every trade requires your explicit confirmation — always.",                         color: "from-orange-500 to-amber-500" },
+                  { icon: Brain,      title: "AI Research Summaries",          desc: "LLM-generated summaries with advisor context, news sentiment, and quantitative indicators.",                color: "from-emerald-500 to-teal-500" },
+                  { icon: Shield,     title: "Human-in-the-Loop Orders",       desc: "Execution stays user-controlled. Insights are informational and require your confirmation.",                     color: "from-orange-500 to-amber-500" },
                   { icon: Globe,      title: "Multi-Broker Integration",       desc: "Upstox live. Zerodha, Angel One, Dhan — coming in v0.2. One dashboard, all your holdings.",                 color: "from-pink-500 to-rose-500" },
                   { icon: Activity,   title: "Sector & Correlation Analytics", desc: "HHI concentration, Sharpe proxy, sector correlation heatmap — understand your real exposure.",             color: "from-indigo-500 to-violet-500" },
-                  { icon: Bot,        title: "AI Morning Briefing",            desc: "Daily portfolio email + in-app chat assistant. Route to GPT-4, Claude, or Gemini.",                               color: "from-teal-500 to-cyan-500" },
+                  { icon: Bot,        title: "AI Morning Briefing",            desc: "Daily portfolio email + in-app assistant with multi-model analysis.",                                              color: "from-teal-500 to-cyan-500" },
                   { icon: Star,       title: "Advisory Intelligence",          desc: "Aggregate from 17+ SEBI-registered advisors. Track records scored and weighted for recency and accuracy.",       color: "from-amber-500 to-yellow-500" },
                 ].map((f) => (
                   <motion.div key={f.title} variants={fadeUp}
@@ -598,7 +598,7 @@ export default function HomePage() {
                       "Zerodha, Angel One, Dhan — OAuth coming in v0.2",
                       "RSI, SMA, EMA, MACD, ATR, Bollinger Bands, Beta",
                       "India VIX-adjusted target pricing and stop-loss levels",
-                      "Multi-LLM routing — OpenAI, Anthropic Claude, Gemini",
+                      "Multi-model analysis routing",
                       "Chat assistant: morning briefing and portfolio Q&A",
                       "SEBI advisor aggregate with recency-decay track-record scoring",
                       "Privacy-first — no data sold, no third-party ad tracking",
@@ -647,7 +647,7 @@ export default function HomePage() {
             className="py-8 border-t border-border/50">
             <div className="max-w-4xl mx-auto px-4">
               <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-[11px] text-muted-foreground/50 font-mono">
-                {["NO DATA SOLD", "SUPABASE + NEXT.JS", "GPT-4o · CLAUDE · GEMINI", "NSE / BSE LIVE", "INDIAN MARKETS", "HUMAN-IN-THE-LOOP", "FREE IN BETA"].map((item, i) => (
+                {["NO DATA SOLD", "SECURE CLOUD INFRASTRUCTURE", "MULTI-MODEL ANALYSIS", "NSE / BSE LIVE", "INDIAN MARKETS", "HUMAN-IN-THE-LOOP", "FREE IN BETA"].map((item, i) => (
                   <span key={i} className="flex items-center gap-1.5">
                     <span className="h-1 w-1 rounded-full bg-primary/40" />{item}
                   </span>
@@ -661,13 +661,13 @@ export default function HomePage() {
             <div className="max-w-5xl mx-auto px-4">
               <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-10">
                 <h2 className="text-xl sm:text-2xl font-bold mb-2">Early Beta Feedback</h2>
-                <p className="text-sm text-muted-foreground">Trusted by early users managing ₹50L+ in equities.</p>
+                <p className="text-sm text-muted-foreground">Feedback on product usability and portfolio clarity.</p>
               </motion.div>
               <motion.div variants={staggerContainer(0.09)} initial="hidden" whileInView="show" viewport={viewport}
                 className="grid sm:grid-cols-3 gap-4">
                 {[
                   { quote: "Finally a platform that combines quant signals with AI — not just another screener. The advisory aggregation is a game-changer.", author: "Portfolio Manager, Mumbai", stars: 5 },
-                  { quote: "The composite score makes sense of 6 different signals at once. My hold/sell decisions are much more confident now.", author: "Retail Investor, Bengaluru",   stars: 5 },
+                  { quote: "The composite score makes sense of 6 different signals at once. It helps me review risk and allocation with more clarity.", author: "Retail Investor, Bengaluru",   stars: 5 },
                   { quote: "Upstox sync worked in under a minute. Morning briefing email is now a daily ritual. Waiting for Zerodha support!", author: "Technology Professional, Pune", stars: 4 },
                 ].map((t, i) => (
                   <motion.div key={i} variants={fadeUp} className="glass rounded-xl p-5 border border-border/60">
@@ -693,13 +693,13 @@ export default function HomePage() {
                 <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
                   <img src="/Logos/investbuddy_favicon_transparent.svg" alt="" className="h-10 w-10 mx-auto mb-5" aria-hidden="true" />
                 </motion.div>
-                <h2 className="text-2xl font-bold mb-3">Ready to trade smarter?</h2>
+                <h2 className="text-2xl font-bold mb-3">Ready to review your portfolio?</h2>
                 <p className="text-muted-foreground text-sm mb-2">Connect your broker in under 60 seconds. Free during beta.</p>
-                <p className="text-muted-foreground/50 text-xs mb-8">No credit card · No commitment · Upstox live, Zerodha coming soon</p>
+                <p className="text-muted-foreground/50 text-xs mb-8">Sign in only · No registration on this screen · Upstox live, Zerodha coming soon</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
                     <Button size="lg" className="btn-gradient border-0 glow" asChild>
-                      <Link href="/signin">Get Started Free <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                      <Link href="/signin">Sign In <ArrowRight className="ml-2 h-4 w-4" /></Link>
                     </Button>
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
@@ -736,7 +736,6 @@ export default function HomePage() {
               <div className="flex flex-col sm:items-end gap-2">
                 <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                   <Link href="/signin" className="hover:text-foreground transition-colors">Sign In</Link>
-                  <Link href="/signin" className="hover:text-foreground transition-colors">Sign Up</Link>
                   <Link href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
                 </div>
                 <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground/50">
@@ -748,7 +747,7 @@ export default function HomePage() {
                 <p className="text-[11px] text-muted-foreground/40">
                   © 2026 <a href="https://upflowsprint.com" target="_blank" rel="noopener noreferrer" className="hover:text-muted-foreground transition-colors">Upflow Sprint Private Limited</a>
                 </p>
-                <p className="text-[11px] text-muted-foreground/30">Built with Next.js · Supabase · Upstox API</p>
+                <p className="text-[11px] text-muted-foreground/30">Portfolio analytics platform for Indian equity investors</p>
               </div>
             </div>
           </div>
