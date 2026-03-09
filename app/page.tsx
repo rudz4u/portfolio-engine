@@ -464,9 +464,9 @@ export default function HomePage() {
               <motion.div variants={staggerContainer(0.12, 0.7)} initial="hidden" animate="show"
                 className="grid grid-cols-3 gap-3 max-w-2xl mx-auto mb-12">
                 {[
-                  { label: "Portfolio Value", value: "₹3.67L", sub: "+8.67%", subColor: "text-emerald-400" },
-                  { label: "Today P&L",       value: "+₹1,847", sub: "44 active positions", subColor: "text-emerald-400" },
-                  { label: "Quant Score",     value: "74/100",  sub: "RISK REVIEW NEEDED", subColor: "text-violet-400" },
+                  { label: "Daily Clarity", value: "Know What Matters", sub: "Signals, news, and trends in one glance", subColor: "text-cyan-300" },
+                  { label: "Decision Support", value: "Plan With Confidence", sub: "Simple checks for risk, allocation, and timing", subColor: "text-emerald-300" },
+                  { label: "Actionable Insights", value: "From Data to Action", sub: "Clear next steps instead of information overload", subColor: "text-amber-300" },
                 ].map((card, i) => (
                   <motion.div key={i} variants={fadeUp}
                     className="glass rounded-xl border border-border/70 px-3 py-3 shadow-xl backdrop-blur-xl text-left">
