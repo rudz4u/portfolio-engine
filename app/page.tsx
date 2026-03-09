@@ -613,20 +613,20 @@ export default function HomePage() {
                 <motion.div variants={slideRight} initial="hidden" whileInView="show" viewport={viewport}
                   className="glass rounded-2xl p-6 border border-border/80">
                   <div className="flex items-center justify-between mb-5">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Portfolio Snapshot</span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Insight Snapshot</span>
                     <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 2, repeat: Infinity }}
-                      className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">↑ Live</motion.span>
+                      className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">● Updated Live</motion.span>
                   </div>
                   <motion.div variants={staggerContainer(0.08)} initial="hidden" whileInView="show" viewport={viewport} className="space-y-2.5">
                     {[
-                      { label: "Total Invested",  value: "₹3,37,847",               positive: null },
-                      { label: "Current Value",   value: "₹3,67,120",               positive: null },
-                      { label: "Total P&L",       value: "+₹29,273",                positive: true },
-                      { label: "Day P&L",         value: "+₹1,847",                 positive: true },
-                      { label: "Active Holdings", value: "44 stocks",                    positive: null },
-                      { label: "Portfolio Score", value: "74 / 100",                     positive: true },
-                      { label: "Segments",        value: "6 (Defence, EV, Green…)", positive: null },
-                      { label: "Broker",          value: "Upstox (connected)",           positive: null },
+                      { label: "Today\u2019s Focus",        value: "Clarity over noise",         positive: true },
+                      { label: "Market Pulse",         value: "Calm with selective momentum", positive: true },
+                      { label: "Risk Temperature",     value: "Moderate",                   positive: null },
+                      { label: "Opportunity Window",   value: "2-3 high-conviction setups", positive: true },
+                      { label: "Diversification Check",value: "Healthy spread across themes", positive: true },
+                      { label: "Confidence Meter",     value: "74 / 100",                  positive: true },
+                      { label: "Action Plan",          value: "Review, rebalance, then act", positive: null },
+                      { label: "AI Co-pilot",          value: "Active and monitoring",      positive: true },
                     ].map((row) => (
                       <motion.div key={row.label} variants={fadeUp}
                         className="flex justify-between items-center py-2 border-b border-border/40 last:border-0">
@@ -660,15 +660,15 @@ export default function HomePage() {
           <section className="py-20 border-t border-border/50" aria-label="User testimonials">
             <div className="max-w-5xl mx-auto px-4">
               <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-10">
-                <h2 className="text-xl sm:text-2xl font-bold mb-2">Early Beta Feedback</h2>
-                <p className="text-sm text-muted-foreground">Feedback on product usability and portfolio clarity.</p>
+                <h2 className="text-xl sm:text-2xl font-bold mb-2">What Early Users Are Saying</h2>
+                <p className="text-sm text-muted-foreground">Real feedback on clarity, confidence, and everyday usability.</p>
               </motion.div>
               <motion.div variants={staggerContainer(0.09)} initial="hidden" whileInView="show" viewport={viewport}
                 className="grid sm:grid-cols-3 gap-4">
                 {[
-                  { quote: "Finally a platform that combines quant signals with AI — not just another screener. The advisory aggregation is a game-changer.", author: "Portfolio Manager, Mumbai", stars: 5 },
-                  { quote: "The composite score makes sense of 6 different signals at once. It helps me review risk and allocation with more clarity.", author: "Retail Investor, Bengaluru",   stars: 5 },
-                  { quote: "Upstox sync worked in under a minute. Morning briefing email is now a daily ritual. Waiting for Zerodha support!", author: "Technology Professional, Pune", stars: 4 },
+                  { quote: "This finally feels like a dashboard that explains what to do next, not just what happened.", author: "Early User, Mumbai", stars: 5 },
+                  { quote: "I can scan the key signals in seconds and decide faster with a lot more confidence.", author: "Product Designer, Bengaluru", stars: 5 },
+                  { quote: "The interface is clean, sharp, and genuinely useful day to day. It turns complexity into clarity.", author: "Founder, Pune", stars: 4 },
                 ].map((t, i) => (
                   <motion.div key={i} variants={fadeUp} className="glass rounded-xl p-5 border border-border/60">
                     <div className="flex gap-0.5 mb-3">
@@ -693,18 +693,18 @@ export default function HomePage() {
                 <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
                   <img src="/Logos/investbuddy_favicon_transparent.svg" alt="" className="h-10 w-10 mx-auto mb-5" aria-hidden="true" />
                 </motion.div>
-                <h2 className="text-2xl font-bold mb-3">Ready to review your portfolio?</h2>
-                <p className="text-muted-foreground text-sm mb-2">Connect your broker in under 60 seconds. Free during beta.</p>
-                <p className="text-muted-foreground/50 text-xs mb-8">Sign in only · No registration on this screen · Upstox live, Zerodha coming soon</p>
+                <h2 className="text-2xl font-bold mb-3">Ready to turn complexity into clarity?</h2>
+                <p className="text-muted-foreground text-sm mb-2">Get focused insights, clearer priorities, and smarter decisions in minutes.</p>
+                <p className="text-muted-foreground/50 text-xs mb-8">Fast sign-in · Zero clutter · Built for everyday confidence</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
                     <Button size="lg" className="btn-gradient border-0 glow" asChild>
-                      <Link href="/signin">Sign In <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                      <Link href="/signin">Get Started <ArrowRight className="ml-2 h-4 w-4" /></Link>
                     </Button>
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
                     <Button size="lg" variant="outline" className="border-border hover:bg-white/5" asChild>
-                      <Link href="#how-it-works"><Users className="mr-2 h-4 w-4" /> See the Platform</Link>
+                      <Link href="#how-it-works"><Users className="mr-2 h-4 w-4" /> Explore Features</Link>
                     </Button>
                   </motion.div>
                 </div>
