@@ -18,10 +18,10 @@ import { TIMEFRAME_PRESETS } from "@/lib/candles/types"
 import { cn } from "@/lib/utils"
 
 /* ── Theme constants ────────────────────────────────────────────────── */
-const CHART_BG = "hsl(222, 47%, 4%)"
+const CHART_BG = "#060b15"
 const CHART_GRID = "rgba(255,255,255,0.04)"
-const CHART_BORDER = "hsl(220, 28%, 15%)"
-const CHART_TEXT = "hsl(213, 31%, 70%)"
+const CHART_BORDER = "#1c2a3f"
+const CHART_TEXT = "#8fa3ba"
 const CHART_CROSSHAIR = "rgba(255,255,255,0.25)"
 
 const GREEN = "#00ffcc"
