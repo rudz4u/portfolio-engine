@@ -70,23 +70,38 @@ export async function GET(request: NextRequest) {
 
   // Resolve trading symbols to instrument_keys via instruments table
   const admin = await createAdminClient()
-  const { data: instruments } = await admin
+  let { data: instruments } = await admin
     .from("instruments")
-    .select("instrument_key, trading_symbol")
+    .select("instrument_key, trading_symbol, isin")
     .in("trading_symbol", symbols)
 
   if (!instruments || instruments.length === 0) {
-    return NextResponse.json(
-      { status: "error", message: "No matching instruments found for the provided symbols." },
-      { status: 404 },
-    )
+    // Fallback: try matching on instrument_key directly (some entries use bare symbols as keys)
+    const { data: fallbackInst } = await admin
+      .from("instruments")
+      .select("instrument_key, trading_symbol, isin")
+      .in("instrument_key", symbols)
+
+    if (!fallbackInst || fallbackInst.length === 0) {
+      return NextResponse.json(
+        { status: "error", message: "No matching instruments found for the provided symbols." },
+        { status: 404 },
+      )
+    }
+    instruments = fallbackInst
   }
 
   const symbolToKey = new Map<string, string>()
   const keyToSymbol = new Map<string, string>()
   for (const inst of instruments) {
-    symbolToKey.set(inst.trading_symbol, inst.instrument_key)
-    keyToSymbol.set(inst.instrument_key, inst.trading_symbol)
+    // Build a proper Upstox key from ISIN if the instrument_key is a bare symbol
+    const upstoxKey = inst.instrument_key.includes("|")
+      ? inst.instrument_key
+      : inst.isin
+        ? `NSE_EQ|${inst.isin}`
+        : `NSE_EQ|${inst.instrument_key}`
+    symbolToKey.set(inst.trading_symbol, upstoxKey)
+    keyToSymbol.set(upstoxKey, inst.trading_symbol)
   }
 
   const instrumentKeys = [...symbolToKey.values()]

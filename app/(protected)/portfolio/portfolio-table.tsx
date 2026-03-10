@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
 import { ArrowUpDown, ChevronUp, ChevronDown, Bookmark, BookmarkCheck, RefreshCw, Activity } from "lucide-react"
+import { useTechSignals } from "@/lib/hooks/use-tech-signals"
+import { SignalBadge, RsiIndicator } from "@/components/signal-badge"
 
 /* ─── Segments ─────────────────────────────────────────────────────────── */
 
@@ -94,7 +96,7 @@ export interface HoldingRow {
 type SortKey =
   | "symbol" | "qty" | "avg_price" | "ltp"
   | "current_value" | "invested" | "pnl" | "pnl_pct"
-  | "day_change" | "segment"
+  | "day_change" | "segment" | "signal"
 
 type SortDir = "asc" | "desc"
 interface SortConfig { key: SortKey; dir: SortDir }
@@ -114,6 +116,7 @@ function getSortValue(h: HoldingRow, key: SortKey): string | number {
     }
     case "day_change":    return getDayChangePct(h)
     case "segment":       return (h.segment || "Others").toLowerCase()
+    case "signal":        return 0 // sorted dynamically with signal map
     default:              return 0
   }
 }
@@ -169,6 +172,13 @@ export default function PortfolioTable({ holdings: initial }: Props) {
 
   /* ── Live price refresh for imported portfolios ───────────────────────── */
   const portfolioId = initial[0]?.portfolio_id
+
+  /* ── Technical signals ────────────────────────────────────────────────── */
+  const tradingSymbols = useMemo(
+    () => holdings.map((h) => getTradingSymbol(h as unknown as Record<string, unknown>)),
+    [holdings],
+  )
+  const { signals: techSignals, loading: signalsLoading } = useTechSignals(tradingSymbols)
 
   const refreshPrices = useCallback(async () => {
     if (!portfolioId || refreshing) return
@@ -241,14 +251,23 @@ export default function PortfolioTable({ holdings: initial }: Props) {
 
   const sorted = useMemo(() => {
     if (!sortConfig) return holdings
+    const signalOrder = { bullish: 2, neutral: 1, bearish: 0 }
     return [...holdings].sort((a, b) => {
+      if (sortConfig.key === "signal") {
+        const symA = getTradingSymbol(a as unknown as Record<string, unknown>)
+        const symB = getTradingSymbol(b as unknown as Record<string, unknown>)
+        const va = signalOrder[techSignals.get(symA)?.overallSignal ?? "neutral"]
+        const vb = signalOrder[techSignals.get(symB)?.overallSignal ?? "neutral"]
+        if (va !== vb) return sortConfig.dir === "asc" ? va - vb : vb - va
+        return 0
+      }
       const va = getSortValue(a, sortConfig.key)
       const vb = getSortValue(b, sortConfig.key)
       if (va < vb) return sortConfig.dir === "asc" ? -1 : 1
       if (va > vb) return sortConfig.dir === "asc" ? 1 : -1
       return 0
     })
-  }, [holdings, sortConfig])
+  }, [holdings, sortConfig, techSignals])
 
   async function updateSegment(holdingId: string, segment: string) {
     setSaving(holdingId)
@@ -310,6 +329,7 @@ export default function PortfolioTable({ holdings: initial }: Props) {
               <SortHeader label="Invested"    sortKey="invested"      config={sortConfig} onSort={toggleSort} className="hidden lg:table-cell" />
               <SortHeader label="P&amp;L"     sortKey="pnl"           config={sortConfig} onSort={toggleSort} />
               <SortHeader label="Day Chg%"    sortKey="day_change"    config={sortConfig} onSort={toggleSort} className="hidden xl:table-cell" />
+              <SortHeader label="Signal"      sortKey="signal"        config={sortConfig} onSort={toggleSort} className="hidden md:table-cell" />
               <SortHeader label="Segment"     sortKey="segment"       config={sortConfig} onSort={toggleSort} className="hidden lg:table-cell" />
               <th className="w-8" />
               <th className="w-8" />
@@ -393,6 +413,20 @@ export default function PortfolioTable({ holdings: initial }: Props) {
                     dayChg >= 0 ? "text-emerald-500 dark:text-emerald-400" : "text-red-500"
                   }`}>
                     {dayChg !== 0 ? `${dayChg >= 0 ? "+" : ""}${dayChg.toFixed(2)}%` : "—"}
+                  </td>
+
+                  {/* Technical Signal */}
+                  <td className="py-3 px-2 hidden md:table-cell">
+                    {signalsLoading ? (
+                      <div className="h-5 w-16 rounded-full bg-muted animate-pulse" />
+                    ) : techSignals.has(symbol) ? (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <SignalBadge signal={techSignals.get(symbol)!} size="xs" />
+                        <RsiIndicator rsi={techSignals.get(symbol)!.rsi} rsiSignal={techSignals.get(symbol)!.rsiSignal} />
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </td>
 
                   {/* Segment (editable) */}

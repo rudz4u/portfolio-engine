@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback, useRef, useMemo } from "react"
 import Link from "next/link"
 import {
   Bookmark, BookmarkX, RefreshCw, TrendingUp, TrendingDown, ExternalLink,
@@ -18,6 +18,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
+import { useTechSignals, type TechSignal } from "@/lib/hooks/use-tech-signals"
+import { SignalBadge, SignalExplainer } from "@/components/signal-badge"
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
@@ -177,9 +179,10 @@ function StockSearch({ listId, existingKeys, onAdded }: {
 
 /* ─── Watchlist Card ─────────────────────────────────────────────────────── */
 
-function WatchlistCard({ item, holding, instrument, listId, onRemoved, onUpdated }: {
+function WatchlistCard({ item, holding, instrument, listId, onRemoved, onUpdated, signal }: {
   item: WatchlistItem; holding?: HoldingData; instrument?: InstrumentLookup
   listId: string; onRemoved: () => void; onUpdated: (updated: WatchlistItem) => void
+  signal?: TechSignal
 }) {
   const [removing,    setRemoving]    = useState(false)
   const [editOpen,    setEditOpen]    = useState(false)
@@ -301,6 +304,17 @@ function WatchlistCard({ item, holding, instrument, listId, onRemoved, onUpdated
             {item.notes}
           </p>
         )}
+
+        {/* Technical Signal */}
+        {signal && (
+          <div className="pt-2 border-t border-border/30 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Technical Signal</span>
+              <SignalBadge signal={signal} showRsi size="xs" />
+            </div>
+            <SignalExplainer signal={signal} />
+          </div>
+        )}
       </CardContent>
 
       {/* Edit target price dialog */}
@@ -395,6 +409,13 @@ export default function WatchlistPage() {
   const holdingMap    = new Map(holdings.map((h) => [h.instrument_key, h]))
   const instrumentMap = new Map(instruments.map((i) => [i.instrument_key, i]))
   const existingKeys = new Set(activeList?.items.map((i) => i.instrument_key) ?? [])
+
+  // Batch-fetch technical signals for all symbols in the active list
+  const watchlistSymbols = useMemo(
+    () => (activeList?.items ?? []).map((i) => i.trading_symbol ?? i.instrument_key),
+    [activeList],
+  )
+  const { signals: techSignals, loading: signalsLoading } = useTechSignals(watchlistSymbols)
 
   async function createList() {
     if (!createName.trim()) return
@@ -520,6 +541,7 @@ export default function WatchlistPage() {
                   holding={holdingMap.get(item.instrument_key)}
                   instrument={instrumentMap.get(item.instrument_key)}
                   listId={activeId}
+                  signal={techSignals.get(item.trading_symbol ?? item.instrument_key)}
                   onRemoved={() => loadItems(activeId)}
                   onUpdated={(updated) => {
                     setWatchlists((prev) => prev.map((l) =>

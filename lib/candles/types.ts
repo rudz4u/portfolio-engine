@@ -24,11 +24,13 @@ export interface TimeframePreset {
 
 /** Pre-configured timeframe options */
 export const TIMEFRAME_PRESETS: TimeframePreset[] = [
+  { unit: "minutes", interval: 5,   label: "5min",  lookbackDays: 3 },
   { unit: "minutes", interval: 15,  label: "15min", lookbackDays: 5 },
+  { unit: "minutes", interval: 30,  label: "30min", lookbackDays: 10 },
   { unit: "hours",   interval: 1,   label: "1H",    lookbackDays: 30 },
-  { unit: "days",    interval: 1,   label: "1D",    lookbackDays: 180 },
-  { unit: "weeks",   interval: 1,   label: "1W",    lookbackDays: 365 },
-  { unit: "months",  interval: 1,   label: "1M",    lookbackDays: 1825 },
+  { unit: "days",    interval: 1,   label: "1D",    lookbackDays: 365 },
+  { unit: "weeks",   interval: 1,   label: "1W",    lookbackDays: 1095 },
+  { unit: "months",  interval: 1,   label: "1M",    lookbackDays: 3650 },
 ]
 
 /** Pattern type classification */

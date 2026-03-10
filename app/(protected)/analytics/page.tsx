@@ -9,9 +9,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, TrendingDown, PieChart as PieIcon, BarChart2, Activity, RefreshCw, Terminal, Cpu, Radio } from "lucide-react"
+import { TrendingUp, TrendingDown, PieChart as PieIcon, BarChart2, Activity, RefreshCw, Terminal, Cpu, Radio, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SectorCorrelationHeatmap } from "./sector-correlation"
+import { useTechSignals } from "@/lib/hooks/use-tech-signals"
+import { SignalBadge, RsiIndicator } from "@/components/signal-badge"
 
 /* ─── neon sci-fi palette ──────────────────────────────────── */
 const COLORS = [
@@ -261,6 +263,44 @@ export default function AnalyticsPage() {
   }, [rows])
 
   const totalInvested = rows.reduce((s, r) => s + (Number(r.invested_amount) || 0), 0)
+
+  /* ── technical signals for all holdings ───────────────── */
+  const tradingSymbols = useMemo(
+    () => rows.map((r) => {
+      const raw = (r.raw as Record<string, string>) ?? {}
+      return raw.trading_symbol ?? r.instrument_key?.split("|").pop() ?? r.instrument_key
+    }),
+    [rows],
+  )
+  const { signals: techSignals, loading: signalsLoading } = useTechSignals(tradingSymbols)
+
+  const signalSummary = useMemo(() => {
+    if (techSignals.size === 0) return null
+    let bullish = 0, bearish = 0, neutral = 0
+    const overbought: Array<{ symbol: string; rsi: number }> = []
+    const oversold: Array<{ symbol: string; rsi: number }> = []
+    const patternAlerts: Array<{ symbol: string; pattern: string; direction: string }> = []
+
+    techSignals.forEach((sig, symbol) => {
+      if (sig.overallSignal === "bullish") bullish++
+      else if (sig.overallSignal === "bearish") bearish++
+      else neutral++
+
+      if (sig.rsi != null) {
+        if (sig.rsi >= 70) overbought.push({ symbol, rsi: sig.rsi })
+        if (sig.rsi <= 30) oversold.push({ symbol, rsi: sig.rsi })
+      }
+
+      if (sig.topPattern) {
+        patternAlerts.push({ symbol, pattern: sig.topPattern, direction: sig.topPatternDirection ?? "neutral" })
+      }
+    })
+
+    overbought.sort((a, b) => b.rsi - a.rsi)
+    oversold.sort((a, b) => a.rsi - b.rsi)
+
+    return { bullish, bearish, neutral, overbought, oversold, patternAlerts }
+  }, [techSignals])
   const totalPnL = rows.reduce((s, r) => s + (Number(r.unrealized_pl) || 0), 0)
   const currentValue = totalInvested + totalPnL
   const pnlPct = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0
@@ -336,6 +376,110 @@ export default function AnalyticsPage() {
               </div>
             ))}
       </div>
+
+      {/* ── Technical Signals Overview ──────────────────── */}
+      {!loading && signalSummary && (
+        <Card className="glow-border-card glass">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-mono font-semibold flex items-center gap-2 text-[#00ffcc]/80 uppercase tracking-widest">
+              <Zap className="h-4 w-4" /> Technical Signals Overview
+              {signalsLoading && <RefreshCw className="h-3 w-3 animate-spin ml-2 text-primary/50" />}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Signal Distribution */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
+                <p className="text-2xl font-bold tabular-nums text-emerald-400 font-mono">{signalSummary.bullish}</p>
+                <p className="text-[10px] font-mono text-emerald-400/60 uppercase tracking-widest mt-0.5">Bullish</p>
+              </div>
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+                <p className="text-2xl font-bold tabular-nums text-amber-400 font-mono">{signalSummary.neutral}</p>
+                <p className="text-[10px] font-mono text-amber-400/60 uppercase tracking-widest mt-0.5">Neutral</p>
+              </div>
+              <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-center">
+                <p className="text-2xl font-bold tabular-nums text-red-400 font-mono">{signalSummary.bearish}</p>
+                <p className="text-[10px] font-mono text-red-400/60 uppercase tracking-widest mt-0.5">Bearish</p>
+              </div>
+            </div>
+
+            {/* Signal progress bar */}
+            {techSignals.size > 0 && (
+              <div className="space-y-1">
+                <div className="flex h-2 rounded-full overflow-hidden bg-muted/30">
+                  {signalSummary.bullish > 0 && (
+                    <div className="bg-emerald-400" style={{ width: `${(signalSummary.bullish / techSignals.size) * 100}%` }} />
+                  )}
+                  {signalSummary.neutral > 0 && (
+                    <div className="bg-amber-400" style={{ width: `${(signalSummary.neutral / techSignals.size) * 100}%` }} />
+                  )}
+                  {signalSummary.bearish > 0 && (
+                    <div className="bg-red-400" style={{ width: `${(signalSummary.bearish / techSignals.size) * 100}%` }} />
+                  )}
+                </div>
+                <p className="text-[10px] font-mono text-muted-foreground/60 text-center">
+                  {techSignals.size} of {rows.length} holdings analyzed
+                </p>
+              </div>
+            )}
+
+            {/* RSI Alerts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {signalSummary.overbought.length > 0 && (
+                <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 space-y-2">
+                  <p className="text-[10px] font-mono text-red-400/70 uppercase tracking-widest flex items-center gap-1.5">
+                    <TrendingUp className="h-3 w-3" /> Overbought (RSI &ge; 70)
+                  </p>
+                  <div className="space-y-1.5">
+                    {signalSummary.overbought.slice(0, 5).map((s) => (
+                      <div key={s.symbol} className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-foreground">{s.symbol}</span>
+                        <span className="text-red-400 font-semibold tabular-nums">RSI {s.rsi.toFixed(1)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {signalSummary.oversold.length > 0 && (
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
+                  <p className="text-[10px] font-mono text-emerald-400/70 uppercase tracking-widest flex items-center gap-1.5">
+                    <TrendingDown className="h-3 w-3" /> Oversold (RSI &le; 30)
+                  </p>
+                  <div className="space-y-1.5">
+                    {signalSummary.oversold.slice(0, 5).map((s) => (
+                      <div key={s.symbol} className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-foreground">{s.symbol}</span>
+                        <span className="text-emerald-400 font-semibold tabular-nums">RSI {s.rsi.toFixed(1)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Active Candlestick Patterns */}
+            {signalSummary.patternAlerts.length > 0 && (
+              <div className="rounded-lg border border-[#7c3aed]/20 bg-[#7c3aed]/5 p-3 space-y-2">
+                <p className="text-[10px] font-mono text-[#7c3aed]/70 uppercase tracking-widest flex items-center gap-1.5">
+                  <Activity className="h-3 w-3" /> Active Candlestick Patterns ({signalSummary.patternAlerts.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {signalSummary.patternAlerts.slice(0, 10).map((p) => (
+                    <Badge key={p.symbol + p.pattern} variant="secondary"
+                      className={`text-xs font-mono ${
+                        p.direction === "bullish" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        : p.direction === "bearish" ? "bg-red-500/10 text-red-400 border-red-500/20"
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                      }`}>
+                      {p.symbol}: {p.pattern}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Two-column row: Segment donut + Segment P&L bar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

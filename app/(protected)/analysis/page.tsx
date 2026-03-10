@@ -49,7 +49,7 @@ export default function TechnicalAnalysisPage() {
   const searchParams = useSearchParams()
   const [stocks, setStocks] = useState<StockOption[]>([])
   const [selected, setSelected] = useState<StockOption | null>(null)
-  const [timeframe, setTimeframe] = useState<TimeframePreset>(TIMEFRAME_PRESETS[2]) // 1D default
+  const [timeframe, setTimeframe] = useState<TimeframePreset>(TIMEFRAME_PRESETS[4]) // 1D default
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingStocks, setLoadingStocks] = useState(true)
