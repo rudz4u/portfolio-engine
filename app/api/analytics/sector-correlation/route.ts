@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { UPSTOX_CONFIG, getUpstoxHeaders } from "@/lib/upstox"
+import { getUpstoxHeaders } from "@/lib/upstox"
 import { resolveUpstoxToken } from "@/lib/upstox-token"
 
 /**
@@ -29,7 +29,7 @@ const SEGMENT_TO_INDEX: Record<string, string> = {
   Healthcare:     "NSE_INDEX|Nifty Pharma",
   Metals:         "NSE_INDEX|Nifty Metal",
   Energy:         "NSE_INDEX|Nifty Energy",
-  "Green Energy": "NSE_INDEX|Nifty Energy",
+  Green_Energy:    "NSE_INDEX|Nifty Energy",
   Infrastructure: "NSE_INDEX|Nifty Infrastructure",
   PSU:            "NSE_INDEX|Nifty PSE",
   Defence:        "NSE_INDEX|Nifty India Defence",
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
   const uniqueIndices = [...indexToSegments.keys()]
   const fetchResults = await Promise.allSettled(
     uniqueIndices.map(async (indexKey) => {
-      const url = `${UPSTOX_CONFIG.baseUrl}/historical-candle/${encodeURIComponent(indexKey)}/day/${toDate}/${fromDate}`
+      const url = `https://api.upstox.com/v3/historical-candle/${encodeURIComponent(indexKey)}/days/1/${toDate}/${fromDate}`
       const res = await fetch(url, {
         headers: getUpstoxHeaders(token),
         cache: "no-store",
