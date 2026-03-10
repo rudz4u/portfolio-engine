@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { resolveUpstoxToken } from "@/lib/upstox-token"
 import { fetchCandleData } from "@/lib/candles/fetch"
 
@@ -41,7 +42,29 @@ export async function GET(
 
   const { instrumentKey } = await params
   // The instrument key arrives URL-encoded from the path — decode it
-  const decodedKey = decodeURIComponent(instrumentKey)
+  let decodedKey = decodeURIComponent(instrumentKey)
+
+  // If the key is a bare symbol (no "|"), resolve it to a valid Upstox key via ISIN
+  if (!decodedKey.includes("|")) {
+    const admin = await createAdminClient()
+    const { data: inst } = await admin
+      .from("instruments")
+      .select("instrument_key, isin")
+      .or(`instrument_key.eq.${decodedKey},trading_symbol.ilike.${decodedKey}`)
+      .limit(1)
+      .single()
+
+    if (inst?.isin) {
+      decodedKey = `NSE_EQ|${inst.isin}`
+    } else if (inst?.instrument_key?.includes("|")) {
+      decodedKey = inst.instrument_key
+    } else {
+      return NextResponse.json(
+        { status: "error", message: `Could not resolve instrument key for "${decodedKey}". No ISIN found.` },
+        { status: 404 },
+      )
+    }
+  }
 
   const { searchParams } = new URL(request.url)
   const unit = (searchParams.get("unit") ?? "days") as "minutes" | "hours" | "days" | "weeks" | "months"
