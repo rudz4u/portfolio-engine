@@ -53,21 +53,30 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // If the key is a bare symbol (no "|"), resolve it via the instruments table
+  // If the key is a bare symbol (no "|"), resolve it to a valid Upstox instrument key
+  // via the instruments table ISIN.  Upstox needs keys like NSE_EQ|INE704P01025.
   if (!instrumentKey.includes("|")) {
     const admin = await createAdminClient()
+
+    // Try matching on instrument_key first (most holdings use bare symbols as key),
+    // then fall back to trading_symbol ilike match.
     const { data: inst } = await admin
       .from("instruments")
-      .select("instrument_key")
-      .ilike("trading_symbol", instrumentKey)
+      .select("instrument_key, isin, exchange")
+      .or(`instrument_key.eq.${instrumentKey},trading_symbol.ilike.${instrumentKey}`)
       .limit(1)
       .single()
 
-    if (inst?.instrument_key) {
+    if (inst?.isin) {
+      // Construct proper Upstox key from ISIN
+      instrumentKey = `NSE_EQ|${inst.isin}`
+    } else if (inst?.instrument_key?.includes("|")) {
       instrumentKey = inst.instrument_key
     } else {
-      // Fallback: assume NSE equity
-      instrumentKey = `NSE_EQ|${instrumentKey.toUpperCase()}`
+      return NextResponse.json(
+        { error: `Could not resolve instrument key for "${instrumentKey}". No ISIN found in instruments table.` },
+        { status: 404 },
+      )
     }
   }
 
