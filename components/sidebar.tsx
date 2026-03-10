@@ -22,6 +22,7 @@ import {
   Bell,
   Sliders,
   Database,
+  Activity,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -50,6 +51,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard",       label: "Dashboard",       icon: LayoutDashboard, tourId: "tour-dashboard" },
   { href: "/portfolio",       label: "Portfolio",       icon: Briefcase,       tourId: "tour-portfolio" },
   { href: "/analytics",       label: "Analytics",       icon: BarChart2,       tourId: "tour-analytics" },
+  { href: "/analysis",        label: "Technicals",      icon: Activity,        tourId: "tour-analysis" },
   { href: "/watchlist",       label: "Watchlist",       icon: Bookmark,        tourId: "tour-watchlist" },
   { href: "/recommendations", label: "Portfolio Signals", icon: Star,            tourId: "tour-recommendations" },
   { href: "/trade",           label: "Trade",           icon: TrendingUp,      tourId: "tour-trade" },

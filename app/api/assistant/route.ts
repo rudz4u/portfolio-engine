@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { scoreHoldings, portfolioSummary, type HoldingInput } from "@/lib/quant/scoring"
+import { fetchCandleDataBatch } from "@/lib/candles/fetch"
+import { computeTechnicalAnalysis } from "@/lib/candles/technicals"
+import { resolveUpstoxToken } from "@/lib/upstox-token"
 
 const SYSTEM_PROMPT = `You are an expert AI portfolio analytics assistant for InvestBuddy AI.
 You help users understand and analyze their Indian stock portfolio performance, explore market data, and interpret quantitative indicators.
@@ -214,6 +217,35 @@ Portfolio Summary (live data):
 - RSI oversold (potential bounce): ${oversoldStocks.join(", ") || "None"}
 - RSI overbought (caution): ${overboughtStocks.join(", ") || "None"}
 - Top 15 holdings: ${scored.slice(0, 15).map((s) => `${s.trading_symbol}(signal:${s.signal},score:${s.score},pnl:${s.pnl_pct.toFixed(1)}%,RSI≈${s.rsi_approx},MACD:${s.macd_trend})`).join(" | ")}`
+
+      // ── 1b. Fetch real technical analysis for top holdings ────────────────
+      try {
+        const upstoxToken = await resolveUpstoxToken()
+        if (upstoxToken) {
+          const topKeys = inputs.slice(0, 10).map((h) => h.instrument_key)
+          const toDate = new Date().toISOString().slice(0, 10)
+          const fromDate = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
+          const batchResults = await fetchCandleDataBatch(topKeys, "days", 1, toDate, fromDate, upstoxToken, 5)
+
+          const techSummaries: string[] = []
+          for (const r of batchResults) {
+            if (r.error || r.candles.length < 30) continue
+            const sym = inputs.find((h) => h.instrument_key === r.instrumentKey)?.trading_symbol ?? r.instrumentKey
+            const ta = computeTechnicalAnalysis(r.candles, r.instrumentKey, sym, "1D", { recentOnly: 5, minConfidence: 0.5 })
+            const patterns = ta.patterns.length > 0
+              ? ta.patterns.map((p) => `${p.name}(${p.direction})`).join(",")
+              : "none"
+            techSummaries.push(
+              `${sym}: RSI=${ta.indicators.rsi?.toFixed(0) ?? "?"} MACD=${ta.indicators.macdTrend} Signal=${ta.overallSignal} Patterns=[${patterns}]`
+            )
+          }
+          if (techSummaries.length > 0) {
+            portfolioContext += `\n\nReal Technical Analysis (daily candle data):\n${techSummaries.join("\n")}`
+          }
+        }
+      } catch {
+        // Non-critical — skip if technical analysis fails
+      }
     }
   }
 

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import Link from "next/link"
 import {
   Bookmark, BookmarkX, RefreshCw, TrendingUp, TrendingDown, ExternalLink,
-  Plus, Search, Pencil, Trash2, ChevronDown, X, Check, ListPlus, Target,
+  Plus, Search, Pencil, Trash2, ChevronDown, X, Check, ListPlus, Target, Activity,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -242,6 +242,10 @@ function WatchlistCard({ item, holding, instrument, listId, onRemoved, onUpdated
             <Link href={`/portfolio/${encodeURIComponent(item.instrument_key)}`} title="View detail"
               className="text-muted-foreground hover:text-primary transition-colors">
               <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+            <Link href={`/analysis?stock=${encodeURIComponent(item.instrument_key)}`} title="Technical Analysis"
+              className="text-muted-foreground hover:text-primary transition-colors">
+              <Activity className="h-3.5 w-3.5" />
             </Link>
             <button onClick={remove} disabled={removing} className="text-primary hover:text-destructive transition-colors" title="Remove">
               <BookmarkX className="h-4 w-4" />

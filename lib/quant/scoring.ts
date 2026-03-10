@@ -33,6 +33,17 @@ export interface HoldingInput {
   advisory_score?: number
 }
 
+/** Real technical indicator data from candle analysis (optional enhancement) */
+export interface RealTechnicalData {
+  rsi: number | null
+  rsiSignal: "oversold" | "neutral" | "overbought"
+  macdTrend: "bullish" | "bearish" | "neutral"
+  /** Number of bullish patterns detected recently */
+  bullishPatterns: number
+  /** Number of bearish patterns detected recently */
+  bearishPatterns: number
+}
+
 export interface ScoredHolding extends HoldingInput {
   score: number             // 0–100
   signal: Signal
@@ -49,7 +60,17 @@ export interface ScoredHolding extends HoldingInput {
   macd_trend: "bullish" | "bearish" | "neutral"  // trend direction proxy
 }
 
-export function scoreHoldings(holdings: HoldingInput[], weights?: ScoringWeights): ScoredHolding[] {
+/**
+ * @param holdings    — Portfolio holdings to score
+ * @param weights     — Optional custom scoring weights
+ * @param technicals  — Optional map of instrument_key → real technical data from candle analysis.
+ *                       When provided, real RSI/MACD/patterns are used instead of P&L approximations.
+ */
+export function scoreHoldings(
+  holdings: HoldingInput[],
+  weights?: ScoringWeights,
+  technicals?: Map<string, RealTechnicalData>,
+): ScoredHolding[] {
   const w = weights ?? DEFAULT_WEIGHTS
   const totalInvested = holdings.reduce((s, h) => s + (h.invested_amount || 0), 0)
   const totalValue = holdings.reduce((s, h) => s + (h.ltp * h.quantity || 0), 0)
@@ -62,28 +83,28 @@ export function scoreHoldings(holdings: HoldingInput[], weights?: ScoringWeights
         : 0
       const weight_pct = totalValue > 0 ? (currentValue / totalValue) * 100 : 0
 
-      // ── RSI approximation ──────────────────────────────────────
-      // Estimated from pnl_pct (medium-term momentum proxy) + day_change
-      // Thresholds tuned for typical Indian equity behaviour
-      const rsi_approx = (
-        pnl_pct > 40  ? 82 :
-        pnl_pct > 25  ? 74 :
-        pnl_pct > 12  ? 65 :
-        pnl_pct > 4   ? 56 :
-        pnl_pct > -4  ? 50 :
-        pnl_pct > -12 ? 42 :
-        pnl_pct > -25 ? 33 :
-                        22
-      )
-      const technical_signal = rsiSignal(rsi_approx)
+      // ── Technical data — prefer real candle-derived values, fall back to approximations ──
+      const real = technicals?.get(h.instrument_key)
 
-      // ── MACD trend proxy ───────────────────────────────────────
-      // Short-term (day_change) vs medium-term (pnl_pct) direction
+      const rsi_approx = real?.rsi != null
+        ? Math.round(real.rsi)
+        : (
+          pnl_pct > 40  ? 82 :
+          pnl_pct > 25  ? 74 :
+          pnl_pct > 12  ? 65 :
+          pnl_pct > 4   ? 56 :
+          pnl_pct > -4  ? 50 :
+          pnl_pct > -12 ? 42 :
+          pnl_pct > -25 ? 33 :
+                          22
+        )
+      const technical_signal = real?.rsiSignal ?? rsiSignal(rsi_approx)
+
       const dayChgPct = h.day_change_percentage ?? 0
-      const macd_trend: "bullish" | "bearish" | "neutral" =
-        dayChgPct > 0.3 && pnl_pct > 0  ? "bullish" :
+      const macd_trend: "bullish" | "bearish" | "neutral" = real?.macdTrend ??
+        (dayChgPct > 0.3 && pnl_pct > 0  ? "bullish" :
         dayChgPct < -0.3 && pnl_pct < 0 ? "bearish" :
-        "neutral"
+        "neutral")
 
       // ── Momentum score (0–30) ──────────────────────────────────
       let momentum_score = 15 // neutral base
@@ -103,6 +124,11 @@ export function scoreHoldings(holdings: HoldingInput[], weights?: ScoringWeights
       // MACD confirmation
       if (macd_trend === "bullish") momentum_score += 2
       else if (macd_trend === "bearish") momentum_score -= 2
+      // Candlestick pattern confirmation (when real candle data available)
+      if (real) {
+        if (real.bullishPatterns > 0) momentum_score += Math.min(3, real.bullishPatterns)
+        if (real.bearishPatterns > 0) momentum_score -= Math.min(3, real.bearishPatterns)
+      }
       momentum_score = Math.max(0, Math.min(30, momentum_score))
 
       // ── Valuation score (0–25) ─────────────────────────────────

@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { TrendingUp, TrendingDown, RefreshCw, BarChart2, ExternalLink, Newspaper, ChevronDown, ChevronUp, Zap } from "lucide-react"
+import { TrendingUp, TrendingDown, RefreshCw, BarChart2, ExternalLink, Newspaper, ChevronDown, ChevronUp, Zap, Activity } from "lucide-react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -471,8 +472,13 @@ export default function RecommendationsPage() {
                     "bg-muted text-muted-foreground border-border/50"
                   }`}>
                     MACD {h.macd_trend}
-                  </span>
-                  {/* Advisory consensus badge */}
+                  </span>                  <Link
+                    href={`/analysis?stock=${encodeURIComponent(h.instrument_key)}`}
+                    className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <Activity className="w-2.5 h-2.5" />
+                    Chart
+                  </Link>                  {/* Advisory consensus badge */}
                   {consensusMap[h.trading_symbol] && (
                     <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
                       CONSENSUS_STYLES[consensusMap[h.trading_symbol].consensus_signal]

@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
-import { ArrowUpDown, ChevronUp, ChevronDown, Bookmark, BookmarkCheck, RefreshCw } from "lucide-react"
+import { ArrowUpDown, ChevronUp, ChevronDown, Bookmark, BookmarkCheck, RefreshCw, Activity } from "lucide-react"
 
 /* ─── Segments ─────────────────────────────────────────────────────────── */
 
@@ -312,6 +312,7 @@ export default function PortfolioTable({ holdings: initial }: Props) {
               <SortHeader label="Day Chg%"    sortKey="day_change"    config={sortConfig} onSort={toggleSort} className="hidden xl:table-cell" />
               <SortHeader label="Segment"     sortKey="segment"       config={sortConfig} onSort={toggleSort} className="hidden lg:table-cell" />
               <th className="w-8" />
+              <th className="w-8" />
             </tr>
           </thead>
           <tbody>
@@ -431,6 +432,16 @@ export default function PortfolioTable({ holdings: initial }: Props) {
                         </div>
                       )}
                     </div>
+                  </td>
+                  {/* Chart link */}
+                  <td className="py-3 pl-1">
+                    <Link
+                      href={`/analysis?stock=${encodeURIComponent(h.instrument_key)}`}
+                      title="Technical Analysis"
+                      className="text-muted-foreground/40 hover:text-primary transition-colors"
+                    >
+                      <Activity className="h-4 w-4" />
+                    </Link>
                   </td>
                   {/* Watch toggle */}
                   <td className="py-3 pl-1 pr-2">

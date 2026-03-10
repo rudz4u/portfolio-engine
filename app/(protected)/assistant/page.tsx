@@ -24,10 +24,11 @@ interface Message {
 
 const STARTER_PROMPTS = [
   "Give me a morning briefing on my portfolio",
+  "What do the technical indicators say about my portfolio?",
   "Which sectors am I most exposed to?",
   "Show me my top performing stocks",
   "Which positions should I review today?",
-  "What is my overall risk profile?",
+  "Are there any candlestick patterns on my holdings?",
 ]
 
 export default function AssistantPage() {
