@@ -18,7 +18,8 @@ import {
   Scale,
   ChevronDown,
   Zap,
-  Lock,
+  KeyRound,
+  UserCircle,
   Bell,
   Sliders,
   Database,
@@ -38,6 +39,7 @@ interface NavItem {
   label: string
   icon: React.ComponentType<{ className?: string }>
   tourId: string
+  section?: string
   submenu?: SubMenuItem[]
 }
 
@@ -48,26 +50,31 @@ interface SubMenuItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/dashboard",       label: "Dashboard",       icon: LayoutDashboard, tourId: "tour-dashboard" },
-  { href: "/portfolio",       label: "Portfolio",       icon: Briefcase,       tourId: "tour-portfolio" },
-  { href: "/analytics",       label: "Analytics",       icon: BarChart2,       tourId: "tour-analytics" },
-  { href: "/analysis",        label: "Technicals",      icon: Activity,        tourId: "tour-analysis" },
-  { href: "/watchlist",       label: "Watchlist",       icon: Bookmark,        tourId: "tour-watchlist" },
-  { href: "/recommendations", label: "Portfolio Signals", icon: Star,            tourId: "tour-recommendations" },
-  { href: "/trade",           label: "Trade",           icon: TrendingUp,      tourId: "tour-trade" },
-  { href: "/assistant",       label: "AI Assistant",    icon: Bot,             tourId: "tour-assistant" },
+  // ── See ──────────────────────────────────────────────────────────
+  { href: "/dashboard",       label: "Dashboard",    icon: LayoutDashboard, tourId: "tour-dashboard" },
+  { href: "/portfolio",       label: "Portfolio",    icon: Briefcase,       tourId: "tour-portfolio" },
+  { href: "/watchlist",       label: "Watchlist",    icon: Bookmark,        tourId: "tour-watchlist" },
+  // ── Analyse ──────────────────────────────────────────────────────
+  { href: "/analytics",       label: "Analytics",   icon: BarChart2,       tourId: "tour-analytics",      section: "Analyse" },
+  { href: "/analysis",        label: "Technicals",  icon: Activity,        tourId: "tour-analysis" },
+  { href: "/recommendations", label: "Signals",      icon: Star,            tourId: "tour-recommendations" },
+  // ── Act ──────────────────────────────────────────────────────────
+  { href: "/trade",           label: "Trade",        icon: TrendingUp,      tourId: "tour-trade",          section: "Act" },
+  { href: "/assistant",       label: "AI Assistant", icon: Bot,             tourId: "tour-assistant" },
+  // ── Manage ───────────────────────────────────────────────────────
   {
     href: "/settings",
     label: "Settings",
     icon: Settings,
     tourId: "tour-settings",
+    section: "Manage",
     submenu: [
-      { href: "/settings/profile", label: "Profile & Privacy", icon: Lock },
-      { href: "/settings/connection", label: "Connection", icon: Zap },
-      { href: "/settings/ai", label: "AI & Keys", icon: Lock },
-      { href: "/settings/notifications", label: "Notifications", icon: Bell },
-      { href: "/settings/portfolio", label: "Portfolio", icon: Sliders },
-      { href: "/settings/database", label: "Database", icon: Database },
+      { href: "/settings/profile",       label: "Profile & Privacy", icon: UserCircle },
+      { href: "/settings/connection",    label: "Connection",        icon: Zap },
+      { href: "/settings/ai",            label: "AI & Keys",         icon: KeyRound },
+      { href: "/settings/notifications", label: "Notifications",     icon: Bell },
+      { href: "/settings/portfolio",     label: "Portfolio",         icon: Sliders },
+      { href: "/settings/database",      label: "Database",          icon: Database },
     ]
   },
 ]
@@ -113,6 +120,16 @@ function SidebarContent({ pathname, onNavClick, onSignOut, onTakeTour }: Sidebar
 
           return (
             <div key={item.href}>
+              {/* Section divider */}
+              {item.section && (
+                <div className="flex items-center gap-2 px-3 pt-4 pb-1.5">
+                  <div className="h-px flex-1 bg-white/[0.06]" />
+                  <span className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/40">
+                    {item.section}
+                  </span>
+                  <div className="h-px flex-1 bg-white/[0.06]" />
+                </div>
+              )}
               {isSettingsMenu ? (
                 <button
                   onClick={() => setExpandedSubmenu(isExpanded ? null : item.href)}

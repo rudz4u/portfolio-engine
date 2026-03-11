@@ -16,49 +16,56 @@ const STEPS: TutorialStep[] = [
     selector: "tour-dashboard",
     title: "Dashboard",
     description:
-      "Your home base — live portfolio value, P&L, top holdings, and daily quant signals all in one view.",
+      "Your home screen — live portfolio value, today's gains & losses, top movers, and your overall health score, all at a glance.",
     position: "right",
   },
   {
     selector: "tour-portfolio",
     title: "Portfolio",
     description:
-      "View all your holdings, assign segments (Large/Mid/Small Cap), track returns, and import broker reports.",
-    position: "right",
-  },
-  {
-    selector: "tour-analytics",
-    title: "Analytics",
-    description:
-      "Deep-dive charts: sector allocation, risk vs return heatmap, trend analysis, and your overall portfolio score.",
+      "All your holdings in one place. Import from your broker, organise by segment, and track cost vs current value.",
     position: "right",
   },
   {
     selector: "tour-watchlist",
     title: "Watchlist",
     description:
-      "Track stocks you're eyeing without committing capital. Add notes and set personal price targets.",
+      "Add stocks you're curious about — without committing capital. Set price targets and monitor signals before you act.",
+    position: "right",
+  },
+  {
+    selector: "tour-analytics",
+    title: "Analytics",
+    description:
+      "Understand your portfolio at a glance — sector spread, risk distribution, momentum scores, and performance over time.",
+    position: "right",
+  },
+  {
+    selector: "tour-analysis",
+    title: "Technicals",
+    description:
+      "Chart any stock with candlestick patterns, RSI, Bollinger Bands, and SMA overlays across multiple timeframes.",
     position: "right",
   },
   {
     selector: "tour-recommendations",
-    title: "Recommendations",
+    title: "Signals",
     description:
-      "AI-curated buy/sell signals based on quant factors — momentum, quality, value, and earnings growth.",
-    position: "right",
-  },
-  {
-    selector: "tour-assistant",
-    title: "AI Assistant",
-    description:
-      "Chat with Buddy, your AI co-pilot. Ask about any stock, your portfolio health, or market trends.",
+      "AI-ranked buy, hold, and exit signals built on momentum, value, and quality — refreshed daily so you never miss a move.",
     position: "right",
   },
   {
     selector: "tour-trade",
     title: "Trade",
     description:
-      "Execute trades directly through your connected broker with one click — always a confirmation step first.",
+      "Place orders through your connected broker and track every execution — with a confirmation step before anything goes live.",
+    position: "right",
+  },
+  {
+    selector: "tour-assistant",
+    title: "AI Assistant",
+    description:
+      "Ask Buddy anything — portfolio health checks, stock deep-dives, or what-if scenarios. Your personal finance co-pilot.",
     position: "right",
   },
 ]
