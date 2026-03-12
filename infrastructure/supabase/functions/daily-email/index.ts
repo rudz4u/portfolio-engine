@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0"
 
 // This edge function is called by pg_cron daily at 4:00 AM UTC (9:30 AM IST) Mon-Fri
-// It sends portfolio digest emails to all users with email_digest = "true"
+// It sends portfolio digest emails to all users with notif_daily_digest = "true"
 
 const BREVO_URL = "https://api.brevo.com/v3/smtp/email"
 
@@ -126,7 +126,7 @@ serve(async (req) => {
 
   const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey)
 
-  // Get all users with email_digest enabled
+  // Get all users with daily digest enabled
   const { data: settings, error: settingsErr } = await supabaseAdmin
     .from("user_settings")
     .select("user_id, preferences")
@@ -140,7 +140,7 @@ serve(async (req) => {
 
   const digestUsers = (settings ?? []).filter((s) => {
     const prefs = s.preferences as Record<string, string> | null
-    return prefs?.email_digest === "true"
+    return prefs?.notif_daily_digest === "true"
   })
 
   if (digestUsers.length === 0) {
@@ -165,12 +165,17 @@ serve(async (req) => {
       const prefs = setting.preferences as Record<string, string> | null
       const userBrevoKey = prefs?.brevo_key || brevoKey
 
-      // Get user email from auth.users via admin
+      // Get user email and name from auth.users via admin
       const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(setting.user_id)
-      const toEmail = prefs?.notification_email || authUser?.user?.email || ""
+      const emailList = (prefs?.notification_emails || "")
+        .split(",")
+        .map((e: string) => e.trim())
+        .filter(Boolean)
+      const toEmail = emailList[0] || authUser?.user?.email || ""
       if (!toEmail) continue
 
-      const userName = toEmail.split("@")[0]
+      const fullName = authUser?.user?.user_metadata?.full_name as string | undefined
+      const userName = fullName?.split(" ")[0] || toEmail.split("@")[0]
 
       // Get portfolio
       const { data: portfolio } = await supabaseAdmin

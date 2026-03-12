@@ -197,7 +197,8 @@ export default async function DashboardPage() {
     .limit(1)
     .single()
   const lastSynced = lastSyncRow?.updated_at ?? null
-  const userName   = user.email?.split("@")[0] ?? "Investor"
+  const fullName   = (user.user_metadata?.full_name as string) ?? ""
+  const userName   = fullName.split(" ")[0] || user.email?.split("@")[0] || "Investor"
 
   return (
     <div className="space-y-5">

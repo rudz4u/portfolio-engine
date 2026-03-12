@@ -32,14 +32,20 @@ const SMA50_COLOR = "#3b82f6"  // blue
 const SMA200_COLOR = "#f97316" // orange
 const BB_UPPER = "rgba(124,58,237,0.5)"
 const BB_LOWER = "rgba(124,58,237,0.5)"
+const VWAP_COLOR = "#f97316"   // bright orange
+const PIVOT_COLOR = "#06b6d4"  // cyan
+const FIB_COLOR = "#eab308"    // amber/gold
 
 /* ── Overlay toggle options ─────────────────────────────────────────── */
-type OverlayKey = "sma20" | "sma50" | "sma200" | "bollinger"
+type OverlayKey = "sma20" | "sma50" | "sma200" | "bollinger" | "vwap" | "pivots" | "fib"
 const OVERLAY_OPTIONS: { key: OverlayKey; label: string; color: string }[] = [
   { key: "sma20",     label: "SMA 20",    color: SMA20_COLOR },
   { key: "sma50",     label: "SMA 50",    color: SMA50_COLOR },
   { key: "sma200",    label: "SMA 200",   color: SMA200_COLOR },
   { key: "bollinger", label: "Bollinger",  color: PURPLE },
+  { key: "vwap",      label: "VWAP",       color: VWAP_COLOR },
+  { key: "pivots",    label: "Pivots",     color: PIVOT_COLOR },
+  { key: "fib",       label: "Fib",        color: FIB_COLOR },
 ]
 
 /* ── Types ──────────────────────────────────────────────────────────── */
@@ -256,6 +262,120 @@ export function CandlestickChart({
         return
       }
 
+      /* ── VWAP overlay ──────────────────────────────────────────── */
+      if (key === "vwap") {
+        let cumVP = 0
+        let cumVol = 0
+        const vwapData: LineData[] = []
+        for (const c of candles) {
+          const typical = (c.high + c.low + c.close) / 3
+          cumVP += typical * c.volume
+          cumVol += c.volume
+          if (cumVol > 0) {
+            vwapData.push({ time: toChartTime(c.timestamp), value: cumVP / cumVol })
+          }
+        }
+        if (vwapData.length === 0) return
+        const vwapSeries = chart.addLineSeries({
+          color: VWAP_COLOR,
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+          priceLineVisible: false,
+          lastValueVisible: true,
+        })
+        vwapSeries.setData(vwapData)
+        overlaySeries.current.set("vwap", vwapSeries)
+        return
+      }
+
+      /* ── Pivot Points overlay (Classic) ────────────────────────── */
+      if (key === "pivots") {
+        // Use last candle for daily pivots
+        const last = candles[candles.length - 1]
+        const P = (last.high + last.low + last.close) / 3
+        const R1 = 2 * P - last.low
+        const R2 = P + (last.high - last.low)
+        const S1 = 2 * P - last.high
+        const S2 = P - (last.high - last.low)
+
+        const levels = [
+          { value: R2, color: "rgba(244,63,94,0.6)", label: "R2" },
+          { value: R1, color: "rgba(244,63,94,0.4)", label: "R1" },
+          { value: P,  color: PIVOT_COLOR,           label: "P" },
+          { value: S1, color: "rgba(16,185,129,0.4)", label: "S1" },
+          { value: S2, color: "rgba(16,185,129,0.6)", label: "S2" },
+        ]
+
+        const firstTime = toChartTime(candles[0].timestamp)
+        const lastTime = toChartTime(candles[candles.length - 1].timestamp)
+
+        levels.forEach((lvl, i) => {
+          const series = chart.addLineSeries({
+            color: lvl.color,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            title: lvl.label,
+          })
+          series.setData([
+            { time: firstTime, value: lvl.value },
+            { time: lastTime, value: lvl.value },
+          ])
+          overlaySeries.current.set(i === 0 ? "pivots" : `pivots_${i}`, series)
+        })
+        return
+      }
+
+      /* ── Fibonacci Retracement overlay ─────────────────────────── */
+      if (key === "fib") {
+        // Find swing high & swing low
+        let swingHigh = -Infinity
+        let swingLow = Infinity
+        for (const c of candles) {
+          if (c.high > swingHigh) swingHigh = c.high
+          if (c.low < swingLow) swingLow = c.low
+        }
+        const range = swingHigh - swingLow
+        if (range <= 0) return
+
+        const fibLevels = [
+          { pct: 0,     label: "0%" },
+          { pct: 0.236, label: "23.6%" },
+          { pct: 0.382, label: "38.2%" },
+          { pct: 0.5,   label: "50%" },
+          { pct: 0.618, label: "61.8%" },
+          { pct: 0.786, label: "78.6%" },
+          { pct: 1,     label: "100%" },
+        ]
+
+        const firstTime = toChartTime(candles[0].timestamp)
+        const lastTime = toChartTime(candles[candles.length - 1].timestamp)
+
+        // Determine if trend is up (last close > first open) or down
+        const trendUp = candles[candles.length - 1].close >= candles[0].open
+        fibLevels.forEach((fl, i) => {
+          const value = trendUp
+            ? swingHigh - fl.pct * range  // retracement from high
+            : swingLow + fl.pct * range   // retracement from low
+          const alpha = fl.pct === 0.618 || fl.pct === 0.5 ? 0.7 : 0.35
+          const series = chart.addLineSeries({
+            color: `rgba(234,179,8,${alpha})`,
+            lineWidth: fl.pct === 0.618 ? 2 : 1,
+            lineStyle: fl.pct === 0 || fl.pct === 1 ? LineStyle.Solid : LineStyle.Dashed,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            title: fl.label,
+          })
+          series.setData([
+            { time: firstTime, value },
+            { time: lastTime, value },
+          ])
+          overlaySeries.current.set(i === 0 ? "fib" : `fib_${i}`, series)
+        })
+        return
+      }
+
       // SMA overlays
       const smaMap: Record<string, { data?: number[]; color: string }> = {
         sma20:  { data: smaArrays?.sma20,  color: SMA20_COLOR },
@@ -297,6 +417,20 @@ export function CandlestickChart({
       if (lower) {
         chart.removeSeries(lower)
         overlaySeries.current.delete("bollinger_lower")
+      }
+    }
+    // Extra cleanup for pivot sub-series
+    if (key === "pivots") {
+      for (let i = 1; i <= 4; i++) {
+        const sub = overlaySeries.current.get(`pivots_${i}`)
+        if (sub) { chart.removeSeries(sub); overlaySeries.current.delete(`pivots_${i}`) }
+      }
+    }
+    // Extra cleanup for fibonacci sub-series
+    if (key === "fib") {
+      for (let i = 1; i <= 6; i++) {
+        const sub = overlaySeries.current.get(`fib_${i}`)
+        if (sub) { chart.removeSeries(sub); overlaySeries.current.delete(`fib_${i}`) }
       }
     }
   }, [])

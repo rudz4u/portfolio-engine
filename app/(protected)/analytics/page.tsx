@@ -9,10 +9,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, TrendingDown, PieChart as PieIcon, BarChart2, Activity, RefreshCw, Terminal, Cpu, Radio, Zap } from "lucide-react"
+import { TrendingUp, TrendingDown, PieChart as PieIcon, BarChart2, Activity, RefreshCw, Terminal, Cpu, Radio, Zap, Brain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SectorCorrelationHeatmap } from "./sector-correlation"
 import { useTechSignals } from "@/lib/hooks/use-tech-signals"
+import { SmartInsights } from "./smart-insights"
+import { PortfolioTreemap } from "./portfolio-treemap"
+import { PortfolioTimeline } from "./portfolio-timeline"
+import { HoldingsScatter } from "./holdings-scatter"
+import { MomentumGrid } from "./momentum-grid"
 import { SignalBadge, RsiIndicator } from "@/components/signal-badge"
 
 /* ─── neon sci-fi palette ──────────────────────────────────── */
@@ -305,6 +310,41 @@ export default function AnalyticsPage() {
   const currentValue = totalInvested + totalPnL
   const pnlPct = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0
 
+  /* ── treemap / scatter data ──────────────────────────────── */
+  const treemapData = useMemo(
+    () =>
+      holdingPnL
+        .filter((h) => h.invested > 0)
+        .map((h) => ({
+          symbol: h.symbol,
+          invested: h.invested,
+          pnlPct: h.pl_pct,
+          pnlValue: h.pl_value,
+        })),
+    [holdingPnL],
+  )
+
+  const scatterData = useMemo(
+    () =>
+      holdingPnL
+        .filter((h) => h.invested > 0)
+        .map((h) => ({
+          symbol: h.symbol,
+          invested: h.invested,
+          returnPct: h.pl_pct,
+          pnl: h.pl_value,
+        })),
+    [holdingPnL],
+  )
+
+  /* ── top holding concentration for insights ──────────────── */
+  const topHoldingConc = useMemo(() => {
+    if (holdingPnL.length === 0 || totalInvested === 0)
+      return { symbol: "—", pct: 0 }
+    const top = [...holdingPnL].sort((a, b) => b.invested - a.invested)[0]
+    return { symbol: top.symbol, pct: (top.invested / totalInvested) * 100 }
+  }, [holdingPnL, totalInvested])
+
   /* ── kpi summary ─────────────────────────────────────────── */
   const kpis = [
     {
@@ -376,6 +416,32 @@ export default function AnalyticsPage() {
               </div>
             ))}
       </div>
+
+      {/* ── AI Smart Insights ──────────────────────────── */}
+      {!loading && riskMetrics && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Brain className="h-4 w-4 text-[#00ffcc]/60" />
+            <span className="text-[10px] font-mono text-[#00ffcc]/60 uppercase tracking-[0.2em]">AI Insights</span>
+          </div>
+          <SmartInsights
+            totalInvested={totalInvested}
+            totalPnL={totalPnL}
+            pnlPct={pnlPct}
+            holdingCount={holdingPnL.length}
+            segmentCount={segmentAlloc.length}
+            winRate={riskMetrics.winRate}
+            hhi={riskMetrics.hhi}
+            sharpeProxy={riskMetrics.sharpeProxy}
+            signals={techSignals}
+            topConcentrationPct={topHoldingConc.pct}
+            topConcentrationSymbol={topHoldingConc.symbol}
+          />
+        </div>
+      )}
+
+      {/* ── Portfolio Value Timeline ───────────────────── */}
+      <PortfolioTimeline />
 
       {/* ── Technical Signals Overview ──────────────────── */}
       {!loading && signalSummary && (
@@ -591,6 +657,11 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
+      {/* ── Portfolio Heatmap ──────────────────────────── */}
+      {!loading && treemapData.length > 0 && (
+        <PortfolioTreemap holdings={treemapData} />
+      )}
+
       {/* Top gainers + losers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
@@ -685,6 +756,16 @@ export default function AnalyticsPage() {
         </Card>
 
       </div>
+
+      {/* ── Risk vs Return Scatter ─────────────────────── */}
+      {!loading && scatterData.length > 0 && (
+        <HoldingsScatter holdings={scatterData} />
+      )}
+
+      {/* ── Momentum Grid ──────────────────────────────── */}
+      {!loading && techSignals.size > 0 && (
+        <MomentumGrid signals={techSignals} />
+      )}
 
       {/* P&L % leaderboard */}
       <Card className="glow-border-card glass">

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Activity, TrendingUp, TrendingDown, Search, RefreshCw,
-  BarChart2, ArrowUpRight, ArrowDownRight, Minus, Bot,
+  BarChart2, ArrowUpRight, ArrowDownRight, Minus, Bot, Info,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TIMEFRAME_PRESETS } from "@/lib/candles/types"
@@ -219,6 +219,14 @@ export default function TechnicalAnalysisPage() {
         </Button>
       </div>
 
+      {/* Info Banner */}
+      <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 text-xs text-primary/80 font-mono">
+        <Info className="h-4 w-4 shrink-0" />
+        <span>
+          Showing stocks from your <strong>Portfolio</strong> and <strong>Watchlists</strong>. Add more instruments via the Dashboard or Watchlist page.
+        </span>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         {/* ── Stock picker sidebar ────────────────────────────────── */}
         <Card className="h-fit lg:sticky lg:top-4">
@@ -341,7 +349,7 @@ export default function TechnicalAnalysisPage() {
                 </CardContent>
               </Card>
 
-              {/* Signal summary */}
+              {/* Signal summary with gauge */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -349,10 +357,19 @@ export default function TechnicalAnalysisPage() {
                     Signal Summary
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {analysis.signalSummary}
-                  </p>
+                <CardContent className="space-y-4">
+                  {/* Signal strength gauge */}
+                  <div className="flex items-center gap-6">
+                    <SignalGauge signal={analysis.overallSignal} rsi={analysis.indicators.rsi} />
+                    <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                      {analysis.signalSummary}
+                    </p>
+                  </div>
+
+                  {/* Price action micro-strip */}
+                  {analysis.candles.length > 1 && (
+                    <PriceActionStrip candles={analysis.candles} indicators={analysis.indicators} />
+                  )}
                 </CardContent>
               </Card>
 
@@ -472,47 +489,66 @@ export default function TechnicalAnalysisPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {analysis.patterns.map((p, i) => (
-                        <div
-                          key={`${p.name}-${i}`}
-                          className="flex items-start gap-3 rounded-lg border border-border/30 p-3"
-                        >
+                      {analysis.patterns.map((p, i) => {
+                        const confPct = Math.round(p.confidence * 100)
+                        const confColor =
+                          p.direction === "bullish" ? "bg-emerald-500" : p.direction === "bearish" ? "bg-rose-500" : "bg-amber-500"
+                        return (
                           <div
-                            className={cn(
-                              "mt-0.5 h-8 w-8 rounded-md flex items-center justify-center shrink-0 text-sm font-bold",
-                              p.direction === "bullish"
-                                ? "bg-emerald-500/10 text-emerald-400"
-                                : p.direction === "bearish"
-                                  ? "bg-rose-500/10 text-rose-400"
-                                  : "bg-amber-500/10 text-amber-400",
-                            )}
+                            key={`${p.name}-${i}`}
+                            className="flex items-start gap-3 rounded-lg border border-border/30 p-3 animate-in fade-in slide-in-from-bottom-2"
+                            style={{ animationDelay: `${i * 80}ms`, animationFillMode: "both", animationDuration: "400ms" }}
                           >
-                            {p.direction === "bullish" ? "▲" : p.direction === "bearish" ? "▼" : "◆"}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{p.name}</span>
-                              <Badge variant="outline" className="text-[10px]">
-                                {Math.round(p.confidence * 100)}%
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "text-[10px]",
-                                  p.category === "reversal"
-                                    ? "border-purple-500/30 text-purple-400"
-                                    : "border-sky-500/30 text-sky-400",
-                                )}
-                              >
-                                {p.category}
-                              </Badge>
+                            <div
+                              className={cn(
+                                "mt-0.5 h-8 w-8 rounded-md flex items-center justify-center shrink-0 text-sm font-bold",
+                                p.direction === "bullish"
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : p.direction === "bearish"
+                                    ? "bg-rose-500/10 text-rose-400"
+                                    : "bg-amber-500/10 text-amber-400",
+                              )}
+                            >
+                              {p.direction === "bullish" ? "▲" : p.direction === "bearish" ? "▼" : "◆"}
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                              {p.description}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm">{p.name}</span>
+                                {confPct >= 75 && (
+                                  <span className={cn(
+                                    "h-2 w-2 rounded-full animate-pulse",
+                                    p.direction === "bullish" ? "bg-emerald-400" : "bg-rose-400",
+                                  )} />
+                                )}
+                                <Badge variant="outline" className="text-[10px]">
+                                  {confPct}%
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[10px]",
+                                    p.category === "reversal"
+                                      ? "border-purple-500/30 text-purple-400"
+                                      : "border-sky-500/30 text-sky-400",
+                                  )}
+                                >
+                                  {p.category}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                                {p.description}
+                              </p>
+                              {/* Confidence bar */}
+                              <div className="mt-2 h-1 w-full rounded-full bg-muted/30 overflow-hidden">
+                                <div
+                                  className={cn("h-full rounded-full transition-all duration-700 ease-out", confColor)}
+                                  style={{ width: `${confPct}%` }}
+                                />
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -581,6 +617,116 @@ function IndicatorCard({
         <p className="text-[10px] text-muted-foreground mt-1">{detail}</p>
       </CardContent>
     </Card>
+  )
+}
+
+/* ── Signal Gauge ────────────────────────────────────────────────────── */
+function SignalGauge({
+  signal,
+  rsi,
+}: {
+  signal: "bullish" | "bearish" | "neutral"
+  rsi: number | null
+}) {
+  // Map signal to angle on a semi-circular gauge: -90° (bearish) → 0° (neutral) → +90° (bullish)
+  const angle =
+    signal === "bullish" ? (rsi && rsi > 60 ? Math.min(90, (rsi - 50) * 2.25) : 45)
+    : signal === "bearish" ? (rsi && rsi < 40 ? Math.max(-90, (rsi - 50) * 2.25) : -45)
+    : 0
+  const needleColor =
+    signal === "bullish" ? "#10b981" : signal === "bearish" ? "#f43f5e" : "#eab308"
+
+  return (
+    <div className="relative shrink-0" style={{ width: 80, height: 48 }}>
+      <svg viewBox="0 0 80 48" className="w-full h-full">
+        {/* Background arc */}
+        <path
+          d="M 8 44 A 32 32 0 0 1 72 44"
+          fill="none"
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
+        {/* Colored segments */}
+        <path d="M 8 44 A 32 32 0 0 1 24 16" fill="none" stroke="rgba(244,63,94,0.3)" strokeWidth="6" strokeLinecap="round" />
+        <path d="M 30 13 A 32 32 0 0 1 50 13" fill="none" stroke="rgba(234,179,8,0.3)" strokeWidth="6" strokeLinecap="round" />
+        <path d="M 56 16 A 32 32 0 0 1 72 44" fill="none" stroke="rgba(16,185,129,0.3)" strokeWidth="6" strokeLinecap="round" />
+        {/* Needle */}
+        <line
+          x1="40"
+          y1="44"
+          x2={40 + 26 * Math.sin((angle * Math.PI) / 180)}
+          y2={44 - 26 * Math.cos((angle * Math.PI) / 180)}
+          stroke={needleColor}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          className="transition-all duration-700 ease-out"
+        />
+        {/* Center dot */}
+        <circle cx="40" cy="44" r="3" fill={needleColor} className="transition-colors duration-700" />
+      </svg>
+      <p className="absolute bottom-0 left-0 right-0 text-center text-[9px] font-mono font-bold uppercase tracking-wider"
+         style={{ color: needleColor }}>
+        {signal}
+      </p>
+    </div>
+  )
+}
+
+/* ── Price Action Strip ─────────────────────────────────────────────── */
+function PriceActionStrip({
+  candles,
+  indicators,
+}: {
+  candles: CandleData[]
+  indicators: TechnicalIndicators
+}) {
+  const last = candles[candles.length - 1]
+  const prev = candles[candles.length - 2]
+  const changePct = prev ? ((last.close - prev.close) / prev.close) * 100 : 0
+  const dayRange = last.high - last.low
+  const positionInRange = dayRange > 0 ? ((last.close - last.low) / dayRange) * 100 : 50
+
+  const smaDist20 = indicators.sma20 ? ((last.close - indicators.sma20) / indicators.sma20 * 100) : null
+  const smaDist50 = indicators.sma50 ? ((last.close - indicators.sma50) / indicators.sma50 * 100) : null
+
+  const trend =
+    indicators.sma20 && indicators.sma50
+      ? last.close > indicators.sma20 && indicators.sma20 > indicators.sma50
+        ? "uptrend"
+        : last.close < indicators.sma20 && indicators.sma20 < indicators.sma50
+          ? "downtrend"
+          : "sideways"
+      : "—"
+
+  const trendIcon =
+    trend === "uptrend" ? <TrendingUp className="h-3 w-3 text-emerald-400" />
+    : trend === "downtrend" ? <TrendingDown className="h-3 w-3 text-rose-400" />
+    : <Minus className="h-3 w-3 text-amber-400" />
+
+  const items = [
+    { label: "Last Close", value: `₹${fmtNum(last.close)}`, color: changePct >= 0 ? "text-emerald-400" : "text-rose-400" },
+    { label: "Change", value: `${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%`, color: changePct >= 0 ? "text-emerald-400" : "text-rose-400" },
+    { label: "Range Pos", value: `${positionInRange.toFixed(0)}%`, color: positionInRange > 60 ? "text-emerald-400" : positionInRange < 40 ? "text-rose-400" : "text-amber-400" },
+    ...(smaDist20 !== null ? [{ label: "vs SMA20", value: `${smaDist20 >= 0 ? "+" : ""}${smaDist20.toFixed(2)}%`, color: smaDist20 >= 0 ? "text-emerald-400" : "text-rose-400" }] : []),
+    ...(smaDist50 !== null ? [{ label: "vs SMA50", value: `${smaDist50 >= 0 ? "+" : ""}${smaDist50.toFixed(2)}%`, color: smaDist50 >= 0 ? "text-emerald-400" : "text-rose-400" }] : []),
+  ]
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-border/30 bg-muted/20 px-4 py-2.5">
+      <div className="flex items-center gap-1.5 pr-4 border-r border-border/30">
+        {trendIcon}
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+          {trend === "—" ? "N/A" : trend}
+        </span>
+      </div>
+      {items.map((item) => (
+        <div key={item.label} className="text-center">
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+          <p className={cn("text-xs font-mono font-bold", item.color)}>{item.value}</p>
+        </div>
+      ))}
+    </div>
   )
 }
 
