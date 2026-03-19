@@ -112,8 +112,8 @@ export default async function PortfolioPage({
             </div>
             <h2 className="text-xl font-semibold">No portfolio yet</h2>
             <p className="text-muted-foreground max-w-sm text-sm">
-              Import your holdings report from Upstox or any supported broker
-              to set up your portfolio in seconds.
+              Upload your holdings report from any supported broker to set up
+              your portfolio in seconds.
             </p>
             <ImportHoldingsDialog label="Import Holdings Report" variant="default" />
           </CardContent>

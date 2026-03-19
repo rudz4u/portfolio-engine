@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { scoreHoldings, portfolioSummary, type HoldingInput } from "@/lib/quant/scoring"
 import { fetchCandleDataBatch } from "@/lib/candles/fetch"
 import { computeTechnicalAnalysis } from "@/lib/candles/technicals"
-import { resolveUpstoxToken } from "@/lib/upstox-token"
+import { resolveUpstoxToken, resolveMarketDataToken } from "@/lib/upstox-token"
 
 const SYSTEM_PROMPT = `You are an expert AI portfolio analytics assistant for InvestBuddy AI.
 You help users understand and analyze their Indian stock portfolio performance, explore market data, and interpret quantitative indicators.
@@ -220,7 +220,7 @@ Portfolio Summary (live data):
 
       // ── 1b. Fetch real technical analysis for top holdings ────────────────
       try {
-        const upstoxToken = await resolveUpstoxToken()
+        const upstoxToken = resolveMarketDataToken()
         if (upstoxToken) {
           const topKeys = inputs.slice(0, 10).map((h) => h.instrument_key)
           const toDate = new Date().toISOString().slice(0, 10)

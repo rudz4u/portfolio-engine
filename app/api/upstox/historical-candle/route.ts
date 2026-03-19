@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getUpstoxHeaders } from "@/lib/upstox"
-import { resolveUpstoxToken } from "@/lib/upstox-token"
+import { resolveMarketDataToken } from "@/lib/upstox-token"
 import { createAdminClient } from "@/lib/supabase/server"
 
 const UPSTOX_V3 = "https://api.upstox.com/v3"
@@ -80,14 +80,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const token = await resolveUpstoxToken()
+  const token = resolveMarketDataToken()
   if (!token) {
     return NextResponse.json(
-      {
-        error:
-          "No Upstox access token. Connect your account in Settings to view historical data.",
-      },
-      { status: 401 },
+      { error: "Market data service unavailable. Please try again later." },
+      { status: 503 },
     )
   }
 

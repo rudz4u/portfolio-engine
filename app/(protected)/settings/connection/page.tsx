@@ -133,8 +133,8 @@ export default function ConnectionPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h2 className="text-xl font-bold">Upstox Connection</h2>
-        <p className="text-muted-foreground text-sm">Connect your Upstox account to sync holdings and place orders</p>
+        <h2 className="text-xl font-bold">Broker Connection</h2>
+        <p className="text-muted-foreground text-sm">Connect your brokerage account to sync holdings and place orders directly from the platform</p>
       </div>
 
       <Card>
@@ -190,6 +190,11 @@ export default function ConnectionPage() {
           ) : (
             <div className="rounded-lg border border-dashed p-6 flex flex-col items-center gap-3 text-center">
               <p className="text-muted-foreground text-sm">Connect your Upstox account to automatically sync your holdings. You'll be redirected to Upstox to authorise access — no copy-pasting required.</p>
+              <div className="rounded-md bg-muted/50 border px-4 py-3 text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">ℹ️ Broker OAuth is currently admin-only</p>
+                <p>Direct OAuth connection is available for the platform administrator. If you're a regular user, use <strong>Import Holdings Report</strong> (on the Portfolio page) to load your portfolio from any broker's XLSX or CSV export.</p>
+                <p className="text-muted-foreground/80">Support for Zerodha, Groww, and additional brokers is on the roadmap.</p>
+              </div>
               <Button asChild size="lg" className="mt-1">
                 <a href="/api/oauth/upstox/authorize"><ExternalLink className="mr-2 h-4 w-4" /> Connect with Upstox</a>
               </Button>

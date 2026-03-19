@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { resolveUpstoxToken } from "@/lib/upstox-token"
+import { resolveMarketDataToken } from "@/lib/upstox-token"
 import { getUpstoxHeaders } from "@/lib/upstox"
 
 export const maxDuration = 30
@@ -187,9 +187,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ prices, errors, source: "cache" })
   }
 
-  const upstoxToken = await resolveUpstoxToken()
+  const upstoxToken = resolveMarketDataToken()
   if (!upstoxToken) {
-    for (const sym of uncachedSymbols) errors[sym] = "No Upstox token"
+    for (const sym of uncachedSymbols) errors[sym] = "Market data unavailable"
     return NextResponse.json({ prices, errors, source: "none" })
   }
 

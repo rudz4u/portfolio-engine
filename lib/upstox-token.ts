@@ -49,3 +49,13 @@ export async function resolveUpstoxToken(): Promise<string | null> {
   // Last resort: static env-var token (dev/admin).  Returns null if not set.
   return UPSTOX_CONFIG.accessToken || null
 }
+
+/**
+ * Returns the server-level Upstox access token from the environment variable
+ * (UPSTOX_ACCESS_TOKEN). No user DB lookup — intended for market-data APIs
+ * (candles, LTP, historical data, technical analysis) that are shared across
+ * all users and must never require individual brokerage account connections.
+ */
+export function resolveMarketDataToken(): string | null {
+  return UPSTOX_CONFIG.accessToken || null
+}

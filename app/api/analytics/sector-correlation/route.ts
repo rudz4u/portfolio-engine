@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getUpstoxHeaders } from "@/lib/upstox"
-import { resolveUpstoxToken } from "@/lib/upstox-token"
+import { resolveMarketDataToken } from "@/lib/upstox-token"
 
 /**
  * GET /api/analytics/sector-correlation?segments=BFSI,IT,Auto,...
@@ -100,11 +100,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "segments query param is required" }, { status: 400 })
   }
 
-  const token = await resolveUpstoxToken()
+  const token = resolveMarketDataToken()
   if (!token) {
     return NextResponse.json(
-      { error: "Connect your Upstox account in Settings to view sector correlation." },
-      { status: 401 },
+      { error: "Market data service unavailable. Please try again later." },
+      { status: 503 },
     )
   }
 

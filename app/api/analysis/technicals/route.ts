@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { resolveUpstoxToken } from "@/lib/upstox-token"
+import { resolveMarketDataToken } from "@/lib/upstox-token"
 import { fetchCandleDataBatch } from "@/lib/candles/fetch"
 import { computeTechnicalAnalysis, computeOverlayArrays } from "@/lib/candles/technicals"
 import { TIMEFRAME_PRESETS } from "@/lib/candles/types"
@@ -34,11 +34,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ status: "error", message: "Unauthorized" }, { status: 401 })
   }
 
-  const token = await resolveUpstoxToken()
+  const token = resolveMarketDataToken()
   if (!token) {
     return NextResponse.json(
-      { status: "error", message: "Connect your Upstox account in Settings to view technical analysis." },
-      { status: 401 },
+      { status: "error", message: "Market data service unavailable. Please try again later." },
+      { status: 503 },
     )
   }
 
