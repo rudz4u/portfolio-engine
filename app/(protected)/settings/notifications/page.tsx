@@ -149,7 +149,7 @@ export default function NotificationsPage() {
               className="ml-auto text-xs rounded border border-input bg-background px-2 py-1 text-foreground disabled:opacity-40"
               aria-label="Digest delivery time (IST)"
             >
-              {["06:00","07:00","08:00","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:15","13:30","14:00","14:30","15:00"].map((t) => {
+              {["06:00","07:00","08:00","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:15","13:30","14:00","14:15","14:30","14:45","15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15","17:30"].map((t) => {
                 const [h, m] = t.split(":")
                 const hr = parseInt(h, 10)
                 const displayHr = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr
