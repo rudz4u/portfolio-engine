@@ -150,9 +150,11 @@ export default function NotificationsPage() {
               aria-label="Digest delivery time (IST)"
             >
               {["06:00","07:00","08:00","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:15","13:30","14:00","14:30","15:00"].map((t) => {
-                const [h] = t.split(":")
+                const [h, m] = t.split(":")
                 const hr = parseInt(h, 10)
-                const label = hr < 12 ? `${hr}:00 AM` : hr === 12 ? "12:00 PM" : `${hr - 12}:00 PM`
+                const displayHr = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr
+                const ampm = hr < 12 ? "AM" : "PM"
+                const label = `${displayHr}:${m} ${ampm}`
                 return <option key={t} value={t}>{label} IST</option>
               })}
             </select>
