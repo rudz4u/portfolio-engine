@@ -32,6 +32,10 @@
   # Tell Netlify's secrets scanner to skip these expected keys.
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_URL,SUPABASE_PROJECT_ID,NEXT_PUBLIC_SUPABASE_ANON_KEY"
   NEXT_PUBLIC_APP_URL = "https://investbuddyai.com"
+  # ── Email (Brevo) ──────────────────────────────────────────────────────────
+  # BREVO_API_KEY          — REQUIRED for daily digest emails. Set in Netlify dashboard.
+  # BREVO_SENDER_NAME      — "InvestBuddy AI" (optional override)
+  # BREVO_SENDER_EMAIL     — noreply@investbuddyai.com (must be a verified sender in Brevo)
 
 # ── Functions ────────────────────────────────────────────────────────────────
 

@@ -29,6 +29,11 @@ export async function POST(req: Request) {
 
   // Resolve env-level Brevo key (admin fallback)
   const envBrevoKey = process.env.BREVO_API_KEY ?? ""
+  if (!envBrevoKey) {
+    console.warn("[digest] BREVO_API_KEY env var is not set — will only send emails for users who have their own brevo_key in preferences")
+  } else {
+    console.log("[digest] Platform BREVO_API_KEY is configured")
+  }
 
   // Fetch all user_settings rows where notif_daily_digest = "true"
   const { data: settingsRows, error: sErr } = await supabase
@@ -40,8 +45,10 @@ export async function POST(req: Request) {
   }
 
   const eligible = (settingsRows ?? []).filter((row) => {
-    const prefs = (row.preferences as Record<string, string>) || {}
-    return prefs.notif_daily_digest === "true"
+    const prefs = (row.preferences as Record<string, unknown>) || {}
+    // Accept both string "true" (from fixed POST handler) and boolean true
+    // (from older saves before the coercion fix was deployed).
+    return prefs.notif_daily_digest === "true" || prefs.notif_daily_digest === true
   })
 
   if (eligible.length === 0) {
@@ -57,7 +64,11 @@ export async function POST(req: Request) {
 
     // Resolve Brevo key: user's own key first, then env-level fallback
     const brevoKey = prefs.brevo_key || envBrevoKey
-    if (!brevoKey) { skipped++; continue }
+    if (!brevoKey) {
+      console.warn(`[digest] Skipping user ${row.user_id} — no Brevo key (set BREVO_API_KEY in Netlify env vars)`)
+      skipped++
+      continue
+    }
 
     // Resolve recipient email
     const emailList = (prefs.notification_emails || "")
@@ -71,7 +82,11 @@ export async function POST(req: Request) {
       const { data: authUser } = await supabase.auth.admin.getUserById(row.user_id)
       toEmail = authUser?.user?.email ?? ""
     }
-    if (!toEmail) { skipped++; continue }
+    if (!toEmail) {
+      console.warn(`[digest] Skipping user ${row.user_id} — no email address found`)
+      skipped++
+      continue
+    }
 
     // Fetch portfolio summary
     const { data: portfolio } = await supabase
@@ -80,7 +95,11 @@ export async function POST(req: Request) {
       .eq("user_id", row.user_id)
       .single()
 
-    if (!portfolio) { skipped++; continue }
+    if (!portfolio) {
+      console.warn(`[digest] Skipping user ${row.user_id} — no portfolio found`)
+      skipped++
+      continue
+    }
 
     const { data: holdings } = await supabase
       .from("holdings")

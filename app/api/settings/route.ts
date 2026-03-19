@@ -98,6 +98,12 @@ export async function POST(request: NextRequest) {
     "notif_portfolio_alert", "notif_price_alert",
   ]
 
+  // Boolean notification flags — always stored as strings so the cron digest
+  // filter (`=== "true"`) works regardless of whether the UI sends a boolean or string.
+  const boolNotifKeys = new Set([
+    "notif_daily_digest", "notif_order_placed", "notif_portfolio_alert", "notif_price_alert",
+  ])
+
   // Get existing preferences
   const { data: existing } = await supabase
     .from("user_settings")
@@ -114,6 +120,10 @@ export async function POST(request: NextRequest) {
       // Empty string = delete the key
       if (body[key] === "") {
         delete updated[key]
+      } else if (boolNotifKeys.has(key)) {
+        // Always coerce boolean notification flags to string ("true"/"false")
+        // so the cron digest filter (=== "true") works consistently.
+        updated[key] = String(body[key])
       } else {
         updated[key] = body[key]
       }
@@ -152,3 +162,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true })
 }
+
+// PATCH is an alias of POST — the onboarding wizard uses PATCH to save initial
+// notification and preference settings after account creation.
+export const PATCH = POST
