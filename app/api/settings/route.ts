@@ -71,7 +71,11 @@ export async function GET() {
     notif_order_placed:       prefs.notif_order_placed !== "false",
     notif_portfolio_alert:    prefs.notif_portfolio_alert === "true",
     notif_price_alert:        prefs.notif_price_alert === "true",
-    digest_send_time:         (prefs.digest_send_time as string) || "10:00",  // HH:00 IST, 24-hr
+    digest_send_time:         (prefs.digest_send_time as string) || "10:00",  // legacy single slot
+    // Up to 3 delivery slots; falls back to legacy single slot if absent
+    digest_send_time_slots: Array.isArray(prefs.digest_send_time_slots)
+      ? (prefs.digest_send_time_slots as string[])
+      : [(prefs.digest_send_time as string) || "10:00"],
     // Scoring
     scoring_weights: prefs.scoring_weights ?? null,
     // Strategy profile
@@ -98,6 +102,7 @@ export async function POST(request: NextRequest) {
     "notif_daily_digest", "notif_order_placed",
     "notif_portfolio_alert", "notif_price_alert",
     "digest_send_time",
+    "digest_send_time_slots",
   ]
 
   // Boolean notification flags — always stored as strings so the cron digest

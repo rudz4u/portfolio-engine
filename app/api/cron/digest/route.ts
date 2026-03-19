@@ -90,10 +90,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: sErr.message }, { status: 500 })
   }
 
-  // Current IST hour (IST = UTC + 5:30 → shift by 330 minutes)
+  // Current IST time (IST = UTC + 5:30 → shift by 330 minutes)
   const nowUTC = new Date()
   const nowIST = new Date(nowUTC.getTime() + 330 * 60 * 1000)
-  const currentISTHour = nowIST.getUTCHours()
+  const currentISTHour   = nowIST.getUTCHours()
+  const currentISTMinute = nowIST.getUTCMinutes()
 
   // Allow caller to bypass the time check (e.g. manual/test invocations)
   let skipTimeCheck = false
@@ -111,10 +112,15 @@ export async function POST(req: Request) {
 
     if (skipTimeCheck) return true
 
-    // Filter by user's preferred IST delivery hour (default 10:00 → hour 10)
-    const preferredTime = (prefs.digest_send_time as string) || "10:00"
-    const preferredHour = parseInt(preferredTime.split(":")[0], 10)
-    return preferredHour === currentISTHour
+    // Support up to 3 delivery slots; fall back to legacy single slot
+    const slots: string[] = Array.isArray(prefs.digest_send_time_slots)
+      ? (prefs.digest_send_time_slots as string[])
+      : [(prefs.digest_send_time as string) || "10:00"]
+    // Match both hour and minute so each 15-min slot fires exactly once
+    return slots.some((t) => {
+      const [h, m] = t.split(":")
+      return parseInt(h, 10) === currentISTHour && parseInt(m, 10) === currentISTMinute
+    })
   })
 
   if (eligible.length === 0) {

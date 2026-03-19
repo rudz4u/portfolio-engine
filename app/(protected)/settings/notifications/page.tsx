@@ -13,7 +13,7 @@ export default function NotificationsPage() {
   const [emailRecipients, setEmailRecipients] = useState<string[]>([])
   const [newEmail, setNewEmail] = useState("")
   const [sendDigest, setSendDigest] = useState(false)
-  const [digestTime, setDigestTime] = useState("10:00")
+  const [digestTimes, setDigestTimes] = useState<string[]>(["10:00"])
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [portfolioAlert, setPortfolioAlert] = useState(false)
   const [priceAlert, setPriceAlert] = useState(false)
@@ -37,7 +37,11 @@ export default function NotificationsPage() {
       const emails = data.notification_emails ? data.notification_emails.split(",").map((e: string) => e.trim()).filter((e: string) => e) : []
       setEmailRecipients(emails)
       setSendDigest(data.notif_daily_digest !== false)
-      setDigestTime(data.digest_send_time || "10:00")
+      setDigestTimes(
+        Array.isArray(data.digest_send_time_slots) && data.digest_send_time_slots.length > 0
+          ? data.digest_send_time_slots
+          : [data.digest_send_time || "10:00"]
+      )
       setOrderPlaced(data.notif_order_placed !== false)
       setPortfolioAlert(data.notif_portfolio_alert === true)
       setPriceAlert(data.notif_price_alert === true)
@@ -82,7 +86,8 @@ export default function NotificationsPage() {
         body: JSON.stringify({
           notification_emails: emailRecipients.join(","),
           notif_daily_digest: sendDigest,
-          digest_send_time: digestTime,
+          digest_send_time: digestTimes[0] || "10:00",        // legacy compat
+          digest_send_time_slots: digestTimes,
           notif_order_placed: orderPlaced,
           notif_portfolio_alert: portfolioAlert,
           notif_price_alert: priceAlert,
@@ -127,6 +132,39 @@ export default function NotificationsPage() {
     }
   }
 
+  // Every 15 minutes from 06:00 to 22:00 IST (matches cron schedule: */15 0-16 UTC Mon–Fri)
+  const TIME_OPTIONS: string[] = []
+  for (let h = 6; h <= 22; h++) {
+    const maxMin = h === 22 ? 0 : 45
+    for (let m = 0; m <= maxMin; m += 15) {
+      TIME_OPTIONS.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`)
+    }
+  }
+
+  function formatTimeLabel(t: string) {
+    const [h, m] = t.split(":")
+    const hr = parseInt(h, 10)
+    const displayHr = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr
+    const ampm = hr < 12 ? "AM" : "PM"
+    return `${displayHr}:${m} ${ampm} IST`
+  }
+
+  function addDigestSlot() {
+    if (digestTimes.length >= 3) return
+    // Pick a default that's not already chosen
+    const next = TIME_OPTIONS.find((t) => !digestTimes.includes(t)) || "12:00"
+    setDigestTimes([...digestTimes, next])
+  }
+
+  function removeDigestSlot(idx: number) {
+    if (digestTimes.length <= 1) return
+    setDigestTimes(digestTimes.filter((_, i) => i !== idx))
+  }
+
+  function updateDigestSlot(idx: number, val: string) {
+    setDigestTimes(digestTimes.map((t, i) => (i === idx ? val : t)))
+  }
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
@@ -140,29 +178,67 @@ export default function NotificationsPage() {
           <CardDescription>Choose what events trigger notifications</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Daily Digest row — inline multi-slot time picker */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sendDigest}
+                onChange={(e) => setSendDigest(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Daily Portfolio Digest</p>
+                <p className="text-xs text-muted-foreground">Receive daily summary of portfolio changes</p>
+              </div>
+            </label>
+            {sendDigest && (
+              <div className="ml-7 space-y-2">
+                <p className="text-xs text-muted-foreground">Delivery times (up to 3 per day)</p>
+                {digestTimes.map((t, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <select
+                      value={t}
+                      onChange={(e) => updateDigestSlot(idx, e.target.value)}
+                      className="text-xs rounded border border-input bg-background px-2 py-1.5 text-foreground"
+                      aria-label={`Digest time slot ${idx + 1}`}
+                    >
+                      {TIME_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{formatTimeLabel(opt)}</option>
+                      ))}
+                    </select>
+                    {digestTimes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeDigestSlot(idx)}
+                        className="text-destructive hover:text-destructive/80 transition-colors"
+                        aria-label="Remove this time slot"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {digestTimes.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={addDigestSlot}
+                    className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add another time
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Other notification toggles */}
           {[
-            { label: "Daily Portfolio Digest", desc: "Receive daily summary of portfolio changes", state: sendDigest, setState: setSendDigest, id: "digest", extra: (
-            <select
-              value={digestTime}
-              onChange={(e) => setDigestTime(e.target.value)}
-              disabled={!sendDigest}
-              className="ml-auto text-xs rounded border border-input bg-background px-2 py-1 text-foreground disabled:opacity-40"
-              aria-label="Digest delivery time (IST)"
-            >
-              {["06:00","07:00","08:00","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:15","13:30","14:00","14:15","14:30","14:45","15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15","17:30"].map((t) => {
-                const [h, m] = t.split(":")
-                const hr = parseInt(h, 10)
-                const displayHr = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr
-                const ampm = hr < 12 ? "AM" : "PM"
-                const label = `${displayHr}:${m} ${ampm}`
-                return <option key={t} value={t}>{label} IST</option>
-              })}
-            </select>
-          ) },
             { label: "Order Placed", desc: "Notify when an order is placed", state: orderPlaced, setState: setOrderPlaced, id: "order" },
             { label: "Portfolio Alert", desc: "Alert when portfolio thresholds are breached", state: portfolioAlert, setState: setPortfolioAlert, id: "portfolio" },
             { label: "Price Alert", desc: "Notify on significant price movements", state: priceAlert, setState: setPriceAlert, id: "price" },
-          ].map(({ label, desc, state, setState, id, extra }) => (
+          ].map(({ label, desc, state, setState, id }) => (
             <label key={id} className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -174,7 +250,6 @@ export default function NotificationsPage() {
                 <p className="text-sm font-medium">{label}</p>
                 <p className="text-xs text-muted-foreground">{desc}</p>
               </div>
-              {extra}
             </label>
           ))}
         </CardContent>
