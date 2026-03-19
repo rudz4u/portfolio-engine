@@ -44,11 +44,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: sErr.message }, { status: 500 })
   }
 
+  // Current IST hour (IST = UTC + 5:30 → shift by 330 minutes)
+  const nowUTC = new Date()
+  const nowIST = new Date(nowUTC.getTime() + 330 * 60 * 1000)
+  const currentISTHour = nowIST.getUTCHours()
+
+  // Allow caller to bypass the time check (e.g. manual/test invocations)
+  let skipTimeCheck = false
+  try {
+    const body = await req.json().catch(() => ({}))
+    skipTimeCheck = body?.skip_time_check === true
+  } catch { /* ignore parse errors */ }
+
   const eligible = (settingsRows ?? []).filter((row) => {
     const prefs = (row.preferences as Record<string, unknown>) || {}
     // Accept both string "true" (from fixed POST handler) and boolean true
     // (from older saves before the coercion fix was deployed).
-    return prefs.notif_daily_digest === "true" || prefs.notif_daily_digest === true
+    const digestEnabled = prefs.notif_daily_digest === "true" || prefs.notif_daily_digest === true
+    if (!digestEnabled) return false
+
+    if (skipTimeCheck) return true
+
+    // Filter by user's preferred IST delivery hour (default 10:00 → hour 10)
+    const preferredTime = (prefs.digest_send_time as string) || "10:00"
+    const preferredHour = parseInt(preferredTime.split(":")[0], 10)
+    return preferredHour === currentISTHour
   })
 
   if (eligible.length === 0) {

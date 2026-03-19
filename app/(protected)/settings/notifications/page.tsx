@@ -13,6 +13,7 @@ export default function NotificationsPage() {
   const [emailRecipients, setEmailRecipients] = useState<string[]>([])
   const [newEmail, setNewEmail] = useState("")
   const [sendDigest, setSendDigest] = useState(false)
+  const [digestTime, setDigestTime] = useState("10:00")
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [portfolioAlert, setPortfolioAlert] = useState(false)
   const [priceAlert, setPriceAlert] = useState(false)
@@ -36,6 +37,7 @@ export default function NotificationsPage() {
       const emails = data.notification_emails ? data.notification_emails.split(",").map((e: string) => e.trim()).filter((e: string) => e) : []
       setEmailRecipients(emails)
       setSendDigest(data.notif_daily_digest !== false)
+      setDigestTime(data.digest_send_time || "10:00")
       setOrderPlaced(data.notif_order_placed !== false)
       setPortfolioAlert(data.notif_portfolio_alert === true)
       setPriceAlert(data.notif_price_alert === true)
@@ -80,6 +82,7 @@ export default function NotificationsPage() {
         body: JSON.stringify({
           notification_emails: emailRecipients.join(","),
           notif_daily_digest: sendDigest,
+          digest_send_time: digestTime,
           notif_order_placed: orderPlaced,
           notif_portfolio_alert: portfolioAlert,
           notif_price_alert: priceAlert,
@@ -138,11 +141,26 @@ export default function NotificationsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {[
-            { label: "Daily Portfolio Digest", desc: "Receive daily summary of portfolio changes", state: sendDigest, setState: setSendDigest, id: "digest" },
+            { label: "Daily Portfolio Digest", desc: "Receive daily summary of portfolio changes", state: sendDigest, setState: setSendDigest, id: "digest", extra: (
+            <select
+              value={digestTime}
+              onChange={(e) => setDigestTime(e.target.value)}
+              disabled={!sendDigest}
+              className="ml-auto text-xs rounded border border-input bg-background px-2 py-1 text-foreground disabled:opacity-40"
+              aria-label="Digest delivery time (IST)"
+            >
+              {["06:00","07:00","08:00","09:00","10:00","11:00","12:00","13:00"].map((t) => {
+                const [h] = t.split(":")
+                const hr = parseInt(h, 10)
+                const label = hr < 12 ? `${hr}:00 AM` : hr === 12 ? "12:00 PM" : `${hr - 12}:00 PM`
+                return <option key={t} value={t}>{label} IST</option>
+              })}
+            </select>
+          ) },
             { label: "Order Placed", desc: "Notify when an order is placed", state: orderPlaced, setState: setOrderPlaced, id: "order" },
             { label: "Portfolio Alert", desc: "Alert when portfolio thresholds are breached", state: portfolioAlert, setState: setPortfolioAlert, id: "portfolio" },
             { label: "Price Alert", desc: "Notify on significant price movements", state: priceAlert, setState: setPriceAlert, id: "price" },
-          ].map(({ label, desc, state, setState, id }) => (
+          ].map(({ label, desc, state, setState, id, extra }) => (
             <label key={id} className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -150,10 +168,11 @@ export default function NotificationsPage() {
                 onChange={(e) => setState(e.target.checked)}
                 className="w-4 h-4 rounded border-gray-300"
               />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium">{label}</p>
                 <p className="text-xs text-muted-foreground">{desc}</p>
               </div>
+              {extra}
             </label>
           ))}
         </CardContent>

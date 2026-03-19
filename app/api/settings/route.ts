@@ -71,6 +71,7 @@ export async function GET() {
     notif_order_placed:       prefs.notif_order_placed !== "false",
     notif_portfolio_alert:    prefs.notif_portfolio_alert === "true",
     notif_price_alert:        prefs.notif_price_alert === "true",
+    digest_send_time:         (prefs.digest_send_time as string) || "10:00",  // HH:00 IST, 24-hr
     // Scoring
     scoring_weights: prefs.scoring_weights ?? null,
     // Strategy profile
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
     "notification_emails",
     "notif_daily_digest", "notif_order_placed",
     "notif_portfolio_alert", "notif_price_alert",
+    "digest_send_time",
   ]
 
   // Boolean notification flags — always stored as strings so the cron digest

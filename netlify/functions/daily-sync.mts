@@ -48,28 +48,7 @@ export default async function handler() {
     console.error("[daily-sync] sync-all fetch error:", err)
   }
 
-  // ── 2. Send morning digest emails to opted-in users ──────────────────────
-  const digestUrl = `${appUrl}/api/cron/digest`
-  console.log(`[daily-sync] Triggering digest at ${digestUrl}`)
-
-  try {
-    const digestRes = await fetch(digestUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${serviceKey}`,
-      },
-    })
-
-    const digestData = await digestRes.json().catch(() => ({}))
-    if (digestRes.ok) {
-      console.log("[daily-sync] Digest sent:", JSON.stringify(digestData))
-    } else {
-      console.error(`[daily-sync] Digest returned ${digestRes.status}:`, JSON.stringify(digestData))
-    }
-  } catch (err) {
-    console.error("[daily-sync] Digest fetch error:", err)
-  }
+  console.log("[daily-sync] Holdings sync complete. Digest emails are handled by the digest-emailer scheduled function.")
 }
 
 export const config: Config = {
