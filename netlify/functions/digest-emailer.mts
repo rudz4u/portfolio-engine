@@ -2,8 +2,8 @@ import type { Config } from "@netlify/functions"
 
 /**
  * Netlify Scheduled Function — Daily Digest Emailer
- * Runs Mon–Fri every hour at :30 UTC, which aligns to :00 IST
- * (IST = UTC + 5:30), covering the window 6:00 AM–1:00 PM IST.
+ * Runs Mon–Fri every 15 minutes during hours 0–16 UTC
+ * (IST = UTC + 5:30), covering the window 6:00 AM–10:00 PM IST.
  *
  * The digest route (/api/cron/digest) reads each user's digest_send_time
  * preference (e.g. "08:00") and only sends the email when the current IST
@@ -47,6 +47,6 @@ export default async function handler() {
 }
 
 export const config: Config = {
-  // Every hour at :30 UTC = :00 IST, Mon–Fri. Covers 6 AM–1 PM IST.
-  schedule: "30 0-7 * * 1-5",
+  // Every 15 minutes during hours 0–16 UTC, Mon–Fri. Covers 6 AM–10 PM IST.
+  schedule: "*/15 0-16 * * 1-5",
 }
