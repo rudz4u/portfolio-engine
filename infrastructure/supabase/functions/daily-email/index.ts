@@ -163,7 +163,7 @@ serve(async (req) => {
   for (const setting of digestUsers) {
     try {
       const prefs = setting.preferences as Record<string, string> | null
-      const userBrevoKey = prefs?.brevo_key || brevoKey
+      const userBrevoKey = brevoKey
 
       // Get user email and name from auth.users via admin
       const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(setting.user_id)

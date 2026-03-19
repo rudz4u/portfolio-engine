@@ -161,14 +161,11 @@ export async function POST(request: NextRequest) {
     .single()
 
   const prefs = (settingsRow?.preferences as Record<string, string> | null) || {}
-  const brevoKey = process.env.BREVO_API_KEY || prefs.brevo_key || ""
+  const brevoKey = process.env.BREVO_API_KEY || ""
 
   if (!brevoKey) {
     return NextResponse.json(
-      {
-        error:
-          "No Brevo API key configured. Please add your Brevo API key in Settings → AI & API Keys → Bring Your Own Keys section, or contact support.",
-      },
+      { error: "No Brevo API key configured. Set BREVO_API_KEY in Netlify environment variables." },
       { status: 400 }
     )
   }

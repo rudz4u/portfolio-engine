@@ -27,12 +27,10 @@ export async function POST(req: Request) {
   // Admin client (bypasses RLS)
   const supabase = createServiceClient(supabaseUrl, serviceKey)
 
-  // Resolve env-level Brevo key (admin fallback)
-  const envBrevoKey = process.env.BREVO_API_KEY ?? ""
-  if (!envBrevoKey) {
-    console.warn("[digest] BREVO_API_KEY env var is not set — will only send emails for users who have their own brevo_key in preferences")
-  } else {
-    console.log("[digest] Platform BREVO_API_KEY is configured")
+  // Platform Brevo key — digest emails are always sent via the platform account
+  const brevoKey = process.env.BREVO_API_KEY ?? ""
+  if (!brevoKey) {
+    return NextResponse.json({ error: "BREVO_API_KEY is not configured in environment variables" }, { status: 500 })
   }
 
   // Fetch all user_settings rows where notif_daily_digest = "true"
@@ -81,14 +79,6 @@ export async function POST(req: Request) {
 
   for (const row of eligible) {
     const prefs = (row.preferences as Record<string, string>) || {}
-
-    // Resolve Brevo key: user's own key first, then env-level fallback
-    const brevoKey = prefs.brevo_key || envBrevoKey
-    if (!brevoKey) {
-      console.warn(`[digest] Skipping user ${row.user_id} — no Brevo key (set BREVO_API_KEY in Netlify env vars)`)
-      skipped++
-      continue
-    }
 
     // Resolve recipient email
     const emailList = (prefs.notification_emails || "")

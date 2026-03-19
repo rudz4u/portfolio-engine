@@ -180,7 +180,7 @@ export async function GET() {
     .from("user_settings").select("preferences").eq("user_id", user.id).single()
   const prefs = (settingsRow?.preferences as Record<string, string> | null) || {}
 
-  const brevoKey = process.env.BREVO_API_KEY || prefs.brevo_key || ""
+  const brevoKey = process.env.BREVO_API_KEY || ""
   const senderEmail = process.env.BREVO_SENDER_EMAIL || "noreply@investbuddyai.com"
   const senderName  = process.env.BREVO_SENDER_NAME  || "InvestBuddy AI"
 
@@ -190,7 +190,7 @@ export async function GET() {
   return NextResponse.json({
     status: "ok",
     diagnostics: {
-      brevo_key_source:   process.env.BREVO_API_KEY ? "env_var" : prefs.brevo_key ? "user_settings" : "MISSING",
+      brevo_key_source:   process.env.BREVO_API_KEY ? "env_var" : "MISSING",
       brevo_key_set:      !!brevoKey,
       sender_email:       senderEmail,
       sender_name:        senderName,
@@ -233,12 +233,11 @@ async function handleDigest(request: Request) {
 
   const prefsPre = (settingsRowPre?.preferences as Record<string, string> | null) || {}
 
-  // Server env var wins; fall back to user-supplied key stored in settings
-  const brevoKey = process.env.BREVO_API_KEY || prefsPre.brevo_key || ""
+  const brevoKey = process.env.BREVO_API_KEY || ""
 
   if (!brevoKey) {
     return NextResponse.json(
-      { error: "No Brevo API key configured. Add BREVO_API_KEY in Netlify env vars or save your own key in Settings → API Keys." },
+      { error: "No Brevo API key configured. Set BREVO_API_KEY in Netlify environment variables." },
       { status: 400 }
     )
   }
