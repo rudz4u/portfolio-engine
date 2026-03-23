@@ -116,10 +116,17 @@ export async function POST(req: Request) {
     const slots: string[] = Array.isArray(prefs.digest_send_time_slots)
       ? (prefs.digest_send_time_slots as string[])
       : [(prefs.digest_send_time as string) || "10:00"]
-    // Match both hour and minute so each 15-min slot fires exactly once
+    // Use a 0–7 minute forward window to handle Netlify cron jitter.
+    // Netlify scheduled functions can fire several minutes after their
+    // scheduled time (cold starts, infrastructure delay). Since the cron
+    // runs every 15 minutes, a 7-minute window prevents double-firing
+    // while tolerating the observed ~6-minute worst-case drift.
+    const nowTotalMinutes = currentISTHour * 60 + currentISTMinute
     return slots.some((t) => {
       const [h, m] = t.split(":")
-      return parseInt(h, 10) === currentISTHour && parseInt(m, 10) === currentISTMinute
+      const slotTotalMinutes = parseInt(h, 10) * 60 + parseInt(m, 10)
+      const diff = nowTotalMinutes - slotTotalMinutes
+      return diff >= 0 && diff <= 7
     })
   })
 
