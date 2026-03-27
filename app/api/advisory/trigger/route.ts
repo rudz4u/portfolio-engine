@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
   // ── 3. Fire the scan AFTER returning the response (avoids 30s gateway timeout) ──
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://investbuddyai.com"
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const serviceKey = process.env.SUPABASE_SECRET_KEY!
 
   after(async () => {
     try {

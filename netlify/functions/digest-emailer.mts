@@ -11,14 +11,14 @@ import type { Config } from "@netlify/functions"
  *
  * Required env vars (set in Netlify dashboard):
  *   NEXT_PUBLIC_APP_URL        — e.g. https://investbuddyai.com
- *   SUPABASE_SERVICE_ROLE_KEY  — service role key (NOT the anon key)
+ *   SUPABASE_SECRET_KEY         — secret key (NOT the publishable key)
  */
 export default async function handler() {
   const appUrl     = process.env.NEXT_PUBLIC_APP_URL || "https://investbuddyai.com"
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceKey = process.env.SUPABASE_SECRET_KEY
 
   if (!serviceKey) {
-    console.error("[digest-emailer] Missing SUPABASE_SERVICE_ROLE_KEY")
+    console.error("[digest-emailer] Missing SUPABASE_SECRET_KEY")
     return
   }
 

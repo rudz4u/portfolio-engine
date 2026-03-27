@@ -57,11 +57,11 @@ function esc(s: string) {
  *   4. New Research Coverage  (advisory_recommendations scraped in last 48 h)
  *   5. Portfolio Movers  (top performers & underperformers)
  *
- * Required header: Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+ * Required header: Authorization: Bearer <SUPABASE_SECRET_KEY>
  */
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") ?? ""
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
+  const serviceKey = process.env.SUPABASE_SECRET_KEY ?? ""
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
 
   if (!serviceKey || authHeader !== `Bearer ${serviceKey}`) {

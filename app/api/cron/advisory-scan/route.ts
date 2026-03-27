@@ -15,7 +15,7 @@
  *  8. Upsert consensus rows (one per symbol per day)
  *  9. Evaluate pending call outcomes + update track records
  *
- * Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+ * Authorization: Bearer <SUPABASE_SECRET_KEY>
  */
 
 import { NextRequest, NextResponse } from "next/server"
@@ -34,7 +34,7 @@ export const maxDuration = 120 // 2 min — Netlify pro allows up to 120s
 function isAuthorized(request: NextRequest): boolean {
   const auth = request.headers.get("authorization") ?? ""
   const token = auth.replace(/^Bearer\s+/i, "")
-  return !!token && token === process.env.SUPABASE_SERVICE_ROLE_KEY
+  return !!token && token === process.env.SUPABASE_SECRET_KEY
 }
 
 export async function POST(request: NextRequest) {

@@ -5,7 +5,7 @@
 --    If you seeded a separate users row, you must either:
 --      a) create the Auth user with the same UUID, or
 --      b) update the `users.id` value to match the Auth user's `id`.
--- 2) Service-role (server) operations should use the SUPABASE_SERVICE_ROLE_KEY.
+-- 2) Service-role (server) operations should use the SUPABASE_SECRET_KEY.
 
 -- Enable RLS for sensitive tables and add owner-only policies.
 
@@ -170,7 +170,7 @@ CREATE POLICY "analysis_reports_owner_policy"
 
 -- Notes / Next steps:
 -- 1) If you want to allow server-side functions (Edge Functions or backend) to bypass RLS,
---    use the SUPABASE_SERVICE_ROLE_KEY for those operations. The service role bypasses RLS.
+--    use the SUPABASE_SECRET_KEY for those operations. The service role bypasses RLS.
 -- 2) If you seeded a `users` row manually (see infrastructure/seeds/seed_rudranildas.sql),
 --    create the Supabase Auth user with the same UUID or update the seeded row to match the
 --    Auth user's `id`. Example to create an Auth user via CLI or API is provided in Docs/ENV.md.

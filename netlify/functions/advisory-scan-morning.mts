@@ -8,11 +8,11 @@ import type { Config } from "@netlify/functions"
  *   scrape → extract → resolve → consensus → track-record evaluation
  */
 export async function runAdvisoryScan() {
-  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceKey  = process.env.SUPABASE_SECRET_KEY
   const appUrl      = process.env.NEXT_PUBLIC_APP_URL || "https://investbuddyai.com"
 
   if (!serviceKey) {
-    console.error("[advisory-scan] Missing SUPABASE_SERVICE_ROLE_KEY")
+    console.error("[advisory-scan] Missing SUPABASE_SECRET_KEY")
     return
   }
 

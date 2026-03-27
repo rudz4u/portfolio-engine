@@ -114,7 +114,7 @@ function buildHtml(
 }
 
 serve(async (req) => {
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  const serviceKey = Deno.env.get("SUPABASE_SECRET_KEY") ?? ""
   const brevoKey = Deno.env.get("BREVO_API_KEY") ?? ""
 
   if (!brevoKey) {

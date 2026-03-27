@@ -11,15 +11,13 @@ export const maxDuration = 60
  * POST /api/cron/sync-all
  * Service-role-protected. Called by the Netlify scheduled function every
  * weekday morning (4:30 AM UTC / 10:00 AM IST) to refresh Upstox holdings
- * for every user who has an upstox_access_token stored in their preferences.
+ * for all users using the shared UPSTOX_ACCESS_TOKEN env var set in Netlify.
  *
- * Also accepts env UPSTOX_ACCESS_TOKEN as a fallback shared token.
- *
- * Header required: Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+ * Header required: Authorization: Bearer <SUPABASE_SECRET_KEY>
  */
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") ?? ""
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
+  const serviceKey = process.env.SUPABASE_SECRET_KEY ?? ""
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
 
   if (!serviceKey || authHeader !== `Bearer ${serviceKey}`) {
@@ -32,25 +30,25 @@ export async function POST(req: Request) {
   const admin = createServiceClient(supabaseUrl, serviceKey)
   const envToken = process.env.UPSTOX_ACCESS_TOKEN ?? ""
 
+  if (!envToken) {
+    return NextResponse.json({ status: "ok", message: "UPSTOX_ACCESS_TOKEN not set in env", synced: 0, errors: 0 })
+  }
+
   // ── Fetch all user_settings rows ──────────────────────────────────────────
   const { data: allSettings, error: sErr } = await admin
     .from("user_settings")
-    .select("user_id, preferences")
+    .select("user_id")
 
   if (sErr) {
     return NextResponse.json({ error: sErr.message }, { status: 500 })
   }
 
-  // Collect users that have a token (own key OR shared env token)
-  const usersToSync: { userId: string; token: string }[] = []
-  for (const row of allSettings ?? []) {
-    const prefs = (row.preferences as Record<string, string>) || {}
-    const token = prefs.upstox_access_token || envToken
-    if (token) usersToSync.push({ userId: row.user_id as string, token })
-  }
+  // All users synced using the shared env token — no per-user token lookup
+  const usersToSync: { userId: string; token: string }[] =
+    (allSettings ?? []).map((row) => ({ userId: row.user_id as string, token: envToken }))
 
   if (usersToSync.length === 0) {
-    return NextResponse.json({ status: "ok", message: "No users with Upstox token", synced: 0, errors: 0 })
+    return NextResponse.json({ status: "ok", message: "No users found", synced: 0, errors: 0 })
   }
 
   let synced = 0

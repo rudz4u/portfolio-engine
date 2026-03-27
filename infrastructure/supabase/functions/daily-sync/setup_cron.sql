@@ -1,6 +1,6 @@
 -- Run this SQL in the Supabase SQL editor to (re)schedule the cron job.
--- Replace <YOUR_SERVICE_ROLE_KEY> with the value from:
---   Supabase Dashboard → Project Settings → API → service_role key
+-- Replace <YOUR_SECRET_KEY> with the value from:
+--   Supabase Dashboard → Project Settings → API → Secret key
 
 -- Step 1: Enable pg_net extension (required for net.http_post)
 -- If this errors, enable it via: Dashboard → Database → Extensions → search "pg_net" → Enable
@@ -18,7 +18,7 @@ select
     select
       net.http_post(
           url:='https://itqbgrmnfsxjbecrymfe.supabase.co/functions/v1/daily-sync',
-          headers:=('{"Content-Type": "application/json", "Authorization": "Bearer <YOUR_SERVICE_ROLE_KEY>"}')::jsonb,
+          headers:=('{{"Content-Type": "application/json", "Authorization": "Bearer <YOUR_SECRET_KEY>"}}')::jsonb,
           body:='{"source":"cron"}'::jsonb
       ) as request_id;
     $$

@@ -5,11 +5,11 @@ import { NextResponse } from "next/server"
  * The same logic runs automatically via netlify/functions/daily-sync.mts Mon–Fri 10 AM IST.
  *
  * POST /api/cron/daily-sync
- * Header: Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+ * Header: Authorization: Bearer <SUPABASE_SECRET_KEY>
  */
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") ?? ""
-  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
+  const serviceKey  = process.env.SUPABASE_SECRET_KEY ?? ""
 
   // Require service-role bearer to prevent public invocation
   if (!serviceKey || authHeader !== `Bearer ${serviceKey}`) {

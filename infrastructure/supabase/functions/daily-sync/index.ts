@@ -191,9 +191,9 @@ serve(async (req) => {
 
   // Auth check — bearer must be the service role key (set by pg_cron)
   const authHeader = req.headers.get("Authorization") ?? ""
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  const serviceKey = Deno.env.get("SUPABASE_SECRET_KEY") ?? ""
   if (!serviceKey) {
-    console.error("[daily-sync] SUPABASE_SERVICE_ROLE_KEY not set")
+    console.error("[daily-sync] SUPABASE_SECRET_KEY not set")
     return new Response(JSON.stringify({ error: "Misconfigured" }), { status: 500 })
   }
   if (authHeader && authHeader !== `Bearer ${serviceKey}`) {
