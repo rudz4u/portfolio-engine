@@ -6,6 +6,13 @@ export const UPSTOX_CONFIG = {
   get clientSecret() { return process.env.UPSTOX_CLIENT_SECRET || "" },
   get redirectUri() { return process.env.UPSTOX_REDIRECT_URI || "https://investbuddyai.com/api/oauth/upstox/callback" },
   get accessToken() { return process.env.UPSTOX_ACCESS_TOKEN || "" },
+  /**
+   * Application-level Analytics Token — generated once from the Upstox Developer
+   * Apps → Analytics tab. Valid for 1 year. Read-only; covers LTP, OHLC, historical
+   * candles, market quotes, market status, option chain, and instrument search.
+   * Does NOT require any user OAuth flow. Set UPSTOX_ANALYTICS_TOKEN in env.
+   */
+  get analyticsToken() { return process.env.UPSTOX_ANALYTICS_TOKEN || "" },
   get sandbox() { return process.env.UPSTOX_SANDBOX === "true" },
   baseUrl: "https://api.upstox.com/v2",
   authUrl: "https://api.upstox.com/v2/login/authorization/dialog",

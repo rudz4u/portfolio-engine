@@ -3,15 +3,18 @@
  *
  * Fetches live LTP for all holdings via Upstox v3 market-quote/ltp.
  *
- * Token resolution order (handled by resolveUpstoxToken):
- *   1. User's personal Upstox OAuth token (user_settings.preferences.upstox_access_token)
- *   2. Server-level UPSTOX_ACCESS_TOKEN env var — covers import-only users with no Upstox account
+ * LTP is read-only market data — resolved via the application-level Analytics
+ * Token (UPSTOX_ANALYTICS_TOKEN), which is valid for 1 year and requires no
+ * user OAuth flow. Falls back to UPSTOX_ACCESS_TOKEN for backwards compatibility.
+ *
+ * User OAuth token is NOT used here — it is reserved for trading operations
+ * (portfolio sync, order placement) in other routes.
  *
  * Updates ltp + unrealized_pl for each holding and returns the updated array.
  */
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createAdminClient } from "@/lib/supabase/server"
-import { resolveUpstoxToken } from "@/lib/upstox-token"
+import { resolveMarketDataToken } from "@/lib/upstox-token"
 import { getUpstoxHeaders } from "@/lib/upstox"
 
 export const maxDuration = 45
@@ -211,25 +214,18 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Fetch prices via Upstox v3 ────────────────────────────────────────────
-  // resolveUpstoxToken() returns the user's OAuth token first, then falls back
-  // to the server-level UPSTOX_ACCESS_TOKEN env var — so import-only users
-  // (no personal Upstox account) still get live prices via the app token.
-  const upstoxToken = await resolveUpstoxToken()
-  if (!upstoxToken) {
+  // LTP is read-only market data — use the application-level Analytics Token
+  // (UPSTOX_ANALYTICS_TOKEN). No per-user OAuth token needed for this call.
+  const marketToken = resolveMarketDataToken()
+  if (!marketToken) {
     return NextResponse.json({
       holdings,
       updated: 0,
-      message: "Live prices unavailable — no Upstox token configured.",
+      message: "Live prices unavailable — UPSTOX_ANALYTICS_TOKEN not configured.",
     })
   }
 
-  let ltpMap = await fetchUpstoxLtp(uniqueKeys, upstoxToken)
-
-  // If the user token yielded nothing (expired/invalid), retry with the server env token.
-  const serverToken = process.env.UPSTOX_ACCESS_TOKEN ?? ""
-  if (Object.keys(ltpMap).length === 0 && serverToken && serverToken !== upstoxToken) {
-    ltpMap = await fetchUpstoxLtp(uniqueKeys, serverToken)
-  }
+  const ltpMap = await fetchUpstoxLtp(uniqueKeys, marketToken)
 
   if (Object.keys(ltpMap).length === 0) {
     return NextResponse.json({ holdings, updated: 0, message: "Upstox returned no prices" })

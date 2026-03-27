@@ -51,11 +51,15 @@ export async function resolveUpstoxToken(): Promise<string | null> {
 }
 
 /**
- * Returns the server-level Upstox access token from the environment variable
- * (UPSTOX_ACCESS_TOKEN). No user DB lookup — intended for market-data APIs
- * (candles, LTP, historical data, technical analysis) that are shared across
- * all users and must never require individual brokerage account connections.
+ * Returns the application-level Analytics Token for read-only market-data APIs
+ * (LTP, OHLC, historical candles, market quotes, sector correlation, technicals).
+ *
+ * Resolution order:
+ *   1. UPSTOX_ANALYTICS_TOKEN  — dedicated 1-year analytics token (preferred)
+ *   2. UPSTOX_ACCESS_TOKEN     — legacy fallback for backwards compatibility
+ *
+ * Never requires a user OAuth flow. Safe to call synchronously.
  */
 export function resolveMarketDataToken(): string | null {
-  return UPSTOX_CONFIG.accessToken || null
+  return UPSTOX_CONFIG.analyticsToken || UPSTOX_CONFIG.accessToken || null
 }

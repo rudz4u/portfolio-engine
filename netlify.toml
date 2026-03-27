@@ -34,6 +34,13 @@
   # embedded in client JS by Next.js. Security is enforced via RLS policies, not secrecy.
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_URL,SUPABASE_PROJECT_ID,NEXT_PUBLIC_SUPABASE_ANON_KEY"
   NEXT_PUBLIC_APP_URL = "https://investbuddyai.com"
+  # ── Upstox Analytics Token ──────────────────────────────────────────────────
+  # UPSTOX_ANALYTICS_TOKEN — REQUIRED for live market data (LTP, historical
+  # candles, OHLC, market quotes, sector correlation, technicals). This is an
+  # application-level read-only token generated from Upstox Developer Apps →
+  # Analytics tab. Valid for 1 year. Does NOT require any user OAuth flow.
+  # Generate at: https://upstox.com/developer/api-documentation/analytics-token/
+  # Set UPSTOX_ANALYTICS_TOKEN in the Netlify dashboard → Environment variables.
   # ── Email (Brevo) ──────────────────────────────────────────────────────────
   # BREVO_API_KEY          — REQUIRED for daily digest emails. Set in Netlify dashboard.
   # BREVO_SENDER_NAME      — "InvestBuddy AI" (optional override)
