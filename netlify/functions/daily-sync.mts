@@ -52,5 +52,5 @@ export default async function handler() {
 
 export const config: Config = {
   // 4:30 AM UTC = 10:00 AM IST. Runs Monday–Friday only.
-  schedule: "30 6 * * 1-5",
+  schedule: "40 6 * * 1-5",
 }

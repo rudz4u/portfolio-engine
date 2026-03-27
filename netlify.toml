@@ -30,7 +30,9 @@
   # SUPABASE_PROJECT_ID is part of the public Supabase URL.
   # The Supabase publishable key is public by design — security comes from RLS policies.
   # Tell Netlify's secrets scanner to skip these expected keys.
-  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_URL,SUPABASE_PROJECT_ID"
+  # NEXT_PUBLIC_SUPABASE_ANON_KEY is the Supabase public anon key — intentionally
+  # embedded in client JS by Next.js. Security is enforced via RLS policies, not secrecy.
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,NEXT_PUBLIC_SUPABASE_URL,SUPABASE_PROJECT_ID,NEXT_PUBLIC_SUPABASE_ANON_KEY"
   NEXT_PUBLIC_APP_URL = "https://investbuddyai.com"
   # ── Email (Brevo) ──────────────────────────────────────────────────────────
   # BREVO_API_KEY          — REQUIRED for daily digest emails. Set in Netlify dashboard.
