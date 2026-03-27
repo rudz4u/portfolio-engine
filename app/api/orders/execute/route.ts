@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { UPSTOX_CONFIG, getUpstoxHeaders } from "@/lib/upstox"
 import { createClient } from "@/lib/supabase/server"
-import { resolveUpstoxToken } from "@/lib/upstox-token"
+import { resolveUserOnlyUpstoxToken } from "@/lib/upstox-token"
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -44,8 +44,9 @@ export async function POST(request: Request) {
     )
   }
 
-  // Check if access token configured
-  const token = await resolveUpstoxToken()
+  // Use resolveUserOnlyUpstoxToken — never fall back to the admin env-var token.
+  // Without personal token, orders are sandbox-simulated (no real trades placed).
+  const token = await resolveUserOnlyUpstoxToken()
   let externalOrderId: string | null = null
   let orderStatus = "SANDBOX_SIMULATED"
   let meta: Record<string, unknown> = {}

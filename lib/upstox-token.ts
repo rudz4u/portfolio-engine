@@ -51,6 +51,40 @@ export async function resolveUpstoxToken(): Promise<string | null> {
 }
 
 /**
+ * Returns the authenticated user's own stored Upstox access token ONLY.
+ *
+ * Unlike resolveUpstoxToken(), this NEVER falls back to the UPSTOX_ACCESS_TOKEN
+ * env var. Use this for any API that fetches personal account data (holdings,
+ * profile, order placement) so that one user can never inadvertently receive
+ * another user's (or the admin's) brokerage data.
+ *
+ * Returns null when:
+ *  - The request is unauthenticated
+ *  - The user has no stored Upstox token
+ *  - The stored token has expired
+ */
+export async function resolveUserOnlyUpstoxToken(): Promise<string | null> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const admin = await createAdminClient()
+    const { data } = await admin
+      .from("user_settings")
+      .select("preferences")
+      .eq("user_id", user.id)
+      .single()
+
+    const prefs = (data?.preferences as Record<string, string> | null) ?? {}
+    if (prefs.upstox_access_token && !isTokenExpired(prefs.upstox_access_token)) {
+      return prefs.upstox_access_token
+    }
+  } catch { /* not authenticated or settings row absent */ }
+  return null
+}
+
+/**
  * Returns the application-level Analytics Token for read-only market-data APIs
  * (LTP, OHLC, historical candles, market quotes, sector correlation, technicals).
  *

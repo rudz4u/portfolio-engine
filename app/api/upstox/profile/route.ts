@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server"
 import { UPSTOX_CONFIG, getUpstoxHeaders } from "@/lib/upstox"
-import { resolveUpstoxToken } from "@/lib/upstox-token"
+import { resolveUserOnlyUpstoxToken } from "@/lib/upstox-token"
 
 export async function GET() {
-  const token = await resolveUpstoxToken()
+  // Use resolveUserOnlyUpstoxToken so we never fall back to the env-var token
+  // and accidentally expose the admin's Upstox profile to other users.
+  const token = await resolveUserOnlyUpstoxToken()
   if (!token) {
     return NextResponse.json(
-      { status: "error", message: "No Upstox access token. Paste your token in Settings > Upstox Connection." },
+      { status: "error", message: "No Upstox access token. Connect your Upstox account in Settings." },
       { status: 400 }
     )
   }
