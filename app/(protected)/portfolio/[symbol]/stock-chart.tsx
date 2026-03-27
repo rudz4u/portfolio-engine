@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Activity } from "lucide-react"
+import { Activity, RefreshCw } from "lucide-react"
 
 // Upstox historical candle tuple: [timestamp_iso, open, high, low, close, volume, oi]
 type Candle = [string, number, number, number, number, number, number]
@@ -129,6 +129,7 @@ export function StockChart({ instrumentKey }: { instrumentKey: string }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rangeIdx, setRangeIdx] = useState(1) // default 3M
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -161,6 +162,7 @@ export function StockChart({ instrumentKey }: { instrumentKey: string }) {
       }
 
       setCandles(stockJson.data!.candles as Candle[])
+      setLastRefreshed(new Date())
 
       if (!niftyJson.error && Array.isArray(niftyJson.data?.candles)) {
         setNiftyCandles(niftyJson.data!.candles as Candle[])
@@ -207,10 +209,20 @@ export function StockChart({ instrumentKey }: { instrumentKey: string }) {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="h-4 w-4 text-violet-400" />
-            Price History
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Activity className="h-4 w-4 text-violet-400" />
+              Price History
+            </CardTitle>
+            {lastRefreshed && !loading && (
+              <span className="text-[10px] text-muted-foreground/50">
+                {lastRefreshed.toLocaleTimeString("en-IN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
+          </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             {/* Beta badge */}
@@ -237,6 +249,16 @@ export function StockChart({ instrumentKey }: { instrumentKey: string }) {
               </Badge>
             )}
 
+            {/* Manual refresh button */}
+            <button
+              onClick={() => void fetchData()}
+              disabled={loading}
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+              title="Refresh chart data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            </button>
+
             {/* Range selector buttons */}
             <div className="flex gap-0.5">
               {RANGES.map((r, i) => (
@@ -261,15 +283,20 @@ export function StockChart({ instrumentKey }: { instrumentKey: string }) {
         {loading ? (
           <Skeleton className="h-52 w-full rounded-lg" />
         ) : error ? (
-          <div className="h-52 flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border/60">
+          <div className="h-52 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/60">
             <Activity className="h-8 w-8 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground text-center max-w-xs px-4">
-              {error.toLowerCase().includes("token") ||
-              error.toLowerCase().includes("connect") ||
-              error.toLowerCase().includes("no upstox")
-                ? "Connect Upstox in Settings to view price history"
+              {error.toLowerCase().includes("unavailable") ||
+              error.toLowerCase().includes("service")
+                ? "Market data service temporarily unavailable"
                 : "Price chart unavailable for this instrument"}
             </p>
+            <button
+              onClick={() => void fetchData()}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" /> Retry
+            </button>
           </div>
         ) : chartData.length === 0 ? (
           <div className="h-52 flex items-center justify-center rounded-lg border border-dashed border-border/60">

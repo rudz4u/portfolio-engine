@@ -14,6 +14,7 @@ import { scoreHoldings, type ScoredHolding, type HoldingInput } from "@/lib/quan
 import { TrendingUp, TrendingDown, ChevronLeft, Target, Zap, Scale, BarChart2, Activity } from "lucide-react"
 import Link from "next/link"
 import { StockChart } from "./stock-chart"
+import { LiveLtpTiles } from "./live-ltp-tiles"
 
 const SIGNAL_STYLES: Record<string, { badge: string; bg: string; text: string }> = {
   BUY:   { badge: "bg-emerald-400/15 text-emerald-400 border border-emerald-400/30",  bg: "bg-emerald-400/10 border border-emerald-400/25", text: "text-emerald-400" },
@@ -192,62 +193,71 @@ export default async function StockDetailPage({
         </Link>
       </div>
 
-      {/* KPI grid */}
+      {/* KPI grid — static tiles server-rendered; LTP + P&L tiles refreshed live on mount */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {[
-          {
-            label: "Quantity",
-            value: `${holding.quantity} shares`,
-            sub: null,
-            color: "",
-          },
-          {
-            label: "Avg Buy Price",
-            value: `₹${holding.avg_price.toFixed(2)}`,
-            sub: null,
-            color: "",
-          },
-          {
-            label: "Last Traded Price",
-            value: `₹${holding.ltp.toFixed(2)}`,
-            sub: dayChg !== 0 ? `${dayChg >= 0 ? "+" : ""}${dayChg.toFixed(2)}% today` : null,
-            color: dayChg >= 0 ? "text-emerald-400" : "text-red-400",
-          },
-          {
-            label: "Invested",
-            value: formatCurrency(holding.invested_amount),
-            sub: null,
-            color: "",
-          },
-          {
-            label: "Unrealized P&L",
-            value: `${pnlPositive ? "+" : ""}${formatCurrency(holding.unrealized_pl)}`,
-            sub: `${pnlPositive ? "+" : ""}${holding.pnl_pct.toFixed(2)}%`,
-            color: pnlPositive ? "text-emerald-400" : "text-red-400",
-          },
-          {
-            label: "Portfolio Weight",
-            value: `${holding.weight_pct.toFixed(2)}%`,
-            sub:
-              holding.weight_pct > 12
+        {/* Static: Quantity */}
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-muted-foreground">Quantity</p>
+            <p className="text-lg font-bold mt-0.5">{holding.quantity} shares</p>
+          </CardContent>
+        </Card>
+
+        {/* Static: Avg Buy Price */}
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-muted-foreground">Avg Buy Price</p>
+            <p className="text-lg font-bold mt-0.5">₹{holding.avg_price.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+
+        {/* Live: LTP + Unrealized P&L — refreshed via UPSTOX_ANALYTICS_TOKEN on mount */}
+        <LiveLtpTiles
+          tradingSymbol={holding.trading_symbol || holding.instrument_key}
+          avgPrice={holding.avg_price}
+          quantity={holding.quantity}
+          initialLtp={holding.ltp}
+          initialPnl={holding.unrealized_pl}
+          initialPnlPct={holding.pnl_pct}
+          initialDayChangePct={dayChg}
+        />
+
+        {/* Static: Invested */}
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-muted-foreground">Invested</p>
+            <p className="text-lg font-bold mt-0.5">{formatCurrency(holding.invested_amount)}</p>
+          </CardContent>
+        </Card>
+
+        {/* Static: Portfolio Weight */}
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-muted-foreground">Portfolio Weight</p>
+            <p
+              className={`text-lg font-bold mt-0.5 ${
+                holding.weight_pct > 12 || holding.weight_pct < 1
+                  ? "text-amber-400"
+                  : "text-emerald-400"
+              }`}
+            >
+              {holding.weight_pct.toFixed(2)}%
+            </p>
+            <p
+              className={`text-xs mt-0.5 ${
+                holding.weight_pct > 12 || holding.weight_pct < 1
+                  ? "text-amber-400"
+                  : "text-emerald-400"
+              }`}
+            >
+              {holding.weight_pct > 12
                 ? "Over-concentrated"
                 : holding.weight_pct < 1
                 ? "Under-represented"
-                : "Well-sized",
-            color:
-              holding.weight_pct > 12 || holding.weight_pct < 1
-                ? "text-amber-400"
-                : "text-emerald-400",
-          },
-        ].map(({ label, value, sub, color }) => (
-          <Card key={label}>
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className={`text-lg font-bold mt-0.5 ${color}`}>{value}</p>
-              {sub && <p className={`text-xs mt-0.5 ${color}`}>{sub}</p>}
-            </CardContent>
-          </Card>
-        ))}
+                : "Well-sized"}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Score + breakdown */}
