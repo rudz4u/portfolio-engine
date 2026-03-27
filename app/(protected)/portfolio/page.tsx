@@ -7,10 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { formatCurrency } from "@/lib/utils"
 import PortfolioTable from "@/app/(protected)/portfolio/portfolio-table"
 import { PortfolioSwitcher } from "@/components/portfolio-switcher"
 import { ImportHoldingsDialog } from "@/components/import-holdings-dialog"
+import { PortfolioSummaryCards } from "@/app/(protected)/portfolio/portfolio-summary-cards"
 
 export default async function PortfolioPage({
   searchParams,
@@ -120,66 +120,15 @@ export default async function PortfolioPage({
         </Card>
       )}
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Invested</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">
-              {formatCurrency(totalInvested)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Current Value</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">
-              {formatCurrency(currentValue)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>P&amp;L</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div
-              className={`text-xl font-bold ${
-                totalPnL >= 0 ? "text-green-600" : "text-red-500"
-              }`}
-            >
-              {totalPnL >= 0 ? "+" : ""}
-              {formatCurrency(totalPnL)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Return</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div
-              className={`text-xl font-bold ${
-                totalPnL >= 0 ? "text-green-600" : "text-red-500"
-              }`}
-            >
-              {totalInvested > 0
-                ? `${totalPnL >= 0 ? "+" : ""}${(
-                    (totalPnL / totalInvested) *
-                    100
-                  ).toFixed(2)}%`
-                : "—"}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Summary cards — live prices via UPSTOX_ANALYTICS_TOKEN, no user OAuth needed */}
+      {portfolio && (
+        <PortfolioSummaryCards
+          portfolioId={portfolio.id}
+          initialInvested={totalInvested}
+          initialPnL={totalPnL}
+          initialCurrentValue={currentValue}
+        />
+      )}
 
       {/* Holdings table */}
       <Card>
