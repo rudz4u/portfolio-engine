@@ -56,27 +56,45 @@ export function PortfolioSummaryCards({
       if (!res.ok) throw new Error(`${res.status}`)
       const data = await res.json()
 
-      // Filter out any synthetic "Total" aggregation row stored by some brokers
-      const holdings: Array<{
-        instrument_key: string
-        invested_amount: number
-        unrealized_pl: number
-      }> = (data.holdings ?? []).filter(
-        (h: { instrument_key?: string }) =>
-          h.instrument_key &&
-          h.instrument_key !== "Total" &&
-          !h.instrument_key.startsWith("Total"),
-      )
+      // Prefer server-computed aggregate totals (returned since route v2)
+      if (data.totals && data.totals.currentValue != null) {
+        setPnL(data.totals.pnl)
+        setCurrentValue(data.totals.currentValue)
+      } else {
+        // Fallback: recompute from individual holdings
+        const holdings: Array<{
+          instrument_key: string
+          invested_amount: number
+          unrealized_pl: number
+          ltp?: number
+          quantity?: number
+        }> = (data.holdings ?? []).filter(
+          (h: { instrument_key?: string }) =>
+            h.instrument_key &&
+            h.instrument_key !== "Total" &&
+            !h.instrument_key.startsWith("Total"),
+        )
 
-      // Recompute totals from the returned (partially or fully refreshed) holdings
-      const livePnL = holdings.reduce((s, h) => s + (h.unrealized_pl ?? 0), 0)
-      const liveCurrentValue = holdings.reduce(
-        (s, h) => s + (h.invested_amount ?? 0) + (h.unrealized_pl ?? 0),
-        0,
-      )
+        // Guard: don't overwrite with zeros if the API returned no holdings
+        if (holdings.length === 0) {
+          setLiveStatus("error")
+          return
+        }
 
-      setPnL(livePnL)
-      setCurrentValue(liveCurrentValue)
+        const totalInvested = holdings.reduce((s, h) => s + (h.invested_amount ?? 0), 0)
+
+        // Use ltp * quantity when available — this is always correct regardless
+        // of whether invested_amount equals avg_price * qty exactly.
+        const liveCurrentValue = holdings.reduce((s, h) => {
+          if (h.ltp && h.ltp > 0 && h.quantity && h.quantity > 0)
+            return s + h.ltp * h.quantity
+          return s + (h.invested_amount ?? 0) + (h.unrealized_pl ?? 0)
+        }, 0)
+
+        setPnL(liveCurrentValue - totalInvested)
+        setCurrentValue(liveCurrentValue)
+      }
+
       // "live" = DB updated with fresh prices; "cached" = prices fetched but
       // DB write failed (values still reflect live LTP); "error" = no prices at all
       const pricesFetched = (data.pricesFetched ?? 0) + (data.updated ?? 0)

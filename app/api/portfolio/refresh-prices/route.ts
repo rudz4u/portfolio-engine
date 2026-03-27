@@ -246,8 +246,20 @@ export async function GET(request: NextRequest) {
       if (!ltp || ltp <= 0) return h
 
       const qty = (h.quantity as number) ?? 0
+      const investedAmt = (h.invested_amount as number) ?? 0
       const avg = (h.avg_price as number) ?? 0
-      const unrealized_pl = qty > 0 && avg > 0 ? (ltp - avg) * qty : 0
+
+      // Use invested_amount as cost basis when available — ensures
+      // invested_amount + unrealized_pl == ltp * qty exactly, which
+      // is what the UI relies on for current-value display.
+      const unrealized_pl =
+        qty > 0
+          ? investedAmt > 0
+            ? ltp * qty - investedAmt
+            : avg > 0
+            ? (ltp - avg) * qty
+            : 0
+          : 0
 
       // Compute live-updated holding so the UI gets accurate values even if
       // the DB write fails (e.g. transient error or RLS edge case).
@@ -267,5 +279,26 @@ export async function GET(request: NextRequest) {
     })
   )
 
-  return NextResponse.json({ holdings: updatedHoldings, updated, pricesFetched, source: "upstox_v3" })
+  // ── Compute aggregate totals ───────────────────────────────────────────────
+  // Filter out any synthetic "Total" aggregation rows
+  const priceableHoldings = updatedHoldings.filter(
+    (h) => !String(h.instrument_key ?? "").startsWith("Total") && h.instrument_key !== "Total"
+  )
+  const totalInvested = priceableHoldings.reduce((s, h) => s + ((h.invested_amount as number) ?? 0), 0)
+  const totalCurrentValue = priceableHoldings.reduce((s, h) => {
+    const hLtp = (h.ltp as number) ?? 0
+    const hQty = (h.quantity as number) ?? 0
+    if (hLtp > 0 && hQty > 0) return s + hLtp * hQty
+    // Fallback: invested + P&L for holdings whose LTP wasn't fetched
+    return s + ((h.invested_amount as number) ?? 0) + ((h.unrealized_pl as number) ?? 0)
+  }, 0)
+  const totalPnL = totalCurrentValue - totalInvested
+
+  return NextResponse.json({
+    holdings: updatedHoldings,
+    updated,
+    pricesFetched,
+    source: "upstox_v3",
+    totals: { currentValue: totalCurrentValue, pnl: totalPnL, invested: totalInvested },
+  })
 }
