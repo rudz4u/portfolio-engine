@@ -10,7 +10,7 @@ import {
 import { formatCurrency } from "@/lib/utils"
 import { TrendingUp, TrendingDown, RefreshCw, Wifi, WifiOff } from "lucide-react"
 
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
+const REFRESH_INTERVAL_MS = 60_000 // 1 minute
 
 /** Checks if current time is within NSE market hours (9:15–15:30 IST, Mon–Fri). */
 function isMarketOpen(): boolean {
