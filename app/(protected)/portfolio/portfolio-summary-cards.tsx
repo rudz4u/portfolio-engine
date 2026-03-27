@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import {
 import { formatCurrency } from "@/lib/utils"
 import { TrendingUp, TrendingDown, RefreshCw, Wifi, WifiOff } from "lucide-react"
 
-const REFRESH_INTERVAL_MS = 60_000 // 1 minute
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 
 /** Checks if current time is within NSE market hours (9:15–15:30 IST, Mon–Fri). */
 function isMarketOpen(): boolean {
@@ -42,8 +42,9 @@ export function PortfolioSummaryCards({
   const [pnl, setPnL] = useState(initialPnL)
   const [currentValue, setCurrentValue] = useState(initialCurrentValue)
   const [loading, setLoading] = useState(false)
-  const [liveStatus, setLiveStatus] = useState<"idle" | "live" | "error">("idle")
+  const [liveStatus, setLiveStatus] = useState<"idle" | "live" | "cached" | "error">("idle")
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchLivePrices = useCallback(async () => {
     setLoading(true)
@@ -76,7 +77,10 @@ export function PortfolioSummaryCards({
 
       setPnL(livePnL)
       setCurrentValue(liveCurrentValue)
-      setLiveStatus(data.updated > 0 ? "live" : "error")
+      // "live" = DB updated with fresh prices; "cached" = prices fetched but
+      // DB write failed (values still reflect live LTP); "error" = no prices at all
+      const pricesFetched = (data.pricesFetched ?? 0) + (data.updated ?? 0)
+      setLiveStatus(data.updated > 0 ? "live" : pricesFetched > 0 ? "cached" : "error")
       setLastUpdated(new Date())
     } catch {
       setLiveStatus("error")
@@ -89,17 +93,18 @@ export function PortfolioSummaryCards({
     // Immediate first fetch on mount
     fetchLivePrices()
 
-    // Only schedule recurring refresh during market hours
+    // Schedule recurring refresh — only execute during market hours
     const scheduleNext = () => {
-      const id = setTimeout(async () => {
+      timerRef.current = setTimeout(async () => {
         if (isMarketOpen()) await fetchLivePrices()
         scheduleNext()
       }, REFRESH_INTERVAL_MS)
-      return id
     }
 
-    const timerId = scheduleNext()
-    return () => clearTimeout(timerId)
+    scheduleNext()
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [fetchLivePrices])
 
   const returnPct = invested > 0 ? (pnl / invested) * 100 : 0
@@ -113,6 +118,13 @@ export function PortfolioSummaryCards({
         <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-green-500">
           <Wifi className="w-2.5 h-2.5" />
           LIVE
+        </span>
+      )
+    if (liveStatus === "cached")
+      return (
+        <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-400">
+          <Wifi className="w-2.5 h-2.5" />
+          live
         </span>
       )
     if (liveStatus === "error")

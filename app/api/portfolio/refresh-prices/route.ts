@@ -14,7 +14,7 @@
  */
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createAdminClient } from "@/lib/supabase/server"
-import { resolveMarketDataToken } from "@/lib/upstox-token"
+import { resolveMarketDataToken, resolveUpstoxToken } from "@/lib/upstox-token"
 import { getUpstoxHeaders } from "@/lib/upstox"
 
 export const maxDuration = 45
@@ -214,14 +214,17 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Fetch prices via Upstox v3 ────────────────────────────────────────────
-  // LTP is read-only market data — use the application-level Analytics Token
-  // (UPSTOX_ANALYTICS_TOKEN). No per-user OAuth token needed for this call.
-  const marketToken = resolveMarketDataToken()
+  // Priority: UPSTOX_ANALYTICS_TOKEN (1-year token) → UPSTOX_ACCESS_TOKEN (env)
+  //           → user's stored OAuth token (from user_settings)
+  let marketToken = resolveMarketDataToken()
+  if (!marketToken) {
+    marketToken = await resolveUpstoxToken()
+  }
   if (!marketToken) {
     return NextResponse.json({
       holdings,
       updated: 0,
-      message: "Live prices unavailable — UPSTOX_ANALYTICS_TOKEN not configured.",
+      message: "Live prices unavailable — no Upstox token configured.",
     })
   }
 
@@ -233,6 +236,7 @@ export async function GET(request: NextRequest) {
 
   // ── Update holdings in DB ──────────────────────────────────────────────────
   let updated = 0
+  let pricesFetched = 0
   const updatedHoldings = await Promise.all(
     holdings.map(async (h) => {
       let key = h.instrument_key as string
@@ -245,6 +249,10 @@ export async function GET(request: NextRequest) {
       const avg = (h.avg_price as number) ?? 0
       const unrealized_pl = qty > 0 && avg > 0 ? (ltp - avg) * qty : 0
 
+      // Compute live-updated holding so the UI gets accurate values even if
+      // the DB write fails (e.g. transient error or RLS edge case).
+      const liveHolding = { ...h, ltp, unrealized_pl }
+
       const { data: updatedRow } = await admin
         .from("holdings")
         .update({ ltp, unrealized_pl })
@@ -253,9 +261,11 @@ export async function GET(request: NextRequest) {
         .single()
 
       if (updatedRow) { updated++; return updatedRow }
-      return h
+      // Return live-computed values even when the DB update fails
+      pricesFetched++
+      return liveHolding
     })
   )
 
-  return NextResponse.json({ holdings: updatedHoldings, updated, source: "upstox_v3" })
+  return NextResponse.json({ holdings: updatedHoldings, updated, pricesFetched, source: "upstox_v3" })
 }
