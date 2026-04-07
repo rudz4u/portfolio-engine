@@ -3,24 +3,33 @@
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Loader2, TrendingUp, ShieldCheck, BarChart2, ArrowRight } from "lucide-react"
+import { Loader2, TrendingUp, ShieldCheck, BarChart2, ArrowRight, UserPlus } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
+import { SignUpWizard } from "./SignUpWizard"
+
+type AuthView = "signin" | "signup"
 
 export default function SignInForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") || "/dashboard"
 
+  const [view, setView] = useState<AuthView>("signin")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
   const supabase = createClient()
+
+  // Delegate to SignUpWizard when view is "signup"
+  if (view === "signup") {
+    return <SignUpWizard onBackToSignIn={() => setView("signin")} />
+  }
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
@@ -84,7 +93,7 @@ export default function SignInForm() {
               color: "text-violet-400",
               bg: "bg-violet-500/10",
               title: "Live Portfolio Tracking",
-              desc: "Syncs directly with your Upstox account. Always accurate.",
+              desc: "Upload your holdings once and stay on top of every position.",
             },
             {
               icon: BarChart2,
@@ -206,9 +215,19 @@ export default function SignInForm() {
               </Button>
             </form>
 
-            <p className="mt-5 text-center text-[11px] text-white/35">
-              Account registration is currently disabled on this page.
-            </p>
+            <div className="mt-5 pt-5 border-t border-white/[0.06] text-center">
+              <p className="text-xs text-white/40">
+                New to InvestBuddy AI?{" "}
+                <button
+                  type="button"
+                  onClick={() => setView("signup")}
+                  className="inline-flex items-center gap-1 text-violet-400 hover:text-violet-300 font-medium transition-colors"
+                >
+                  <UserPlus className="h-3 w-3" />
+                  Create an account
+                </button>
+              </p>
+            </div>
           </div>
 
           <p className="mt-5 text-center text-xs text-white/30">

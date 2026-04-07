@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight, X, CheckCircle2, Zap, Bell, TrendingUp, Shield, ChevronRight } from "lucide-react"
+import { ArrowRight, X, CheckCircle2, Zap, Bell, TrendingUp, Shield } from "lucide-react"
 import { BuddyMascot } from "@/components/buddy-mascot"
 
 const STEPS = 4
@@ -201,32 +201,29 @@ function StepBroker() {
     <div className="flex flex-col flex-1">
       <div className="mb-6">
         <p className="text-[11px] font-bold uppercase tracking-widest text-violet-400 mb-1">Step 2 of 4</p>
-        <h2 className="text-xl font-bold text-white mb-2">Connect your broker</h2>
+        <h2 className="text-xl font-bold text-white mb-2">Your portfolio is ready</h2>
         <p className="text-sm text-white/45 leading-relaxed">
-          Sync your live holdings, P&amp;L, and orders automatically. No manual entry needed.
+          If you uploaded your holdings during sign-up, Buddy has everything it needs to start analysing your portfolio.
         </p>
       </div>
 
       <div className="space-y-3 flex-1">
-        <motion.a
-          href="/api/oauth/upstox/authorize"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          className="group flex w-full items-center gap-3.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-5 py-4 text-sm font-medium text-white transition-all hover:border-violet-500/50 hover:bg-violet-500/15"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-base font-bold text-white shadow-lg">U</span>
-          <div className="flex-1 text-left">
-            <div className="font-semibold text-sm">Connect Upstox</div>
-            <div className="text-[11px] text-white/40 mt-0.5">OAuth 2.0 · Read-only by default</div>
+        <div className="flex items-start gap-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-5 py-4">
+          <CheckCircle2 className="h-5 w-5 text-emerald-400 mt-0.5 shrink-0" />
+          <div>
+            <div className="text-sm font-semibold text-white/90">Holdings import supported</div>
+            <div className="text-[11px] text-white/45 mt-1 leading-relaxed">
+              Upload your broker&apos;s holdings report (Zerodha, Groww, Upstox, Angel One, and more) from{" "}
+              <span className="text-white/65 font-medium">Portfolio → Import Holdings</span> at any time.
+            </div>
           </div>
-          <ChevronRight className="h-4 w-4 text-white/30 group-hover:text-white/60 transition-colors" />
-        </motion.a>
+        </div>
 
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3.5">
-          <p className="text-xs font-medium text-white/40 mb-2.5">Coming in v0.2</p>
-          <div className="flex gap-2">
-            {["Zerodha", "Angel One", "Dhan"].map((b) => (
-              <div key={b} className="flex-1 text-center text-[11px] text-white/25 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+          <p className="text-xs font-medium text-white/40 mb-2.5">Supported brokers</p>
+          <div className="flex flex-wrap gap-2">
+            {["Zerodha", "Groww", "Upstox", "Angel One", "Dhan", "+ more"].map((b) => (
+              <div key={b} className="text-center text-[11px] text-white/30 py-1.5 px-3 rounded-lg bg-white/[0.03] border border-white/[0.05]">
                 {b}
               </div>
             ))}
@@ -235,7 +232,7 @@ function StepBroker() {
       </div>
 
       <p className="mt-4 text-center text-[11px] text-white/25">
-        You can also add holdings manually from Settings → Portfolio
+        Broker direct sync via OAuth is coming soon
       </p>
     </div>
   )
