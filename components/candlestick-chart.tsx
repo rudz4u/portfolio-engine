@@ -232,10 +232,15 @@ export function CandlestickChart({
       if (key === "bollinger" && bollingerArray && bollingerArray.length > 0) {
         // Draw upper & lower as two lines
         const offset = candles.length - bollingerArray.length
+        // dataStart skips leading SMA entries that have no matching candle (negative offset)
+        const dataStart = Math.max(0, -offset)
+        const candleStart = Math.max(0, offset)
         const upperData: LineData[] = []
         const lowerData: LineData[] = []
-        for (let i = 0; i < bollingerArray.length; i++) {
-          const t = toChartTime(candles[i + offset].timestamp)
+        for (let i = dataStart; i < bollingerArray.length; i++) {
+          const candleIdx = candleStart + (i - dataStart)
+          if (candleIdx >= candles.length) break
+          const t = toChartTime(candles[candleIdx].timestamp)
           upperData.push({ time: t, value: bollingerArray[i].upper })
           lowerData.push({ time: t, value: bollingerArray[i].lower })
         }
@@ -386,10 +391,18 @@ export function CandlestickChart({
       if (!entry?.data || entry.data.length === 0) return
 
       const offset = candles.length - entry.data.length
-      const lineData: LineData[] = entry.data.map((v, i) => ({
-        time: toChartTime(candles[i + offset].timestamp),
-        value: v,
-      }))
+      // dataStart skips leading SMA entries that have no matching candle (negative offset)
+      const dataStart = Math.max(0, -offset)
+      const candleStart = Math.max(0, offset)
+      const lineData: LineData[] = entry.data
+        .slice(dataStart)
+        .reduce<LineData[]>((acc, v, i) => {
+          const candleIdx = candleStart + i
+          if (candleIdx < candles.length) {
+            acc.push({ time: toChartTime(candles[candleIdx].timestamp), value: v })
+          }
+          return acc
+        }, [])
 
       const series = chart.addLineSeries({
         color: entry.color,
