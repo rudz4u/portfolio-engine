@@ -86,6 +86,15 @@ const BOTTOM_NAV_ITEMS = [
   { href: "/assistant", label: "AI",        icon: Bot },
 ] as const
 
+/* ── Secondary items shown in the mobile "More" bottom sheet ───────────── */
+const MORE_SHEET_ITEMS = [
+  { href: "/analytics",       label: "Analytics",  icon: BarChart2  },
+  { href: "/recommendations", label: "Signals",     icon: Star       },
+  { href: "/watchlist",       label: "Watchlist",  icon: Bookmark   },
+  { href: "/analysis",        label: "Technicals", icon: Activity   },
+  { href: "/settings",        label: "Settings",   icon: Settings   },
+] as const
+
 interface SidebarContentProps {
   pathname: string
   onNavClick: () => void
@@ -306,7 +315,8 @@ export function Sidebar() {
   const pathname  = usePathname()
   const router    = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [showTour, setShowTour] = useState(false)
+  const [moreOpen,   setMoreOpen]   = useState(false)
+  const [showTour,   setShowTour]   = useState(false)
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -356,10 +366,10 @@ export function Sidebar() {
           )
         })}
         <button
-          onClick={() => setMobileOpen(true)}
+          onClick={() => setMoreOpen(true)}
           className={cn(
             "flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-colors",
-            mobileOpen ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            moreOpen ? "text-primary" : "text-muted-foreground hover:text-foreground",
           )}
           aria-label="More navigation"
         >
@@ -396,6 +406,94 @@ export function Sidebar() {
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Mobile: More bottom sheet ──────────────────────────────────── */}
+      <AnimatePresence>
+        {moreOpen && (
+          <>
+            <motion.div
+              key="more-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              onClick={() => setMoreOpen(false)}
+            />
+            <motion.div
+              key="more-sheet"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 320, damping: 32 }}
+              className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-sidebar border-t border-sidebar-border rounded-t-2xl"
+              style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+            >
+              {/* drag handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="h-1 w-10 rounded-full bg-white/20" />
+              </div>
+
+              {/* label */}
+              <p className="px-5 pt-1 pb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
+                Explore
+              </p>
+
+              {/* icon grid */}
+              <div className="grid grid-cols-5 gap-1 px-3 pb-4">
+                {MORE_SHEET_ITEMS.map(({ href, label, icon: Icon }) => {
+                  const active = pathname === href || pathname.startsWith(href + "/")
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setMoreOpen(false)}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors",
+                        active
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-white/[0.06]"
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-[9px] font-medium">{label}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+
+              {/* divider */}
+              <div className="mx-4 h-px bg-white/[0.06] mb-2" />
+
+              {/* utility actions */}
+              <div className="px-3 pb-4 space-y-0.5">
+                <button
+                  onClick={() => { setMoreOpen(false); setShowTour(true) }}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+                >
+                  <HelpCircle className="h-4 w-4 shrink-0" />
+                  Take a Tour
+                </button>
+                <Link
+                  href="/legal"
+                  onClick={() => setMoreOpen(false)}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+                >
+                  <Scale className="h-4 w-4 shrink-0" />
+                  Legal &amp; Policies
+                </Link>
+                <button
+                  onClick={() => { setMoreOpen(false); handleSignOut() }}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
