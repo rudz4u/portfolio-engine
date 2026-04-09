@@ -10,7 +10,6 @@ import {
   LogOut,
   Bot,
   Menu,
-  X,
   Star,
   BarChart2,
   Bookmark,
@@ -78,6 +77,14 @@ const navItems: NavItem[] = [
     ]
   },
 ]
+
+/* ── Bottom navigation items (mobile tab bar) ──────────────────────────── */
+const BOTTOM_NAV_ITEMS = [
+  { href: "/dashboard", label: "Home",      icon: LayoutDashboard },
+  { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+  { href: "/trade",     label: "Trade",     icon: TrendingUp },
+  { href: "/assistant", label: "AI",        icon: Bot },
+] as const
 
 interface SidebarContentProps {
   pathname: string
@@ -310,29 +317,58 @@ export function Sidebar() {
 
   return (
     <>
-      {/* ── Mobile header bar ─────────────────────────────────────────── */}
-      <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-sidebar-border bg-sidebar">
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg shrink-0">
-            <img src="/Logos/investbuddy_favicon_transparent.svg" alt="InvestBuddy AI" className="h-7 w-7" aria-hidden="true" />
-          </div>
-          <span className="font-bold text-sm gradient-text">InvestBuddy AI</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMobileOpen(!mobileOpen)}
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-      </div>
-
       {/* ── Desktop sidebar ───────────────────────────────────────────── */}
       <div className="hidden lg:flex">
         <SidebarContent pathname={pathname} onNavClick={() => {}} onSignOut={handleSignOut} onTakeTour={() => setShowTour(true)} />
       </div>
 
-      {/* ── Mobile sidebar ────────────────────────────────────────────── */}
+      {/* ── Mobile: fixed top bar ─────────────────────────────────────── */}
+      <div className="fixed top-0 left-0 right-0 z-30 lg:hidden flex items-center justify-between px-4 h-[52px] border-b border-sidebar-border bg-sidebar">
+        <div className="flex items-center gap-2">
+          <img src="/Logos/investbuddy_favicon_transparent.svg" alt="InvestBuddy AI" className="h-7 w-7" aria-hidden="true" />
+          <span className="font-bold text-sm gradient-text">InvestBuddy AI</span>
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* ── Mobile: fixed bottom tab navigation ───────────────────────── */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 lg:hidden flex items-center border-t border-sidebar-border bg-sidebar"
+        style={{ height: "calc(60px + env(safe-area-inset-bottom, 0px))", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        {BOTTOM_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + "/")
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "relative flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-colors",
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className={cn("h-5 w-5 transition-transform duration-150", active && "scale-110")} />
+              <span className="text-[10px] font-medium">{label}</span>
+              {active && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-primary" />}
+            </Link>
+          )
+        })}
+        <button
+          onClick={() => setMobileOpen(true)}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-colors",
+            mobileOpen ? "text-primary" : "text-muted-foreground hover:text-foreground",
+          )}
+          aria-label="More navigation"
+        >
+          <Menu className="h-5 w-5" />
+          <span className="text-[10px] font-medium">More</span>
+        </button>
+      </nav>
+
+      {/* ── Mobile: slide-out full drawer ─────────────────────────────── */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -348,7 +384,7 @@ export function Sidebar() {
         )}
       </AnimatePresence>
 
-      {/* ── Mobile overlay ─────────────────────────────────────────────── */}
+      {/* ── Mobile: overlay backdrop ───────────────────────────────────── */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
