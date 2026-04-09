@@ -565,7 +565,7 @@ export function CandlestickChart({
               RSI {indicators.rsi.toFixed(1)}
             </span>
           )}
-          {indicators.macd && (
+          {indicators.macd != null && indicators.macd.histogram != null && (
             <span
               className={cn(
                 "rounded-md px-2 py-1 font-mono",

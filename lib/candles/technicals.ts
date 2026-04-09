@@ -27,12 +27,11 @@ export function computeIndicators(candles: CandleData[]): TechnicalIndicators {
 
   // MACD (12-26-9)
   const macdResult = macd(closes)
-  const macdLatest = macdResult.macd.length > 0
-    ? {
-        value: macdResult.macd[macdResult.macd.length - 1],
-        signal: macdResult.signal[macdResult.signal.length - 1],
-        histogram: macdResult.histogram[macdResult.histogram.length - 1],
-      }
+  const _mv = macdResult.macd[macdResult.macd.length - 1]
+  const _ms = macdResult.signal[macdResult.signal.length - 1]
+  const _mh = macdResult.histogram[macdResult.histogram.length - 1]
+  const macdLatest = Number.isFinite(_mv) && Number.isFinite(_ms) && Number.isFinite(_mh)
+    ? { value: _mv, signal: _ms, histogram: _mh }
     : null
   const macdTrend: "bullish" | "bearish" | "neutral" = macdLatest
     ? macdLatest.histogram > 0
@@ -78,8 +77,11 @@ export function computeIndicators(candles: CandleData[]): TechnicalIndicators {
       ? vol5 > vol20 * 1.5 ? "high" : vol5 < vol20 * 0.5 ? "low" : "normal"
       : "normal"
 
+  const finiteOrNull = (v: number | null | undefined): number | null =>
+    v != null && Number.isFinite(v) ? v : null
+
   return {
-    rsi: latestRsi !== null ? Math.round(latestRsi * 100) / 100 : null,
+    rsi: finiteOrNull(latestRsi !== null ? Math.round(latestRsi * 100) / 100 : null),
     rsiSignal: rsiSig,
     macd: macdLatest
       ? {
@@ -89,7 +91,7 @@ export function computeIndicators(candles: CandleData[]): TechnicalIndicators {
         }
       : null,
     macdTrend,
-    bollingerBands: bbLatest
+    bollingerBands: bbLatest && Number.isFinite(bbLatest.upper) && Number.isFinite(bbLatest.lower)
       ? {
           upper: Math.round(bbLatest.upper * 100) / 100,
           middle: Math.round(bbLatest.middle * 100) / 100,
@@ -97,12 +99,12 @@ export function computeIndicators(candles: CandleData[]): TechnicalIndicators {
         }
       : null,
     bollingerPosition,
-    sma20: sma20 !== null ? Math.round(sma20 * 100) / 100 : null,
-    sma50: sma50 !== null ? Math.round(sma50 * 100) / 100 : null,
-    sma200: sma200 !== null ? Math.round(sma200 * 100) / 100 : null,
-    atr: atrLatest !== null ? Math.round(atrLatest * 100) / 100 : null,
+    sma20: finiteOrNull(sma20 !== null ? Math.round(sma20 * 100) / 100 : null),
+    sma50: finiteOrNull(sma50 !== null ? Math.round(sma50 * 100) / 100 : null),
+    sma200: finiteOrNull(sma200 !== null ? Math.round(sma200 * 100) / 100 : null),
+    atr: finiteOrNull(atrLatest !== null ? Math.round(atrLatest * 100) / 100 : null),
     volumeTrend,
-    avgVolume20: vol20 !== null ? Math.round(vol20) : null,
+    avgVolume20: vol20 !== null && Number.isFinite(vol20) ? Math.round(vol20) : null,
   }
 }
 

@@ -96,22 +96,29 @@ export default function TechnicalAnalysisPage() {
         }
       }
 
-      // Fetch from watchlists
-      const { data: watchlistItems } = await supabase
-        .from("watchlist_items")
-        .select("instrument_key, trading_symbol, company_name, watchlist_id!inner(user_id)")
-        .eq("watchlist_id.user_id", user.id)
+      // Fetch from watchlists (stored in user_settings.preferences)
+      const { data: settingsRow } = await supabase
+        .from("user_settings")
+        .select("preferences")
+        .eq("user_id", user.id)
+        .single()
 
-      if (watchlistItems) {
+      if (settingsRow?.preferences) {
+        const { readWatchlists } = await import("@/lib/watchlistModel")
+        const prefs = settingsRow.preferences as Record<string, unknown>
+        const watchlists = readWatchlists(prefs)
         const seen = new Set(allStocks.map((s) => s.instrument_key))
-        for (const w of watchlistItems) {
-          if (!seen.has(w.instrument_key)) {
-            allStocks.push({
-              instrument_key: w.instrument_key,
-              trading_symbol: w.trading_symbol,
-              company_name: w.company_name || w.trading_symbol,
-              source: "watchlist",
-            })
+        for (const list of watchlists) {
+          for (const item of list.items) {
+            if (!seen.has(item.instrument_key)) {
+              allStocks.push({
+                instrument_key: item.instrument_key,
+                trading_symbol: item.trading_symbol,
+                company_name: item.company_name || item.trading_symbol,
+                source: "watchlist",
+              })
+              seen.add(item.instrument_key)
+            }
           }
         }
       }
