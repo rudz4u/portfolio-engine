@@ -68,15 +68,19 @@ function validateOptions(opts: FetchCandleOptions): string | null {
 type RawCandle = [string, number, number, number, number, number, number]
 
 function parseCandleData(raw: RawCandle[]): CandleData[] {
-  return raw.map(([timestamp, open, high, low, close, volume, oi]) => ({
-    timestamp,
-    open,
-    high,
-    low,
-    close,
-    volume,
-    oi,
-  }))
+  return raw
+    .filter(([, open, high, low, close]) =>
+      open != null && high != null && low != null && close != null,
+    )
+    .map(([timestamp, open, high, low, close, volume, oi]) => ({
+      timestamp,
+      open,
+      high,
+      low,
+      close,
+      volume,
+      oi,
+    }))
 }
 
 // ── Main fetch function ───────────────────────────────────────────────────────

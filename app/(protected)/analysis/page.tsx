@@ -41,8 +41,10 @@ interface AnalysisResult {
 }
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
-const fmtNum = (n: number, decimals = 2) =>
-  n.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+const fmtNum = (n: number | null | undefined, decimals = 2) =>
+  n != null
+    ? n.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+    : "—"
 
 /* ── page ────────────────────────────────────────────────────────────── */
 export default function TechnicalAnalysisPage() {
