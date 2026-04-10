@@ -53,6 +53,7 @@ interface SourceSignal {
   target_price: number | null
   tier: number
   website_url?: string | null
+  source_url?: string | null
 }
 
 interface Summary {
@@ -112,6 +113,10 @@ function advisorLogoUrl(websiteUrl?: string | null): string | null {
   } catch {
     return null
   }
+}
+
+function advisorTargetUrl(signal: SourceSignal): string | null {
+  return signal.source_url || signal.website_url || null
 }
 
 export default function RecommendationsPage() {
@@ -508,20 +513,21 @@ export default function RecommendationsPage() {
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {sourceBreakdown[h.trading_symbol].map((s) => {
                       const logo = advisorLogoUrl(s.website_url)
-                      return (
-                        <span
-                          key={s.source_name}
-                          className={cn(
-                            "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border",
-                            s.signal === "BUY" || s.signal === "STRONG_BUY"
-                              ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
-                              : s.signal === "SELL" || s.signal === "STRONG_SELL"
-                              ? "bg-red-400/10 text-red-400 border-red-400/30"
-                              : s.signal === "HOLD"
-                              ? "bg-amber-400/10 text-amber-400 border-amber-400/30"
-                              : "bg-muted text-muted-foreground border-border/50"
-                          )}
-                        >
+                      const targetUrl = advisorTargetUrl(s)
+                      const chipClassName = cn(
+                        "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border transition-colors",
+                        targetUrl && "hover:opacity-85 cursor-pointer",
+                        s.signal === "BUY" || s.signal === "STRONG_BUY"
+                          ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
+                          : s.signal === "SELL" || s.signal === "STRONG_SELL"
+                          ? "bg-red-400/10 text-red-400 border-red-400/30"
+                          : s.signal === "HOLD"
+                          ? "bg-amber-400/10 text-amber-400 border-amber-400/30"
+                          : "bg-muted text-muted-foreground border-border/50"
+                      )
+
+                      const chipContent = (
+                        <>
                           {logo && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -535,7 +541,28 @@ export default function RecommendationsPage() {
                           <span className="truncate max-w-[80px]">{s.source_name}</span>
                           <span className="font-semibold">{s.signal}</span>
                           {s.target_price ? <span>₹{s.target_price.toLocaleString("en-IN")}</span> : null}
-                        </span>
+                        </>
+                      )
+
+                      if (!targetUrl) {
+                        return (
+                          <span key={s.source_name} className={chipClassName}>
+                            {chipContent}
+                          </span>
+                        )
+                      }
+
+                      return (
+                        <a
+                          key={s.source_name}
+                          href={targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={chipClassName}
+                          title={`Open ${s.source_name} source`}
+                        >
+                          {chipContent}
+                        </a>
                       )
                     })}
                   </div>

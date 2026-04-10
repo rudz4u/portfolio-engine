@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       .order("weighted_score", { ascending: false }),
     supabase
       .from("advisory_recommendations")
-      .select("trading_symbol, signal, target_price, advisory_sources(name, tier, website_url)")
+      .select("trading_symbol, signal, target_price, source_url, advisory_sources(name, tier, website_url)")
       .in("trading_symbol", symbolFilter)
       .gte("scraped_at", sevenDaysAgo)
       .order("scraped_at", { ascending: false }),
@@ -80,7 +80,14 @@ export async function GET(request: NextRequest) {
   }
 
   // Build per-symbol source breakdown (deduplicated by source name — keep most recent signal)
-  type SourceEntry = { source_name: string; signal: string; target_price: number | null; tier: number; website_url?: string | null }
+  type SourceEntry = {
+    source_name: string
+    signal: string
+    target_price: number | null
+    tier: number
+    website_url?: string | null
+    source_url?: string | null
+  }
   const sourceBreakdown: Record<string, SourceEntry[]> = {}
   for (const rec of recs ?? []) {
     const sym = rec.trading_symbol as string
@@ -95,6 +102,7 @@ export async function GET(request: NextRequest) {
         target_price: (rec.target_price as number | null) ?? null,
         tier: src.tier ?? 0,
         website_url: src.website_url ?? null,
+        source_url: (rec.source_url as string | null) ?? null,
       })
     }
   }
