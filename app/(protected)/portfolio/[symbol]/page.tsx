@@ -15,6 +15,7 @@ import { TrendingUp, TrendingDown, ChevronLeft, Target, Zap, Scale, BarChart2, A
 import Link from "next/link"
 import { StockChart } from "./stock-chart"
 import { LiveLtpTiles } from "./live-ltp-tiles"
+import StockOverrideForm from "@/components/stock-override-form"
 
 const SIGNAL_STYLES: Record<string, { badge: string; bg: string; text: string }> = {
   BUY:   { badge: "bg-emerald-400/15 text-emerald-400 border border-emerald-400/30",  bg: "bg-emerald-400/10 border border-emerald-400/25", text: "text-emerald-400" },
@@ -377,6 +378,14 @@ export default async function StockDetailPage({
 
       {/* Historical price chart + Beta */}
       <StockChart instrumentKey={holding.instrument_key} />
+
+      {/* Stock-level strategy overrides */}
+      <StockOverrideForm
+        instrumentKey={holding.instrument_key}
+        tradingSymbol={holding.trading_symbol || holding.instrument_key}
+        currentLtp={holding.ltp}
+        avgPrice={holding.avg_price}
+      />
 
       {/* Signal insight */}
       <div className={`rounded-lg border px-4 py-3 ${styles.bg}`}>

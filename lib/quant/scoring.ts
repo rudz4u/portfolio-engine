@@ -13,6 +13,7 @@
 
 import { rsiSignal } from "./indicators"
 import { ScoringWeights, DEFAULT_WEIGHTS } from "./scoring-defaults"
+import type { InvestorProfile, StrategyPreset, HoldingOverride } from "@/lib/types/investor-profile"
 
 export type Signal = "BUY" | "HOLD" | "SELL" | "WATCH"
 export type TechnicalSignal = "oversold" | "neutral" | "overbought"
@@ -58,6 +59,21 @@ export interface ScoredHolding extends HoldingInput {
   rsi_approx: number        // 0–100 estimated RSI (uses pnl_pct as proxy for medium-term momentum)
   technical_signal: TechnicalSignal  // oversold / neutral / overbought
   macd_trend: "bullish" | "bearish" | "neutral"  // trend direction proxy
+  /** Profile alignment score (0–100). Present when InvestorProfile is provided. */
+  profile_alignment?: number
+  /** Human-readable explanation of why this signal was generated, accounting for investor profile. */
+  signal_explanation?: string
+  /** Per-stock override applied (if any) */
+  override_applied?: {
+    goal?: string | null
+    target_price?: number | null
+    stop_loss_price?: number | null
+    custom_signal_override?: string | null
+  }
+  /** Whether LTP has crossed above the user's target price */
+  target_price_hit?: boolean
+  /** Whether LTP has dropped below the user's stop-loss price */
+  stop_loss_hit?: boolean
 }
 
 /**
@@ -65,13 +81,39 @@ export interface ScoredHolding extends HoldingInput {
  * @param weights     — Optional custom scoring weights
  * @param technicals  — Optional map of instrument_key → real technical data from candle analysis.
  *                       When provided, real RSI/MACD/patterns are used instead of P&L approximations.
+ * @param profile     — Optional investor profile for personalised thresholds, sector fit, and position sizing
+ * @param preset      — Optional strategy preset (scoring weights + signal thresholds) linked to the profile
+ * @param overrides   — Optional map of instrument_key → holding-level overrides (target price, stop-loss, goal, etc.)
  */
 export function scoreHoldings(
   holdings: HoldingInput[],
   weights?: ScoringWeights,
   technicals?: Map<string, RealTechnicalData>,
+  profile?: InvestorProfile | null,
+  preset?: StrategyPreset | null,
+  overrides?: Map<string, HoldingOverride>,
 ): ScoredHolding[] {
-  const w = weights ?? DEFAULT_WEIGHTS
+  // ── Resolve weights: preset > explicit weights > defaults ────────────────
+  const presetWeights = preset?.scoring_weights
+  const w = presetWeights
+    ? { momentum: presetWeights.momentum, valuation: presetWeights.valuation, position: presetWeights.position, advisory: presetWeights.advisory }
+    : (weights ?? DEFAULT_WEIGHTS)
+
+  // ── Resolve signal thresholds: preset > profile-aware defaults ────────────
+  const thresholds = preset?.signal_thresholds ?? null
+  const buyMin      = thresholds?.buy_min        ?? 70
+  const holdMin     = thresholds?.hold_min        ?? 50
+  const sellMax     = thresholds?.sell_max        ?? 35
+
+  // ── Resolve position sizing band from investor profile ────────────────────
+  const idealLow  = profile ? Math.max(1, profile.max_single_stock_allocation_pct * 0.3) : 2
+  const idealHigh = profile ? profile.max_single_stock_allocation_pct                    : 8
+  const warnHigh  = profile ? profile.max_single_stock_allocation_pct * 1.5              : 12
+
+  // ── Sector preference maps ─────────────────────────────────────────────────
+  const preferredSectors = new Set(profile?.preferred_sectors ?? [])
+  const avoidedSectors   = new Set(profile?.avoided_sectors   ?? [])
+
   const totalInvested = holdings.reduce((s, h) => s + (h.invested_amount || 0), 0)
   const totalValue = holdings.reduce((s, h) => s + (h.ltp * h.quantity || 0), 0)
 
@@ -143,12 +185,12 @@ export function scoreHoldings(
       valuation_score = Math.max(0, Math.min(25, valuation_score))
 
       // ── Position score (0–20) ──────────────────────────────────
-      // Reward appropriate sizing (2–8% of portfolio = ideal)
+      // Use profile-aware ideal sizing band. Conservative profiles have tighter bands.
       let position_score = 10
-      if (weight_pct >= 2 && weight_pct <= 8) position_score = 18
-      else if (weight_pct >= 1 && weight_pct <= 12) position_score = 13
-      else if (weight_pct > 12) position_score = 7    // over-concentrated
-      else position_score = 8                          // under-represented
+      if (weight_pct >= idealLow && weight_pct <= idealHigh) position_score = 18
+      else if (weight_pct >= idealLow * 0.5 && weight_pct <= warnHigh) position_score = 13
+      else if (weight_pct > warnHigh) position_score = 7    // over-concentrated
+      else position_score = 8                                // under-represented
 
       // ── Advisory score (0–25) ──────────────────────────────────
       // Pre-computed weighted consensus from SEBI advisors.
@@ -156,28 +198,88 @@ export function scoreHoldings(
       // this preserves existing score distribution until the cron populates data.
       const advisory_score = Math.max(0, Math.min(25, h.advisory_score ?? 12))
 
+      // ── Sector fit bonus/penalty (profile-aware) ───────────────
+      const seg = h.segment ?? ""
+      let sectorBonus = 0
+      if (preferredSectors.size > 0 && preferredSectors.has(seg)) sectorBonus = +4
+      if (avoidedSectors.size > 0   && avoidedSectors.has(seg))   sectorBonus = -6
+
+      // ── Profile alignment score (0–100) ───────────────────────
+      // Composite alignment: sector fit (40) + risk fit (30) + sizing fit (30)
+      let profile_alignment: number | undefined = undefined
+      if (profile) {
+        const sectorFit   = preferredSectors.has(seg) ? 100 : avoidedSectors.has(seg) ? 0 : 60
+        const sizingFit   = position_score >= 16 ? 100 : position_score >= 12 ? 65 : 30
+        // Risk fit: volatile (big loss) holding in conservative profile = misaligned
+        const riskProxy   = pnl_pct < -15 && ["very_conservative", "conservative"].includes(profile.risk_tolerance) ? 20 : 80
+        profile_alignment = Math.round(sectorFit * 0.4 + sizingFit * 0.3 + riskProxy * 0.3)
+      }
+
       // Weighted score — user-configurable component weights that sum to 100.
       // Each component is normalised to its default max before applying the weight.
-      const score = Math.round(
+      const rawScore =
         (momentum_score  / 30) * w.momentum  +
         (valuation_score / 25) * w.valuation +
         (position_score  / 20) * w.position  +
         (advisory_score  / 25) * w.advisory
-      )
+      const score = Math.max(0, Math.min(100, Math.round(rawScore + sectorBonus)))
+
+      // ── Per-stock holding overrides ───────────────────────────
+      const ovr = overrides?.get(h.instrument_key)
+      const target_price_hit = ovr?.target_price != null ? h.ltp >= ovr.target_price : undefined
+      const stop_loss_hit    = ovr?.stop_loss_price != null ? h.ltp <= ovr.stop_loss_price : undefined
 
       // ── Signal ────────────────────────────────────────────────
       let signal: Signal
       let signal_reason: string
 
-      if (score >= 70 && pnl_pct > -10) {
+      // 1. Check user-forced signal override
+      if (ovr?.custom_signal_override === "force_hold") {
+        signal = "HOLD"
+        signal_reason = "User override — holding pinned to HOLD"
+      } else if (ovr?.custom_signal_override === "force_watch") {
+        signal = "WATCH"
+        signal_reason = "User override — holding pinned to WATCH"
+      }
+      // 2. Stop-loss hit takes priority over normal scoring
+      else if (stop_loss_hit) {
+        signal = "SELL"
+        signal_reason = `Stop-loss hit — LTP ₹${h.ltp.toFixed(2)} ≤ stop-loss ₹${ovr!.stop_loss_price!.toFixed(2)}`
+      }
+      // 3. Target price hit suggests taking profits
+      else if (target_price_hit) {
+        signal = "SELL"
+        signal_reason = `Target price hit — LTP ₹${h.ltp.toFixed(2)} ≥ target ₹${ovr!.target_price!.toFixed(2)}. Consider booking profits.`
+      }
+      // 4. Hold-until date check
+      else if (ovr?.hold_until && new Date(ovr.hold_until) > new Date()) {
+        // Override SELL to HOLD if within hold-until window (unless stop-loss hit, checked above)
+        const baseSignal = score >= buyMin && pnl_pct > -10 ? "BUY"
+          : score >= holdMin ? "HOLD"
+          : score < sellMax || pnl_pct < -20 ? "SELL"
+          : "WATCH"
+        if (baseSignal === "SELL") {
+          signal = "HOLD"
+          signal_reason = `Quant suggests SELL but holding until ${ovr.hold_until} — monitoring`
+        } else {
+          signal = baseSignal
+          signal_reason = baseSignal === "BUY"
+            ? "Strong quant score — momentum elevated, position sized appropriately"
+            : baseSignal === "HOLD"
+            ? "Moderate quant score — momentum balanced, monitor for trend change"
+            : "Mixed quant signals — monitor for directional confirmation"
+        }
+      }
+      // 5. Normal signal generation
+      else if (score >= buyMin && pnl_pct > -10) {
         signal = "BUY"
         signal_reason = pnl_pct < 0
           ? "Strong quant score — elevated momentum in a dip"
           : "Strong quant score — momentum elevated, position sized appropriately"
-      } else if (score >= 50) {
+      } else if (score >= holdMin) {
         signal = "HOLD"
         signal_reason = "Moderate quant score — momentum balanced, monitor for trend change"
-      } else if (score < 35 || pnl_pct < -20) {
+      } else if (score < sellMax || pnl_pct < -20) {
         signal = "SELL"
         signal_reason = pnl_pct < -20
           ? "Significant drawdown detected — quant score weakened, review allocation"
@@ -201,6 +303,17 @@ export function scoreHoldings(
         rsi_approx,
         technical_signal,
         macd_trend,
+        ...(profile_alignment !== undefined ? { profile_alignment } : {}),
+        ...(ovr ? {
+          override_applied: {
+            goal: ovr.goal,
+            target_price: ovr.target_price,
+            stop_loss_price: ovr.stop_loss_price,
+            custom_signal_override: ovr.custom_signal_override,
+          },
+          ...(target_price_hit !== undefined ? { target_price_hit } : {}),
+          ...(stop_loss_hit !== undefined ? { stop_loss_hit } : {}),
+        } : {}),
       }
     })
     .sort((a, b) => b.score - a.score)

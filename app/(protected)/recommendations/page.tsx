@@ -1,13 +1,26 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { TrendingUp, TrendingDown, RefreshCw, BarChart2, ExternalLink, Newspaper, ChevronDown, ChevronUp, Zap, Activity } from "lucide-react"
+import { TrendingUp, TrendingDown, RefreshCw, BarChart2, ExternalLink, Newspaper, ChevronDown, ChevronUp, Zap, Activity, Sparkles, Target, UserCircle } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+
+interface DiscoveredOpportunity {
+  trading_symbol: string
+  segment: string | null
+  consensus_signal: string
+  weighted_score: number
+  advisory_score: number
+  buy_count: number
+  sell_count: number
+  total_sources: number
+  relevance_score: number
+  relevance_reason: string
+}
 
 interface ScoredHolding {
   instrument_key: string
@@ -31,6 +44,8 @@ interface ScoredHolding {
   technical_signal: "oversold" | "neutral" | "overbought"
   macd_trend: "bullish" | "bearish" | "neutral"
   segment: string
+  profile_alignment?: number
+  signal_explanation?: string
 }
 
 type ConsensusSignal = "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL"
@@ -121,6 +136,10 @@ function advisorTargetUrl(signal: SourceSignal): string | null {
 
 export default function RecommendationsPage() {
   const [data, setData] = useState<{ scored: ScoredHolding[]; summary: Summary } | null>(null)
+  const [profilePresent, setProfilePresent] = useState<boolean | null>(null)
+  const [investorType, setInvestorType] = useState<string | null>(null)
+  const [opportunities, setOpportunities] = useState<DiscoveredOpportunity[]>([])
+  const [showOpportunities, setShowOpportunities] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterType>("All")
@@ -138,13 +157,17 @@ export default function RecommendationsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [scoreRes, consensusRes] = await Promise.all([
-        fetch("/api/analysis/score"),
+      const [personalRes, consensusRes] = await Promise.all([
+        fetch("/api/recommendations/personalized"),
         fetch("/api/advisory/consensus"),
       ])
-      if (!scoreRes.ok) throw new Error("Failed to compute scores")
-      const json = await scoreRes.json()
-      setData(json)
+      if (!personalRes.ok) throw new Error("Failed to compute scores")
+      const json = await personalRes.json()
+      // Map personalized response to the shape the existing UI expects
+      setData({ scored: json.all_scored ?? [], summary: json.summary ?? { avgScore: 0, bySignal: { BUY:0, HOLD:0, SELL:0, WATCH:0 }, total: 0 } })
+      setProfilePresent(json.profile_present ?? false)
+      setInvestorType(json.investor_type ?? null)
+      setOpportunities(json.opportunities ?? [])
       setLastRefresh(new Date())
       if (consensusRes.ok) {
         const cjson = await consensusRes.json()
@@ -153,7 +176,7 @@ export default function RecommendationsPage() {
         setConsensusMap(map)
         setSourceBreakdown(cjson.sourceBreakdown ?? {})
       }
-    } catch (err) {
+    } catch {
       setError("Failed to load recommendations. Make sure you have holdings synced.")
     } finally {
       setLoading(false)
@@ -235,7 +258,10 @@ export default function RecommendationsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Portfolio Signals</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Quant analytics computed from your live portfolio data
+            {investorType
+              ? <span>Personalised signals for your investor profile · <span className="text-primary/80 font-medium capitalize">{investorType.replace(/_/g, " ")}</span></span>
+              : "Quant analytics computed from your live portfolio data"
+            }
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -275,6 +301,25 @@ export default function RecommendationsPage() {
           </Button>
         </div>
       </div>
+
+      {/* ── Profile setup prompt for users without a profile ───────────────── */}
+      {profilePresent === false && (
+        <div className="rounded-xl border border-violet-500/30 bg-violet-500/8 px-5 py-4 flex items-start gap-4">
+          <div className="h-10 w-10 shrink-0 rounded-xl bg-violet-500/15 flex items-center justify-center">
+            <UserCircle className="h-5 w-5 text-violet-400" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-white/90 text-sm">Set up your investor profile for personalised signals</p>
+            <p className="text-xs text-white/45 mt-0.5">Signals are currently using default weights. Complete your investor profile to get sector-matched scores, profile-aware thresholds, and opportunity discovery.</p>
+          </div>
+          <Link href="/settings/investor-profile">
+            <Button size="sm" variant="outline" className="shrink-0 border-violet-500/40 text-violet-400 hover:bg-violet-500/10">
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              Set Up Profile
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* ── Compliance disclaimer ──────────────────────────────────────────── */}
       <div className="rounded-xl border border-muted/60 bg-muted/20 px-4 py-3 flex items-start gap-3 text-xs text-muted-foreground">
@@ -405,9 +450,11 @@ export default function RecommendationsPage() {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">{h.name}</p>
-                    <p className="text-xs text-muted-foreground/80 mt-1 italic">
-                      {h.signal_reason}
-                    </p>
+                    {h.signal_explanation ? (
+                      <p className="text-xs text-muted-foreground/80 mt-1 italic leading-relaxed" dangerouslySetInnerHTML={{ __html: h.signal_explanation.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>") }} />
+                    ) : (
+                      <p className="text-xs text-muted-foreground/80 mt-1 italic">{h.signal_reason}</p>
+                    )}
                   </div>
 
                   <div className="text-right shrink-0">
@@ -461,6 +508,20 @@ export default function RecommendationsPage() {
                     />
                   </div>
                 </div>
+
+                {/* Profile alignment chip */}
+                {h.profile_alignment !== undefined && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      h.profile_alignment >= 75 ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" :
+                      h.profile_alignment >= 45 ? "bg-amber-400/10 text-amber-400 border-amber-400/30" :
+                      "bg-red-400/10 text-red-400 border-red-400/30"
+                    }`}>
+                      <Target className="w-2.5 h-2.5" />
+                      Profile fit: {h.profile_alignment}%
+                    </span>
+                  </div>
+                )}
 
                 {/* Technical indicator chips */}
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -624,6 +685,87 @@ export default function RecommendationsPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── Opportunity Discovery ─────────────────────────────────────────── */}
+      {opportunities.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-violet-400" />
+                Opportunities Matching Your Profile
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Stocks not in your portfolio with advisory consensus aligned to your investor type
+              </p>
+            </div>
+            <button
+              onClick={() => setShowOpportunities((v) => !v)}
+              className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
+            >
+              {showOpportunities ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              {showOpportunities ? "Collapse" : `Show ${opportunities.length}`}
+            </button>
+          </div>
+
+          {showOpportunities && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {opportunities.map((opp) => (
+                <div key={opp.trading_symbol} className="card-elevated rounded-xl p-4 hover:border-violet-400/25 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-semibold text-sm">{opp.trading_symbol}</span>
+                      {opp.segment && (
+                        <span className="ml-2 text-[10px] text-muted-foreground border rounded px-1.5 py-0.5">{opp.segment}</span>
+                      )}
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                      opp.consensus_signal === "STRONG_BUY" ? CONSENSUS_STYLES["STRONG_BUY"] : CONSENSUS_STYLES["BUY"]
+                    }`}>
+                      {SIGNAL_DISPLAY[opp.consensus_signal] ?? opp.consensus_signal.replace("_", " ")}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <span className="text-emerald-400">▲ {opp.buy_count} Buy</span>
+                    <span className="text-red-400">▼ {opp.sell_count} Sell</span>
+                    <span>{opp.total_sources} sources</span>
+                  </div>
+
+                  {/* Profile relevance bar */}
+                  <div className="mt-2.5">
+                    <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                      <span>Profile fit</span>
+                      <span className={opp.relevance_score >= 70 ? "text-emerald-400" : opp.relevance_score >= 45 ? "text-amber-400" : "text-muted-foreground"}>
+                        {opp.relevance_score}/100
+                      </span>
+                    </div>
+                    <div className="h-1 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          opp.relevance_score >= 70 ? "bg-emerald-500" :
+                          opp.relevance_score >= 45 ? "bg-amber-500" : "bg-muted-foreground"
+                        }`}
+                        style={{ width: `${opp.relevance_score}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-muted-foreground/70 mt-2 italic">{opp.relevance_reason}</p>
+
+                  <div className="mt-3 flex gap-2">
+                    <Link href={`/analysis?stock=${encodeURIComponent(opp.trading_symbol)}`} className="flex-1">
+                      <Button size="sm" variant="outline" className="w-full text-[10px] h-7 border-violet-500/30 text-violet-400 hover:bg-violet-500/10">
+                        <Activity className="h-3 w-3 mr-1" /> Research
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

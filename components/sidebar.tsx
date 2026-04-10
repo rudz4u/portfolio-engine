@@ -23,6 +23,7 @@ import {
   Sliders,
   Database,
   Activity,
+  Sparkles,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -72,8 +73,9 @@ const navItems: NavItem[] = [
       { href: "/settings/connection",    label: "Connection",        icon: Zap },
       { href: "/settings/ai",            label: "AI & Keys",         icon: KeyRound },
       { href: "/settings/notifications", label: "Notifications",     icon: Bell },
-      { href: "/settings/portfolio",     label: "Portfolio",         icon: Sliders },
-      { href: "/settings/database",      label: "Database",          icon: Database },
+      { href: "/settings/portfolio",        label: "Portfolio",         icon: Sliders },
+      { href: "/settings/database",          label: "Database",          icon: Database },
+      { href: "/settings/investor-profile", label: "Investor Profile",  icon: Sparkles },
     ]
   },
 ]

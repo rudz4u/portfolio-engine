@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { scoreHoldings, portfolioSummary, type HoldingInput } from "@/lib/quant/scoring"
 import { validateWeights, DEFAULT_WEIGHTS } from "@/lib/quant/scoring-defaults"
+import { buildTechnicalsMap } from "@/lib/candles/build-technicals"
+import type { InvestorProfile, StrategyPreset, HoldingOverride } from "@/lib/types/investor-profile"
 
 export const dynamic = "force-dynamic"
 
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
   const today = new Date().toISOString().slice(0, 10)
 
   // Fetch user's custom scoring weights (and advisory consensus) in parallel
-  const [{ data: consensusRows }, { data: userSettings }] = await Promise.all([
+  const [{ data: consensusRows }, { data: userSettings }, { data: investorProfileRow }, { data: overrideRows }] = await Promise.all([
     supabase
       .from("advisory_consensus")
       .select("trading_symbol, advisory_score")
@@ -66,13 +68,32 @@ export async function GET(request: NextRequest) {
       .select("preferences")
       .eq("user_id", user.id)
       .maybeSingle(),
+    supabase
+      .from("investor_profiles")
+      .select("*, strategy_presets(*)")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("holding_overrides")
+      .select("*")
+      .eq("user_id", user.id),
   ])
 
   const prefs = (userSettings?.preferences as Record<string, unknown> | null) ?? {}
   const userWeights = validateWeights(prefs.scoring_weights) ?? DEFAULT_WEIGHTS
 
+  // Resolve investor profile + active preset (if present)
+  const investorProfile = (investorProfileRow as InvestorProfile | null) ?? null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activePreset = (investorProfileRow as any)?.strategy_presets as StrategyPreset | null ?? null
+
   const advisoryMap = new Map<string, number>(
     (consensusRows ?? []).map((r) => [r.trading_symbol as string, r.advisory_score as number])
+  )
+
+  // Build holding overrides map
+  const overridesMap = new Map<string, HoldingOverride>(
+    (overrideRows ?? []).map((r) => [r.instrument_key as string, r as unknown as HoldingOverride])
   )
 
   // Map to HoldingInput
@@ -97,7 +118,10 @@ export async function GET(request: NextRequest) {
     }
   })
 
-  const scored = scoreHoldings(inputs, userWeights)
+  const scored = scoreHoldings(inputs, userWeights, await buildTechnicalsMap(
+    inputs.map((i) => i.instrument_key),
+    new Map(inputs.map((i) => [i.instrument_key, i.trading_symbol ?? i.instrument_key])),
+  ), investorProfile, activePreset, overridesMap)
   const summary = portfolioSummary(scored)
 
   // Persist latest scores to analysis_reports (upsert per instrument)

@@ -18,7 +18,10 @@ import {
   AlertTriangle,
   ArrowUpRight,
   ArrowDownRight,
+  Sparkles,
+  UserCircle,
 } from "lucide-react"
+import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
 import { PortfolioCharts } from "./portfolio-charts"
 import type { SnapshotEntry } from "./portfolio-charts"
@@ -131,8 +134,17 @@ async function getPortfolioSummary(userId: string) {
   }
 }
 
-async function getRecentOrders(userId: string) {
+async function getInvestorProfileSummary(userId: string) {
   const supabase = await createClient()
+  const { data } = await supabase
+    .from("investor_profiles")
+    .select("investor_type, risk_tolerance, preferred_sectors, max_single_stock_allocation_pct, active_strategy_preset_id")
+    .eq("user_id", userId)
+    .maybeSingle()
+  return data ?? null
+}
+
+async function getRecentOrders(userId: string) {  const supabase = await createClient()
   const { data } = await supabase
     .from("orders")
     .select("id, instrument_key, side, quantity, price, status, meta, created_at")
@@ -189,6 +201,7 @@ export default async function DashboardPage() {
   const summary      = await getPortfolioSummary(user.id)
   const recentOrders = await getRecentOrders(user.id)
   const snapshots    = await getPortfolioSnapshots(user.id).catch(() => [])
+  const investorProfile = await getInvestorProfileSummary(user.id)
 
   const { data: lastSyncRow } = await supabase
     .from("holdings")
@@ -413,6 +426,46 @@ export default async function DashboardPage() {
               </div>
             )}
           </div>
+
+          {/* ── Investor Profile Widget ──────────────────────── */}
+          {!investorProfile ? (
+            <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 px-5 py-4 flex items-center gap-4">
+              <div className="h-10 w-10 shrink-0 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">
+                <UserCircle className="h-5 w-5 text-violet-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white/90">Personalise your signals</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Set up your investor profile to get sector-matched scores, profile-aware thresholds, and opportunity discovery.</p>
+              </div>
+              <Link href="/settings/investor-profile">
+                <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-500/40 text-xs font-medium text-violet-400 hover:bg-violet-500/10 transition-colors">
+                  <Sparkles className="h-3 w-3" /> Set Up
+                </span>
+              </Link>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 px-5 py-4 flex items-center gap-4">
+              <div className="h-10 w-10 shrink-0 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-violet-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white/90 capitalize">
+                  {investorProfile.investor_type?.replace(/_/g, " ") ?? "Investor"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Risk: <span className="text-white/60 capitalize">{investorProfile.risk_tolerance?.replace(/_/g, " ")}</span>
+                  {(investorProfile.preferred_sectors as string[] | null)?.length
+                    ? ` · Focus: ${(investorProfile.preferred_sectors as string[]).slice(0, 2).join(", ")}`
+                    : ""}
+                </p>
+              </div>
+              <Link href="/recommendations">
+                <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-500/40 text-xs font-medium text-violet-400 hover:bg-violet-500/10 transition-colors">
+                  View Signals
+                </span>
+              </Link>
+            </div>
+          )}
 
           {/* ── Portfolio Charts (area + donut + bar) ─────────────── */}
           <Suspense

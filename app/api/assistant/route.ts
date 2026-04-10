@@ -300,8 +300,43 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
     }
   }
 
-  // ── 5. Build system prompt ────────────────────────────────────────────────
-  const fullSystemPrompt = SYSTEM_PROMPT + portfolioContext + ordersContext + webSearchContext
+  // ── 5a. Fetch investor profile for personalised context ──────────────────
+  let profileContext = ""
+  const { data: investorProfileRow } = await supabase
+    .from("investor_profiles")
+    .select("investor_type, risk_tolerance, risk_capacity, investment_horizon_months, preferred_sectors, avoided_sectors, investment_goals, experience_level, active_strategy_preset_id")
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  if (investorProfileRow) {
+    const ip = investorProfileRow as Record<string, unknown>
+    const horizonLabel = ip.investment_horizon_months
+      ? `${ip.investment_horizon_months} months`
+      : "unspecified"
+    const preferredSectors = Array.isArray(ip.preferred_sectors) && ip.preferred_sectors.length > 0
+      ? (ip.preferred_sectors as string[]).join(", ")
+      : "None specified"
+    const avoidedSectors = Array.isArray(ip.avoided_sectors) && ip.avoided_sectors.length > 0
+      ? (ip.avoided_sectors as string[]).join(", ")
+      : "None"
+    const goals = Array.isArray(ip.investment_goals) && ip.investment_goals.length > 0
+      ? (ip.investment_goals as string[]).map((g) => g.replace(/_/g, " ")).join(", ")
+      : "Not stated"
+
+    profileContext = `
+
+Investor Profile (user context — personalise all advice accordingly):
+- Type: ${String(ip.investor_type ?? "unknown").replace(/_/g, " ")}
+- Risk tolerance: ${String(ip.risk_tolerance ?? "moderate")} / Capacity: ${String(ip.risk_capacity ?? "medium")}
+- Investment horizon: ${horizonLabel}
+- Experience level: ${String(ip.experience_level ?? "intermediate").replace(/_/g, " ")}
+- Preferred sectors: ${preferredSectors}
+- Avoided sectors: ${avoidedSectors}
+- Investment goals: ${goals}`
+  }
+
+  // ── 5b. Build system prompt ───────────────────────────────────────────────
+  const fullSystemPrompt = SYSTEM_PROMPT + profileContext + portfolioContext + ordersContext + webSearchContext
 
   // ── 6. Try providers in order ─────────────────────────────────────────────
   let reply = ""
