@@ -16,6 +16,8 @@ import Link from "next/link"
 import { StockChart } from "./stock-chart"
 import { LiveLtpTiles } from "./live-ltp-tiles"
 import StockOverrideForm from "@/components/stock-override-form"
+import { buildTechnicalsMap } from "@/lib/candles/build-technicals"
+import type { HoldingOverride, InvestorProfile, StrategyPreset } from "@/lib/types/investor-profile"
 
 const SIGNAL_STYLES: Record<string, { badge: string; bg: string; text: string }> = {
   BUY:   { badge: "bg-emerald-400/15 text-emerald-400 border border-emerald-400/30",  bg: "bg-emerald-400/10 border border-emerald-400/25", text: "text-emerald-400" },
@@ -143,7 +145,38 @@ export default async function StockDetailPage({
     }
   })
 
-  const scored = scoreHoldings(inputs)
+  // ── Load investor profile, overrides, and real technicals in parallel ─────
+  const [profileResult, overridesResult] = await Promise.all([
+    supabase
+      .from("investor_profiles")
+      .select("*, strategy_presets(*)")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase.from("holding_overrides").select("*").eq("user_id", user.id),
+  ])
+
+  const investorProfile = (profileResult.data as InvestorProfile | null) ?? undefined
+  const activePreset =
+    (profileResult.data as { strategy_presets?: StrategyPreset | null } | null)
+      ?.strategy_presets ?? undefined
+
+  const overridesMap = new Map<string, HoldingOverride>()
+  for (const o of overridesResult.data ?? []) {
+    overridesMap.set(o.instrument_key as string, o as HoldingOverride)
+  }
+
+  const symbolMap = new Map(
+    allHoldings.map((h) => [
+      h.instrument_key,
+      (h.raw as Record<string, string>)?.trading_symbol ?? h.instrument_key,
+    ]),
+  )
+  const technicalsMap = await buildTechnicalsMap(
+    allHoldings.map((h) => h.instrument_key),
+    symbolMap,
+  )
+
+  const scored = scoreHoldings(inputs, undefined, technicalsMap, investorProfile, activePreset, overridesMap)
   const holding: ScoredHolding | undefined = scored.find(
     (s) => s.instrument_key === decodedSymbol
   )

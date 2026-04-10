@@ -4,6 +4,8 @@ import { scoreHoldings, portfolioSummary, type HoldingInput } from "@/lib/quant/
 import { fetchCandleDataBatch } from "@/lib/candles/fetch"
 import { computeTechnicalAnalysis } from "@/lib/candles/technicals"
 import { resolveUpstoxToken, resolveMarketDataToken } from "@/lib/upstox-token"
+import { buildTechnicalsMap } from "@/lib/candles/build-technicals"
+import type { HoldingOverride, InvestorProfile, StrategyPreset } from "@/lib/types/investor-profile"
 
 const SYSTEM_PROMPT = `You are an expert AI portfolio analytics assistant for InvestBuddy AI.
 You help users understand and analyze their Indian stock portfolio performance, explore market data, and interpret quantitative indicators.
@@ -150,6 +152,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 })
   }
 
+  // ── 0. Fetch investor profile + overrides upfront (used for scoring + context) ──
+  const [{ data: investorProfileRow }, { data: overridesRows }] = await Promise.all([
+    supabase
+      .from("investor_profiles")
+      .select("*, strategy_presets(*)")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase.from("holding_overrides").select("*").eq("user_id", user.id),
+  ])
+
+  const assistantInvestorProfile = (investorProfileRow as InvestorProfile | null) ?? undefined
+  const assistantActivePreset =
+    (investorProfileRow as { strategy_presets?: StrategyPreset | null } | null)
+      ?.strategy_presets ?? undefined
+  const assistantOverridesMap = new Map<string, HoldingOverride>()
+  for (const o of overridesRows ?? []) {
+    assistantOverridesMap.set(o.instrument_key as string, o as HoldingOverride)
+  }
+
   // ── 1. Fetch portfolio + holdings + quant scoring ──────────────────────────
   const { data: portfolios } = await supabase
     .from("portfolios")
@@ -183,7 +204,9 @@ export async function POST(request: NextRequest) {
           segment: (h.segment as string) || "Others",
         }
       })
-      const scored = scoreHoldings(inputs)
+      const assistantSymbolMap = new Map(inputs.map((h) => [h.instrument_key, h.trading_symbol ?? h.instrument_key]))
+      const technicalsMap = await buildTechnicalsMap(inputs.map((h) => h.instrument_key), assistantSymbolMap)
+      const scored = scoreHoldings(inputs, undefined, technicalsMap, assistantInvestorProfile, assistantActivePreset, assistantOverridesMap)
       const summary = portfolioSummary(scored)
       const buySignals = scored.filter((s) => s.signal === "BUY").map((s) => s.trading_symbol).slice(0, 5)
       const sellSignals = scored.filter((s) => s.signal === "SELL").map((s) => s.trading_symbol).slice(0, 5)
@@ -300,18 +323,14 @@ ${recentOrders.map((o) => `- ${o.transaction_type} ${o.quantity}x ${o.instrument
     }
   }
 
-  // ── 5a. Fetch investor profile for personalised context ──────────────────
+  // ── 5a. Build investor profile context (profile already fetched in step 0) ──
   let profileContext = ""
-  const { data: investorProfileRow } = await supabase
-    .from("investor_profiles")
-    .select("investor_type, risk_tolerance, risk_capacity, investment_horizon_months, preferred_sectors, avoided_sectors, investment_goals, experience_level, active_strategy_preset_id")
-    .eq("user_id", user.id)
-    .maybeSingle()
 
   if (investorProfileRow) {
     const ip = investorProfileRow as Record<string, unknown>
-    const horizonLabel = ip.investment_horizon_months
-      ? `${ip.investment_horizon_months} months`
+    const horizonLabel = (ip.investment_horizon as { default_months?: number } | undefined)
+      ?.default_months
+      ? `${(ip.investment_horizon as { default_months: number }).default_months} months`
       : "unspecified"
     const preferredSectors = Array.isArray(ip.preferred_sectors) && ip.preferred_sectors.length > 0
       ? (ip.preferred_sectors as string[]).join(", ")

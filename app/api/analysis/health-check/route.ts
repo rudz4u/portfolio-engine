@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { scoreHoldings } from "@/lib/quant/scoring"
-import type { InvestorProfile, StrategyPreset } from "@/lib/types/investor-profile"
+import { buildTechnicalsMap } from "@/lib/candles/build-technicals"
+import type { HoldingOverride, InvestorProfile, StrategyPreset } from "@/lib/types/investor-profile"
 
 export const dynamic = "force-dynamic"
 
@@ -87,7 +88,23 @@ export async function GET() {
     segment: (h.segment as string) ?? "Others",
   }))
 
-  const scored = scoreHoldings(inputs, undefined, undefined, investorProfile, activePreset)
+  const healthSymbolMap = new Map(
+    holdingsRows.map((h) => [
+      h.instrument_key as string,
+      (h.raw as Record<string, string>)?.trading_symbol ?? (h.instrument_key as string),
+    ]),
+  )
+  const [technicalsMap, { data: overridesRows }] = await Promise.all([
+    buildTechnicalsMap(holdingsRows.map((h) => h.instrument_key as string), healthSymbolMap),
+    supabase.from("holding_overrides").select("*").eq("user_id", user.id),
+  ])
+
+  const overridesMap = new Map<string, HoldingOverride>()
+  for (const o of overridesRows ?? []) {
+    overridesMap.set(o.instrument_key as string, o as HoldingOverride)
+  }
+
+  const scored = scoreHoldings(inputs, undefined, technicalsMap, investorProfile, activePreset, overridesMap)
 
   // ── Compute metrics ──────────────────────────────────────────────────────
   const totalInvested = inputs.reduce((s, h) => s + h.invested_amount, 0)
