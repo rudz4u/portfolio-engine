@@ -69,32 +69,32 @@ const navItems: NavItem[] = [
     tourId: "tour-settings",
     section: "Manage",
     submenu: [
-      { href: "/settings/profile",       label: "Profile & Privacy", icon: UserCircle },
+      { href: "/settings/profile",       label: "Account & Privacy", icon: UserCircle },
       { href: "/settings/connection",    label: "Connection",        icon: Zap },
       { href: "/settings/ai",            label: "AI & Keys",         icon: KeyRound },
       { href: "/settings/notifications", label: "Notifications",     icon: Bell },
-      { href: "/settings/portfolio",        label: "Portfolio",         icon: Sliders },
+      { href: "/settings/portfolio",        label: "Portfolio Strategy", icon: Sliders },
       { href: "/settings/database",          label: "Database",          icon: Database },
-      { href: "/settings/investor-profile", label: "Investor Profile",  icon: Sparkles },
+      { href: "/settings/investor-profile", label: "Strategy & Signals",  icon: Sparkles },
     ]
   },
 ]
 
 /* ── Bottom navigation items (mobile tab bar) ──────────────────────────── */
 const BOTTOM_NAV_ITEMS = [
-  { href: "/dashboard", label: "Home",      icon: LayoutDashboard },
-  { href: "/portfolio", label: "Portfolio", icon: Briefcase },
-  { href: "/trade",     label: "Trade",     icon: TrendingUp },
-  { href: "/assistant", label: "AI",        icon: Bot },
+  { href: "/dashboard",       label: "Home",      icon: LayoutDashboard },
+  { href: "/portfolio",       label: "Portfolio", icon: Briefcase },
+  { href: "/recommendations", label: "Signals",   icon: Star },
+  { href: "/analytics",       label: "Analytics", icon: BarChart2 },
 ] as const
 
 /* ── Secondary items shown in the mobile "More" bottom sheet ───────────── */
 const MORE_SHEET_ITEMS = [
-  { href: "/analytics",       label: "Analytics",  icon: BarChart2  },
-  { href: "/recommendations", label: "Signals",     icon: Star       },
-  { href: "/watchlist",       label: "Watchlist",  icon: Bookmark   },
-  { href: "/analysis",        label: "Technicals", icon: Activity   },
-  { href: "/settings",        label: "Settings",   icon: Settings   },
+  { href: "/trade",     label: "Trade",      icon: TrendingUp },
+  { href: "/assistant", label: "AI Assistant", icon: Bot       },
+  { href: "/watchlist", label: "Watchlist",  icon: Bookmark   },
+  { href: "/analysis",  label: "Technicals", icon: Activity   },
+  { href: "/settings",  label: "Settings",   icon: Settings   },
 ] as const
 
 interface SidebarContentProps {
